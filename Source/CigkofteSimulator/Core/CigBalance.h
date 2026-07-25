@@ -36,6 +36,10 @@ namespace CigBalance
 	float Social(const TCHAR* Key, float Fallback);
 	float Audio(const TCHAR* Key, float Fallback);
 
+	// Indexed by ECigTutorialStep.
+	const FCigTutorialRow& Tutorial(int32 Index);
+	int32 TutorialCount();
+
 	FString SkillName(int32 Index);
 	FString SkillDesc(int32 Index);
 	FString UpgradeName(int32 Index);

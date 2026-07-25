@@ -145,6 +145,27 @@ struct FCigParamRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Parametre") float Deger = 0.f;
 };
 
+// --- Tutorial steps ---
+// One row per ECigTutorialStep, in the same order. The station index is what
+// the first day actually needed: a step that says "go and knead" is far clearer
+// when the kneading bowl pulses as it appears. -1 means the step is not about a
+// station at all (ordering stock happens on the tablet).
+USTRUCT(BlueprintType)
+struct FCigTutorialRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Ogretici") FString Key;
+	UPROPERTY(EditAnywhere, Category = "Ogretici") FString Label;
+
+	// Key into Config/Text/Strings.csv; the step's wording stays with the rest of
+	// the player-facing text rather than being duplicated here.
+	UPROPERTY(EditAnywhere, Category = "Ogretici") FString MetinAnahtari;
+
+	// ECigStation to highlight, or -1 for none.
+	UPROPERTY(EditAnywhere, Category = "Ogretici") int32 VurguIstasyon = -1;
+};
+
 // --- Daily events ---
 // Only the numbers live here. The event's name and its start/end announcements
 // stay in Events/CigEventSystem.cpp: they are prose, not balance, and moving

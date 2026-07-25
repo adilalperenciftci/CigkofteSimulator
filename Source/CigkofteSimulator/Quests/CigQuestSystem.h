@@ -90,6 +90,10 @@ public:
 	ECigTutorialStep TutorialStep = ECigTutorialStep::AddIngredient;
 	FString TutorialText() const;
 	void ResetTutorial();
+
+	// Pulses the station the current step is about, so the wording has
+	// something to point at.
+	void VurguluIstasyonuGoster();
 	void SkipTutorial();
 
 private:

@@ -1,5 +1,8 @@
 #include "Quests/CigQuestSystem.h"
 #include "Core/CigText.h"
+#include "Core/CigBalance.h"
+#include "World/CigWorldBuilder.h"
+#include "World/CigkofteStation.h"
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigEventBus.h"
 #include "Game/CigDaySystem.h"
@@ -425,17 +428,34 @@ void UCigQuestSystem::UpdateSystem(float DeltaSeconds)
 
 FString UCigQuestSystem::TutorialText() const
 {
-	switch (TutorialStep)
+	const int32 Adim = (int32)TutorialStep;
+	if (Adim < 0 || Adim >= CigBalance::TutorialCount())
 	{
-	case ECigTutorialStep::AddIngredient: return CigText::Get(TEXT("tutorial.1"));
-	case ECigTutorialStep::Knead:         return CigText::Get(TEXT("tutorial.2"));
-	case ECigTutorialStep::TakeOrder:     return CigText::Get(TEXT("tutorial.3"));
-	case ECigTutorialStep::PrepareWrap:   return CigText::Get(TEXT("tutorial.4"));
-	case ECigTutorialStep::Serve:         return CigText::Get(TEXT("tutorial.5"));
-	case ECigTutorialStep::OrderStock:    return CigText::Get(TEXT("tutorial.6"));
-	case ECigTutorialStep::Clean:         return CigText::Get(TEXT("tutorial.7"));
-	case ECigTutorialStep::FinishDay:     return CigText::Get(TEXT("tutorial.8"));
-	default:                              return TEXT("");
+		return FString();
+	}
+	return CigText::Get(*CigBalance::Tutorial(Adim).MetinAnahtari);
+}
+
+void UCigQuestSystem::VurguluIstasyonuGoster()
+{
+	// The step is easier to follow when the thing it is talking about moves. One
+	// pulse as the step opens is enough: a station that never stops flashing
+	// stops being a hint and starts being wallpaper.
+	const int32 Adim = (int32)TutorialStep;
+	if (!bTutorialActive || Adim < 0 || Adim >= CigBalance::TutorialCount())
+	{
+		return;
+	}
+
+	const int32 Istasyon = CigBalance::Tutorial(Adim).VurguIstasyon;
+	if (Istasyon < 0 || !GM || !GM->WorldBuilder)
+	{
+		return;
+	}
+
+	if (ACigkofteStation* S = GM->WorldBuilder->FindStation((ECigStation)Istasyon))
+	{
+		S->Pop();
 	}
 }
 
@@ -461,6 +481,7 @@ void UCigQuestSystem::AdvanceTutorial(ECigTutorialStep FromStep)
 	else
 	{
 		GM->AddMessage(CigText::Format(TEXT("msg.tutorial.guide"), *TutorialText()), FLinearColor(0.6f, 0.9f, 1.f));
+		VurguluIstasyonuGoster();
 	}
 }
 

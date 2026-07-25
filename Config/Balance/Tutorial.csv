@@ -1,0 +1,9 @@
+Key,Label,MetinAnahtari,VurguIstasyon
+AddIngredient,Malzeme ekle,tutorial.1,0
+Knead,Yoğur,tutorial.2,5
+TakeOrder,Siparişi gör,tutorial.3,6
+PrepareWrap,Dürümü hazırla,tutorial.4,13
+Serve,Servis et,tutorial.5,6
+OrderStock,Stok sipariş et,tutorial.6,-1
+Clean,Temizlik yap,tutorial.7,16
+FinishDay,Günü tamamla,tutorial.8,-1

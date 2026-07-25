@@ -383,6 +383,31 @@ namespace
 		};
 	}
 
+	FCigTutorialRow MakeTutorial(const TCHAR* Key, const TCHAR* Label, const TCHAR* MetinAnahtari, int32 VurguIstasyon)
+	{
+		FCigTutorialRow R;
+		R.Key = Key;
+		R.Label = Label;
+		R.MetinAnahtari = MetinAnahtari;
+		R.VurguIstasyon = VurguIstasyon;
+		return R;
+	}
+
+	TArray<FCigTutorialRow> DefaultTutorial()
+	{
+		// Order matches ECigTutorialStep; the system indexes straight into it.
+		return {
+			MakeTutorial(TEXT("AddIngredient"), TEXT("Malzeme ekle"),    TEXT("tutorial.1"), (int32)ECigStation::Bulgur),
+			MakeTutorial(TEXT("Knead"),         TEXT("Yoğur"),           TEXT("tutorial.2"), (int32)ECigStation::Yogurma),
+			MakeTutorial(TEXT("TakeOrder"),     TEXT("Siparişi gör"),    TEXT("tutorial.3"), (int32)ECigStation::Servis),
+			MakeTutorial(TEXT("PrepareWrap"),   TEXT("Dürümü hazırla"),  TEXT("tutorial.4"), (int32)ECigStation::Lavas),
+			MakeTutorial(TEXT("Serve"),         TEXT("Servis et"),       TEXT("tutorial.5"), (int32)ECigStation::Servis),
+			MakeTutorial(TEXT("OrderStock"),    TEXT("Stok sipariş et"), TEXT("tutorial.6"), -1),
+			MakeTutorial(TEXT("Clean"),         TEXT("Temizlik yap"),    TEXT("tutorial.7"), (int32)ECigStation::Temizlik),
+			MakeTutorial(TEXT("FinishDay"),     TEXT("Günü tamamla"),    TEXT("tutorial.8"), -1)
+		};
+	}
+
 	FCigEventRow MakeEvent(const TCHAR* Key, const TCHAR* Label, int32 MinGun, float Sans, float Sure,
 		float Spawn, float Sabir, float Fiyat, float Teslimat, float Stok, int32 TakvimPeriyodu)
 	{
@@ -488,6 +513,7 @@ namespace
 		TArray<FCigParamRow> Inspection;
 		TArray<FCigParamRow> Social;
 		TArray<FCigParamRow> Audio;
+		TArray<FCigTutorialRow> Tutorial;
 		bool bLoaded = false;
 
 		void Load()
@@ -504,6 +530,7 @@ namespace
 			Inspection = DefaultInspection();
 			Social = DefaultSocial();
 			Audio = DefaultAudio();
+			Tutorial = DefaultTutorial();
 
 			ForEachCsvRow(TEXT("Skills.csv"), [this](const FCigCsvRow& Row)
 			{
@@ -612,6 +639,16 @@ namespace
 				{
 					Row.Str(TEXT("Label"), R->Label);
 					Row.Flt(TEXT("Deger"), R->Deger);
+				}
+			});
+
+			ForEachCsvRow(TEXT("Tutorial.csv"), [this](const FCigCsvRow& Row)
+			{
+				if (FCigTutorialRow* R = FindByKey(Tutorial, Row))
+				{
+					Row.Str(TEXT("Label"), R->Label);
+					Row.Str(TEXT("MetinAnahtari"), R->MetinAnahtari);
+					Row.Int(TEXT("VurguIstasyon"), R->VurguIstasyon);
 				}
 			});
 
@@ -726,6 +763,8 @@ namespace CigBalance
 	float Inspection(const TCHAR* Key, float Fallback) { return ParamAra(Tables().Inspection, Key, Fallback); }
 	float Social(const TCHAR* Key, float Fallback)     { return ParamAra(Tables().Social, Key, Fallback); }
 	float Audio(const TCHAR* Key, float Fallback)      { return ParamAra(Tables().Audio, Key, Fallback); }
+	const FCigTutorialRow& Tutorial(int32 Index)       { return At(Tables().Tutorial, Index); }
+	int32 TutorialCount() { return Tables().Tutorial.Num(); }
 	int32 MahalleCount() { return Tables().Mahalle.Num(); }
 	int32 StaffCount() { return Tables().Staff.Num(); }
 	const FCigTraitRow& Trait(int32 Index)             { return At(Tables().Traits, Index); }
