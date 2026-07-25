@@ -371,6 +371,18 @@ namespace
 		};
 	}
 
+	TArray<FCigParamRow> DefaultAudio()
+	{
+		return {
+			MakeInspection(TEXT("YogurmaPerdeBaslangic"), TEXT("Yoğurma sesinin başlangıç perdesi"),      0.85f),
+			MakeInspection(TEXT("YogurmaPerdeBitis"),     TEXT("Yoğurma sesinin bitiş perdesi"),          1.45f),
+			MakeInspection(TEXT("IstasyonPerdeSapmasi"),  TEXT("İstasyon seslerindeki rastgele perde sapması"), 0.08f),
+			MakeInspection(TEXT("OrtamSesi"),             TEXT("Ortam katmanı ses düzeyi"),               0.35f),
+			MakeInspection(TEXT("OrtamGeceKisilma"),      TEXT("Gece ortam sesinin kısılma oranı"),       0.55f),
+			MakeInspection(TEXT("MusteriTepkiSesi"),      TEXT("Müşteri tepki sesi düzeyi"),              0.60f)
+		};
+	}
+
 	FCigEventRow MakeEvent(const TCHAR* Key, const TCHAR* Label, int32 MinGun, float Sans, float Sure,
 		float Spawn, float Sabir, float Fiyat, float Teslimat, float Stok, int32 TakvimPeriyodu)
 	{
@@ -475,6 +487,7 @@ namespace
 		TArray<FCigEventRow> Events;
 		TArray<FCigParamRow> Inspection;
 		TArray<FCigParamRow> Social;
+		TArray<FCigParamRow> Audio;
 		bool bLoaded = false;
 
 		void Load()
@@ -490,6 +503,7 @@ namespace
 			Events = DefaultEvents();
 			Inspection = DefaultInspection();
 			Social = DefaultSocial();
+			Audio = DefaultAudio();
 
 			ForEachCsvRow(TEXT("Skills.csv"), [this](const FCigCsvRow& Row)
 			{
@@ -586,6 +600,15 @@ namespace
 			ForEachCsvRow(TEXT("Social.csv"), [this](const FCigCsvRow& Row)
 			{
 				if (FCigParamRow* R = FindByKey(Social, Row))
+				{
+					Row.Str(TEXT("Label"), R->Label);
+					Row.Flt(TEXT("Deger"), R->Deger);
+				}
+			});
+
+			ForEachCsvRow(TEXT("Audio.csv"), [this](const FCigCsvRow& Row)
+			{
+				if (FCigParamRow* R = FindByKey(Audio, Row))
 				{
 					Row.Str(TEXT("Label"), R->Label);
 					Row.Flt(TEXT("Deger"), R->Deger);
@@ -702,6 +725,7 @@ namespace CigBalance
 
 	float Inspection(const TCHAR* Key, float Fallback) { return ParamAra(Tables().Inspection, Key, Fallback); }
 	float Social(const TCHAR* Key, float Fallback)     { return ParamAra(Tables().Social, Key, Fallback); }
+	float Audio(const TCHAR* Key, float Fallback)      { return ParamAra(Tables().Audio, Key, Fallback); }
 	int32 MahalleCount() { return Tables().Mahalle.Num(); }
 	int32 StaffCount() { return Tables().Staff.Num(); }
 	const FCigTraitRow& Trait(int32 Index)             { return At(Tables().Traits, Index); }

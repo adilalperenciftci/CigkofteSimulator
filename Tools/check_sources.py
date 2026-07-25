@@ -82,6 +82,7 @@ CSV_SCHEMA = {
     "Staff.csv": (
         ["Key", "Label", "Hiz", "Titizlik", "GulerYuz", "MaasBeklentisi"], 6),
     "Inspection.csv": (["Key", "Label", "Deger"], 13),
+    "Audio.csv": (["Key", "Label", "Deger"], 6),
     "Social.csv": (["Key", "Label", "Deger"], 18),
     "Events.csv": (
         ["Key", "Label", "MinGun", "Sans", "Sure", "SpawnCarpani", "SabirCarpani",

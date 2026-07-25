@@ -34,6 +34,7 @@ namespace CigBalance
 	// so a trimmed CSV cannot silently zero out a threshold.
 	float Inspection(const TCHAR* Key, float Fallback);
 	float Social(const TCHAR* Key, float Fallback);
+	float Audio(const TCHAR* Key, float Fallback);
 
 	FString SkillName(int32 Index);
 	FString SkillDesc(int32 Index);

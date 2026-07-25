@@ -354,7 +354,12 @@ void UCigCookingSystem::KneadPress()
 
 	if (GM)
 	{
-		GM->PlaySound(ECigSound::Knead);
+		if (UCigAudioSubsystem* Audio = GM->GetGameInstance() ? GM->GetGameInstance()->GetSubsystem<UCigAudioSubsystem>() : nullptr)
+		{
+			// Pitch tracks how far the batch has come - the dough is done at 100 -
+			// so the ear can hear it coming together without watching the bowl.
+			Audio->PlayKnead(KneadProgress / 100.f);
+		}
 		if (ACigkofteStation* Yogurma = GM->WorldBuilder ? GM->WorldBuilder->FindStation(ECigStation::Yogurma) : nullptr)
 		{
 			Yogurma->PulseDough();

@@ -851,6 +851,15 @@ void UCigCustomerSystem::UpdateSystem(float DeltaSeconds)
 		return;
 	}
 
+	// A shop the council has shut takes no customers. The day still runs, which
+	// is the point: a closed day is when the counter gets scrubbed, the stock
+	// gets ordered and the licence gets renewed. The penalty is the lost income,
+	// not an unplayable day.
+	if (GM->Inspection && GM->Inspection->KapaliMi())
+	{
+		return;
+	}
+
 	CustomerTimer -= DeltaSeconds;
 	if (CustomerTimer <= 0.f && Queue.Num() < MaxQueue())
 	{

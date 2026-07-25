@@ -1,0 +1,7 @@
+Key,Label,Deger
+YogurmaPerdeBaslangic,Yoğurma sesinin başlangıç perdesi,0.85
+YogurmaPerdeBitis,Yoğurma sesinin bitiş perdesi,1.45
+IstasyonPerdeSapmasi,İstasyon seslerindeki rastgele perde sapması,0.08
+OrtamSesi,Ortam katmanı ses düzeyi,0.35
+OrtamGeceKisilma,Gece ortam sesinin kısılma oranı,0.55
+MusteriTepkiSesi,Müşteri tepki sesi düzeyi,0.60

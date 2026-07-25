@@ -136,6 +136,14 @@ void ACigkofteGameMode::Tick(float DeltaSeconds)
 	{
 		const bool bTitleMenu = Days && Days->Phase == ECigPhase::Intro && IntroTime >= SplashDuration;
 		Audio->TickMenuMusic(DeltaSeconds, bTitleMenu || bPauseMenuOpen);
+
+		// The ambience bed follows the clock and the weather the world builder
+		// is already driving, so it needs no state of its own.
+		const bool bGunAkiyor = Days && Days->IsPlaying();
+		Audio->TickAmbience(DeltaSeconds,
+			WorldBuilder ? WorldBuilder->Evening : 0.f,
+			WorldBuilder ? WorldBuilder->Weather : 0,
+			bGunAkiyor);
 	}
 
 	for (UCigSystem* Sys : AllSystems)
@@ -340,6 +348,10 @@ void ACigkofteGameMode::HandleInteract(ACigkofteStation* Station)
 	}
 
 	Station->Pop(); // interaction feedback (game feel)
+	if (UCigAudioSubsystem* Audio = GetGameInstance() ? GetGameInstance()->GetSubsystem<UCigAudioSubsystem>() : nullptr)
+	{
+		Audio->PlayStation(Station->StationType);
+	}
 
 	switch (Station->StationType)
 	{
