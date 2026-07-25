@@ -14,7 +14,7 @@ are internally consistent. Stage 0 adds no player-facing feature by design.
 | 0.2 | Staff packaging keeps real dough spice | — | done |
 | 0.3 | Complaint risk feeds the inspector roll | — | done |
 | 0.5 | Every event ends through one lifecycle | — | done |
-| 0.6 | Stable review IDs for the reply queue | — | todo |
+| 0.6 | Stable review IDs for the reply queue | — | done |
 | 0.1 | One authoritative sale pipeline | 0.2 | todo |
 | 0.4 | Unified bulk-order contracts | 0.1 | todo |
 | 0.7 | PriceScore from real per-product prices | 0.1 | todo |

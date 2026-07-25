@@ -79,7 +79,11 @@ void UCigSaveSubsystem::MigrateSave(UCigSaveGame& Save)
 	{
 		MigrateV10ToV11(Save);
 	}
-	// In future: if (Save.SaveVersion < 12) { MigrateV11ToV12(Save); } ...
+	if (Save.SaveVersion < 12)
+	{
+		MigrateV11ToV12(Save);
+	}
+	// In future: if (Save.SaveVersion < 13) { MigrateV12ToV13(Save); } ...
 
 	Save.SaveVersion = CurrentVersion;
 	UE_LOG(LogCigSave, Log, TEXT("Kayıt taşındı: sürüm %d → %d"), From, CurrentVersion);
@@ -182,6 +186,20 @@ void UCigSaveSubsystem::MigrateV10ToV11(UCigSaveGame& Save)
 	// v11 added the follower count. A v10 shop had no online presence at all, so
 	// zero is the honest starting point rather than a gift.
 	Save.Takipci = 0;
+}
+
+void UCigSaveSubsystem::MigrateV11ToV12(UCigSaveGame& Save)
+{
+	// v11 reviews had no ID. Number them newest-first so the order the list is
+	// stored in survives, then park the counter past the highest. The pending
+	// reply is dropped rather than guessed: it was an index into a list that has
+	// since been reordered, so there is no honest review to point it at.
+	for (int32 i = 0; i < Save.Reviews.Num(); ++i)
+	{
+		Save.Reviews[i].Id = Save.Reviews.Num() - i;
+	}
+	Save.NextReviewId = Save.Reviews.Num() + 1;
+	Save.YanitlanacakYorumId = 0;
 }
 
 bool UCigSaveSubsystem::SaveNow(ACigkofteGameMode* GM)

@@ -84,9 +84,15 @@ float UCigReviewSystem::SpawnRateMult() const
 	return 1.f + (ShopScore() - 3.f) * 0.15f;
 }
 
+const FCigReview* UCigReviewSystem::YorumBul(int32 Id) const
+{
+	return Id > 0 ? Reviews.FindByPredicate([Id](const FCigReview& R) { return R.Id == Id; }) : nullptr;
+}
+
 void UCigReviewSystem::PushReview(const FString& Author, const FString& Text, int32 Stars, int32 Day)
 {
 	FCigReview R;
+	R.Id = NextReviewId++;
 	R.Author = Author;
 	R.Text = Text;
 	R.Stars = FMath::Clamp(Stars, 1, 5);
@@ -190,7 +196,7 @@ void UCigReviewSystem::OnDayEnd(int32 Day)
 		// lands at index 0 because PushReview inserts at the front.
 		if (Stars <= 2 && GM->Social)
 		{
-			GM->Social->YanitlanacakYorum = 0;
+			GM->Social->YanitlanacakYorumId = Reviews[0].Id;
 		}
 	}
 

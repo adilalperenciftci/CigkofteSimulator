@@ -7,7 +7,7 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 | Branch | `feat/commercial-demo-overhaul` |
 | Base | `4f94f37` (master, not rewritten) |
 | Latest commit | see `git log -1` on the branch |
-| Save version | 11 (unchanged so far) |
+| Save version | **12** (was 11 at baseline) |
 
 ## Completed vertical slices
 
@@ -26,6 +26,14 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
   through `TumOlaylariBitir`, which returns the retired count so the teardown is
   observable rather than indistinguishable from emptying the array.
   Test: `Cigkofte.Events.DayLongEventsEndCleanly`.
+- **0.6 Stable review IDs.** The pending social reply was an index into a list
+  that inserts at the front, so a second poor review on the same day silently
+  redirected it. `FCigReview` gained a monotonic `Id`, `PushReview` assigns it and
+  became the public entry point, and the social system holds the ID and resolves
+  it through `YorumBul`. Save version 12 with `MigrateV11ToV12`; apply also parks
+  the counter past the highest surviving ID so an edited save cannot duplicate one.
+  Tests: `Cigkofte.Reviews.IdSurvivesNewerReviews`,
+  `Cigkofte.Reviews.IdsAreUniqueAndTrimSafe`.
 
 ## Current task
 
@@ -33,16 +41,18 @@ None in progress.
 
 ## Next exact task
 
-**0.6 — stable review IDs.** `UCigSocialSystem::YanitlanacakYorum` stores an index
-into `UCigReviewSystem::Reviews`, and `PushReview` inserts at index 0. A second
-review generated the same day therefore silently redirects the pending reply to a
-different review. Add a monotonic `Id` to `FCigReview`, assign it in `PushReview`,
-store the ID rather than the index, look the review up by ID, and cover it with a
-test that generates several reviews in one day. Save version must rise because
-`FCigSaveReview` gains the field.
+**0.1 — one authoritative sale pipeline.** The player path
+(`UCigCustomerSystem::ServeFront`) computes price, quality, combo, tip,
+reputation, loyalty, review recording, quest and achievement progress inline. The
+staff path (`UCigStaffSystem::DoWork`, `ECigStaffTask::Kasa`) awards money and a
+message without most of it. Extract one `ProcessSale(const FCigSaleRequest&)`
+returning `FCigSaleResult`, with an `ECigSaleSource` of Player / Staff / Delivery
+/ BulkOrder / DebugTest, and route both callers plus delivery through it. Prove
+with a test that an identical wrap sold by player and staff produces identical
+global effects apart from documented source modifiers.
 
-Then in order: 0.1 unified sale pipeline, 0.4 contracts, 0.7 price score,
-0.8 dialogue context, 0.9 migration tests, 0.10 build scripts.
+Then in order: 0.4 contracts, 0.7 price score, 0.8 dialogue context,
+0.9 migration tests, 0.10 build scripts.
 
 ## Last successful build
 
@@ -56,7 +66,7 @@ Result: Succeeded.
 
 ## Last test result
 
-`Automation RunTests Cigkofte` — **53 passed, 0 failed**, exit code 0.
+`Automation RunTests Cigkofte` — **55 passed, 0 failed**, exit code 0.
 
 ## Blockers
 

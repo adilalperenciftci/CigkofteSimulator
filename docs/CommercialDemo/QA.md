@@ -39,6 +39,20 @@ the previous `Active.Empty()` implementation also satisfied. It was rewritten to
 assert the retired count returned by `TumOlaylariBitir`, which the old path could
 not produce.
 
+## 2026-07-26 — slice 0.6
+
+| Check | Command | Result |
+|---|---|---|
+| Static | `python Tools/check_sources.py` | clean |
+| Build | `Build.bat CigkofteSimulatorEditor Win64 Development` | Succeeded |
+| Tests | `Automation RunTests Cigkofte` | **55 passed, 0 failed**, exit 0 |
+
+New tests observed passing: `Cigkofte.Reviews.IdSurvivesNewerReviews`,
+`Cigkofte.Reviews.IdsAreUniqueAndTrimSafe`.
+
+Save version raised to 12. A migrated v11 save has not yet been loaded end to end;
+that is covered by slice 0.9, which adds the migration test group.
+
 ## Not yet executed
 
 Scenario tests required by the commercial-demo standard that do not exist yet:

@@ -8,6 +8,10 @@
 // A single online review.
 struct FCigReview
 {
+	// Identifies the review for as long as it exists. Reviews are inserted at the
+	// front, so an index cannot be held across a day.
+	int32 Id = 0;
+
 	FString Author;
 	FString Text;
 	int32 Stars = 3;
@@ -41,6 +45,17 @@ public:
 
 	TArray<FCigReview> Reviews; // newest first, at most 12
 
+	// Next value handed out by PushReview. Persisted so IDs stay unique across
+	// a save.
+	int32 NextReviewId = 1;
+
+	// Null when the review has been trimmed off the end of the list.
+	const FCigReview* YorumBul(int32 Id) const;
+
+	// The only way a review enters the list; it assigns the ID and enforces the
+	// twelve-entry cap.
+	void PushReview(const FString& Author, const FString& Text, int32 Stars, int32 Day);
+
 private:
 	struct FDayServeData
 	{
@@ -56,6 +71,5 @@ private:
 	int32 DayInfluencerAngry = 0;
 
 	void BlendCategory(float& Cat, float Sample, float Weight = 0.15f);
-	void PushReview(const FString& Author, const FString& Text, int32 Stars, int32 Day);
 	float ComputeAtmosphere() const;
 };

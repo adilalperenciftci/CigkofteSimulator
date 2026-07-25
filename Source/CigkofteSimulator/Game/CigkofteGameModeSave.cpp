@@ -190,6 +190,7 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 			S.Text = R.Text;
 			S.Stars = R.Stars;
 			S.Day = R.Day;
+			S.Id = R.Id;
 			Save.Reviews.Add(S);
 		}
 		Save.FoodScore = Reviews->FoodScore;
@@ -197,6 +198,7 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 		Save.PriceScore = Reviews->PriceScore;
 		Save.HygieneScore = Reviews->HygieneScore;
 		Save.AtmosphereScore = Reviews->AtmosphereScore;
+		Save.NextReviewId = Reviews->NextReviewId;
 	}
 
 	if (Staff)
@@ -242,6 +244,7 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 	if (Social)
 	{
 		Save.Takipci = Social->Takipci;
+		Save.YanitlanacakYorumId = Social->YanitlanacakYorumId;
 	}
 
 	if (CatSys)
@@ -475,8 +478,18 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 			R.Text = S.Text;
 			R.Stars = S.Stars;
 			R.Day = S.Day;
+			R.Id = S.Id;
 			Reviews->Reviews.Add(R);
 		}
+
+		// Never hand out an ID that is still in the list: a truncated or edited
+		// save could otherwise point a pending reply at two different reviews.
+		int32 EnYuksek = 0;
+		for (const FCigReview& R : Reviews->Reviews)
+		{
+			EnYuksek = FMath::Max(EnYuksek, R.Id);
+		}
+		Reviews->NextReviewId = FMath::Max(Save.NextReviewId, EnYuksek + 1);
 		Reviews->FoodScore = Save.FoodScore;
 		Reviews->ServiceScore = Save.ServiceScore;
 		Reviews->PriceScore = Save.PriceScore;
@@ -533,6 +546,7 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 	if (Social)
 	{
 		Social->Takipci = FMath::Max(0, Save.Takipci);
+		Social->YanitlanacakYorumId = FMath::Max(0, Save.YanitlanacakYorumId);
 		Staff->RestoreNPC();
 	}
 

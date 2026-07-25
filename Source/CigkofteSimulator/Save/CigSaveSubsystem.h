@@ -26,7 +26,8 @@ public:
 	// Version 9: the pending bulk order entered the save.
 	// Version 10: the licence, inspection record and bribe count entered the save.
 	// Version 11: the follower count entered the save.
-	static constexpr int32 CurrentVersion = 11;
+	// Version 12: reviews gained stable IDs and the pending reply is held by ID.
+	static constexpr int32 CurrentVersion = 12;
 
 	bool HasSave() const;
 	bool SaveNow(ACigkofteGameMode* GM);
@@ -52,4 +53,5 @@ private:
 	static void MigrateV8ToV9(UCigSaveGame& Save);
 	static void MigrateV9ToV10(UCigSaveGame& Save);
 	static void MigrateV10ToV11(UCigSaveGame& Save);
+	static void MigrateV11ToV12(UCigSaveGame& Save);
 };
