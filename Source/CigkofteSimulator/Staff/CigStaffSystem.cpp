@@ -20,6 +20,25 @@ namespace
 {
 	const TCHAR* GApprenticeNames[] = { TEXT("Yusuf"), TEXT("Berat"), TEXT("Ali"), TEXT("Ceren"), TEXT("Mert"), TEXT("Esra") };
 
+	// Three is enough to make hiring a choice without turning it into a list to
+	// scroll; the tablet shows them all at once.
+	constexpr int32 AdaySayisi = 3;
+
+	// Candidates do not arrive as clean archetypes - the jitter is what stops
+	// two "Titiz eleman" walk-ins from being the same person.
+	constexpr float AdaySapmasi = 0.1f;
+	constexpr float MaasSapmasi = 0.15f;
+
+	// A rival will not bother poaching someone who has not grown into anything.
+	constexpr int32 TransferEnAzSeviye = 2;
+	constexpr float TransferGunlukSans = 0.12f;
+
+	// What the rival offers over the current wage.
+	constexpr float TransferZamOrani = 1.4f;
+
+	// Morale falls this far for each day the wage goes unpaid. Steeper than the
+	// raise nag, because not being paid at all is a different kind of insult.
+	constexpr float OdenmemisMoralKaybi = 18.f;
 }
 #include "Core/CigSpawnUtils.h"
 
@@ -49,7 +68,70 @@ FString UCigStaffSystem::SpecName(ECigStaffSpec S)
 	}
 }
 
+float UCigStaffSystem::HataOlasiligi(float Titizlik, int32 Seviye, float Enerji)
+{
+	// A neutral, fresh, level-1 hand fumbles roughly one tick in eight. Tidiness
+	// divides that, levels shave it further, and a tired one drifts back up.
+	constexpr float TabanHata = 0.12f;
+	constexpr float SeviyeIndirimi = 0.15f;
+
+	const float T = FMath::Max(Titizlik, 0.1f);
+	const float SeviyeCarpani = FMath::Max(0.25f, 1.f - SeviyeIndirimi * (Seviye - 1));
+
+	// Below half energy the mistakes come back; above it fatigue does not matter.
+	const float YorgunlukCarpani = Enerji >= 50.f ? 1.f : FMath::Lerp(1.8f, 1.f, Enerji / 50.f);
+
+	return FMath::Clamp(TabanHata / T * SeviyeCarpani * YorgunlukCarpani, 0.f, 0.5f);
+}
+
+float UCigStaffSystem::IsAraligi(float Hiz, int32 Seviye)
+{
+	// The old formula was 9 - Level*0.5 with no notion of the person; speed now
+	// divides it, so a quick hand is worth about two levels.
+	constexpr float TabanAralik = 9.f;
+	constexpr float SeviyeKazanci = 0.5f;
+
+	const float H = FMath::Max(Hiz, 0.1f);
+	return FMath::Max(2.5f, (TabanAralik - Seviye * SeviyeKazanci) / H);
+}
+
+void UCigStaffSystem::AdaylariYenile()
+{
+	Adaylar.Reset(AdaySayisi);
+
+	// Draw distinct archetypes so the three on offer are actually different
+	// people to choose between.
+	TArray<int32> Havuz;
+	for (int32 i = 0; i < CigBalance::StaffCount(); ++i)
+	{
+		Havuz.Add(i);
+	}
+
+	for (int32 i = 0; i < AdaySayisi && Havuz.Num() > 0; ++i)
+	{
+		const int32 Secim = Rng().PickIndex(Havuz.Num());
+		const int32 Arketip = Havuz[Secim];
+		Havuz.RemoveAt(Secim);
+
+		const FCigStaffRow& Row = CigBalance::Staff(Arketip);
+
+		FCigStaffAday A;
+		A.Arketip = Arketip;
+		A.Name = GApprenticeNames[Rng().PickIndex(UE_ARRAY_COUNT(GApprenticeNames))];
+		A.Hiz = Row.Hiz * Rng().FRandRange(1.f - AdaySapmasi, 1.f + AdaySapmasi);
+		A.Titizlik = Row.Titizlik * Rng().FRandRange(1.f - AdaySapmasi, 1.f + AdaySapmasi);
+		A.GulerYuz = Row.GulerYuz * Rng().FRandRange(1.f - AdaySapmasi, 1.f + AdaySapmasi);
+		A.MaasBeklentisi = FMath::RoundToInt(Row.MaasBeklentisi * Rng().FRandRange(1.f - MaasSapmasi, 1.f + MaasSapmasi));
+		Adaylar.Add(A);
+	}
+}
+
 void UCigStaffSystem::Hire()
+{
+	HireAday(0);
+}
+
+void UCigStaffSystem::HireAday(int32 AdayIndex)
 {
 	UCigEconomySystem* Eco = GM ? GM->Economy.Get() : nullptr;
 	const UCigProgressionSystem* Prog = GM ? GM->Progression.Get() : nullptr;
@@ -67,6 +149,17 @@ void UCigStaffSystem::Hire()
 		GM->AddMessage(CigText::Get(TEXT("msg.staff.needlevel")), FLinearColor(1.f, 0.6f, 0.2f));
 		return;
 	}
+
+	if (Adaylar.Num() == 0)
+	{
+		AdaylariYenile();
+	}
+	if (!Adaylar.IsValidIndex(AdayIndex))
+	{
+		return;
+	}
+	const FCigStaffAday Aday = Adaylar[AdayIndex];
+
 	if (!Eco->TrySpend(400))
 	{
 		GM->AddMessage(CigText::Get(TEXT("msg.staff.nomoney")), FLinearColor(1.f, 0.4f, 0.3f));
@@ -75,7 +168,16 @@ void UCigStaffSystem::Hire()
 
 	Apprentice = FCigApprentice();
 	Apprentice.bHired = true;
-	Apprentice.Name = GApprenticeNames[Rng().PickIndex(UE_ARRAY_COUNT(GApprenticeNames))];
+	Apprentice.Name = Aday.Name;
+	Apprentice.Arketip = Aday.Arketip;
+	Apprentice.Hiz = Aday.Hiz;
+	Apprentice.Titizlik = Aday.Titizlik;
+	Apprentice.GulerYuz = Aday.GulerYuz;
+	Apprentice.Salary = Aday.MaasBeklentisi;
+
+	// The rest of the pool walks away once one of them has the job.
+	Adaylar.Reset();
+	TransferTeklifi = 0;
 
 	RestoreNPC();
 
@@ -85,6 +187,60 @@ void UCigStaffSystem::Hire()
 		GM->Progression->AddXP(10);
 	}
 	Bus().StaffHired.Broadcast();
+}
+
+void UCigStaffSystem::IstenAyril(const FString& SebepAnahtari)
+{
+	GM->AddMessage(CigText::Format(*SebepAnahtari, *Apprentice.Name), FLinearColor(1.f, 0.3f, 0.3f));
+	Apprentice = FCigApprentice();
+	TransferTeklifi = 0;
+	if (ApprenticeNPC && IsValid(ApprenticeNPC))
+	{
+		ApprenticeNPC->Destroy();
+	}
+	ApprenticeNPC = nullptr;
+	AdaylariYenile();
+}
+
+void UCigStaffSystem::KarsiTeklifVer()
+{
+	if (!Apprentice.bHired || TransferTeklifi <= 0)
+	{
+		return;
+	}
+
+	Apprentice.Salary = TransferTeklifi;
+	Apprentice.Morale = FMath::Min(100.f, Apprentice.Morale + 25.f);
+	Apprentice.bWantsRaise = false;
+	Apprentice.DaysSinceRaise = 0;
+	TransferTeklifi = 0;
+
+	GM->AddMessage(CigText::Format(TEXT("msg.staff.counteroffer"), *Apprentice.Name, Apprentice.Salary),
+		FLinearColor(0.5f, 1.f, 0.5f));
+}
+
+void UCigStaffSystem::TransferTeklifiniIsle()
+{
+	// An outstanding offer is answered at the end of the following day: either
+	// the player matched it in the meantime, or the apprentice takes it.
+	if (TransferTeklifi > 0)
+	{
+		IstenAyril(TEXT("msg.staff.transferred"));
+		return;
+	}
+
+	if (Apprentice.Level < TransferEnAzSeviye || !Rng().Chance(TransferGunlukSans))
+	{
+		return;
+	}
+
+	// Someone who is unhappy is the one worth approaching, so low morale raises
+	// the wage a rival is willing to put on the table.
+	const float MoralEtkisi = FMath::Lerp(1.15f, 1.f, Apprentice.Morale / 100.f);
+	TransferTeklifi = FMath::RoundToInt(Apprentice.Salary * TransferZamOrani * MoralEtkisi);
+
+	GM->AddMessage(CigText::Format(TEXT("msg.staff.transferoffer"), *Apprentice.Name, TransferTeklifi),
+		FLinearColor(1.f, 0.7f, 0.4f));
 }
 
 void UCigStaffSystem::RestoreNPC()
@@ -328,12 +484,21 @@ void UCigStaffSystem::UpdateSystem(float DeltaSeconds)
 		return;
 	}
 
-	const float Interval = 9.f - Apprentice.Level * 0.5f;
 	WorkTimer += DeltaSeconds;
-	if (WorkTimer >= Interval)
+	if (WorkTimer >= IsAraligi(Apprentice.Hiz, Apprentice.Level))
 	{
 		WorkTimer = 0.f;
-		DoWork();
+
+		// A fumbled tick costs the work as well as whatever it broke, which is
+		// what makes tidiness worth paying for.
+		if (Rng().Chance(HataOlasiligi(Apprentice.Titizlik, Apprentice.Level, Apprentice.Energy)))
+		{
+			HataYap();
+		}
+		else
+		{
+			DoWork();
+		}
 	}
 }
 
@@ -341,6 +506,8 @@ void UCigStaffSystem::OnDayStart(int32 Day)
 {
 	if (!Apprentice.bHired)
 	{
+		// New faces turn up each morning while the job is open.
+		AdaylariYenile();
 		return;
 	}
 	Apprentice.Energy = 100.f;
@@ -362,8 +529,20 @@ void UCigStaffSystem::OnDayEnd(int32 Day)
 	UCigEconomySystem* Eco = GM->Economy.Get();
 	if (Eco)
 	{
-		Eco->Money -= Apprentice.Salary;
-		GM->AddMessage(CigText::Format(TEXT("msg.staff.salary"), Apprentice.Salary), FLinearColor(1.f, 0.8f, 0.6f));
+		// Wages come out of the till, not out of thin air. An unpaid day is the
+		// fastest way to lose someone, and the message escalates as it repeats.
+		if (Eco->TrySpend(Apprentice.Salary))
+		{
+			Apprentice.OdenmemisGun = 0;
+			GM->AddMessage(CigText::Format(TEXT("msg.staff.salary"), Apprentice.Salary), FLinearColor(1.f, 0.8f, 0.6f));
+		}
+		else
+		{
+			Apprentice.OdenmemisGun++;
+			Apprentice.Morale = FMath::Max(0.f, Apprentice.Morale - OdenmemisMoralKaybi);
+			GM->AddMessage(CigText::Format(TEXT("msg.staff.unpaid"), *Apprentice.Name, Apprentice.OdenmemisGun),
+				FLinearColor(1.f, 0.4f, 0.3f));
+		}
 	}
 
 	// Morale: hard work lowers it, good earnings raise it
@@ -396,12 +575,55 @@ void UCigStaffSystem::OnDayEnd(int32 Day)
 	// Low morale: risk of quitting
 	if (Apprentice.Morale < 20.f)
 	{
-		GM->AddMessage(CigText::Format(TEXT("msg.staff.quit"), *Apprentice.Name), FLinearColor(1.f, 0.3f, 0.3f));
-		Apprentice = FCigApprentice();
-		if (ApprenticeNPC && IsValid(ApprenticeNPC))
-		{
-			ApprenticeNPC->Destroy();
-		}
-		ApprenticeNPC = nullptr;
+		IstenAyril(TEXT("msg.staff.quit"));
+		return;
 	}
+
+	TransferTeklifiniIsle();
+}
+
+void UCigStaffSystem::HataYap()
+{
+	UCigHygieneSystem* Hyg = GM ? GM->Hygiene.Get() : nullptr;
+	UCigInventorySystem* Inv = GM ? GM->Inventory.Get() : nullptr;
+	UCigCustomerSystem* Cust = GM ? GM->Customers.Get() : nullptr;
+
+	// Which mistake happens follows the job: the one on the chopping board
+	// ruins garnish, the one on the counter drops plates and loses customers.
+	switch (Apprentice.Task)
+	{
+	case ECigStaffTask::Dograma:
+		if (Inv && Inv->Garnish > 0)
+		{
+			Inv->Garnish--;
+			GM->AddMessage(CigText::Format(TEXT("msg.staff.mistake.garnish"), *Apprentice.Name),
+				FLinearColor(1.f, 0.7f, 0.4f));
+		}
+		break;
+
+	case ECigStaffTask::Temizlik:
+	case ECigStaffTask::Paket:
+		if (Hyg)
+		{
+			Hyg->DishPile = FMath::Min(100.f, Hyg->DishPile + 8.f);
+			GM->AddMessage(CigText::Format(TEXT("msg.staff.mistake.plate"), *Apprentice.Name),
+				FLinearColor(1.f, 0.7f, 0.4f));
+		}
+		break;
+
+	case ECigStaffTask::Kasa:
+		if (Cust && Cust->Queue.Num() > 0)
+		{
+			// Not served, just kept waiting: the patience hit is the cost.
+			Cust->Queue[0]->Patience = FMath::Max(0.f, Cust->Queue[0]->Patience - 8.f);
+			GM->AddMessage(CigText::Format(TEXT("msg.staff.mistake.customer"), *Apprentice.Name),
+				FLinearColor(1.f, 0.7f, 0.4f));
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	Apprentice.Energy = FMath::Max(0.f, Apprentice.Energy - 3.f);
 }

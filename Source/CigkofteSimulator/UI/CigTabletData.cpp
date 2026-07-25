@@ -409,14 +409,49 @@ namespace CigTablet
 				Rows.Add(MakeBarRow(CigText::Get(TEXT("tablet.energy")), Ap.Energy / 100.f, FLinearColor(0.4f, 0.9f, 0.5f), CigUI::Dim));
 				Rows.Add(MakeBarRow(CigText::Get(TEXT("tablet.morale")), Ap.Morale / 100.f,
 					Ap.Morale < 30.f ? CigUI::Bad : FLinearColor(0.9f, 0.7f, 0.2f), CigUI::Dim));
+				Rows.Add(MakeRow(
+					FText::Format(LOCTEXT("PersonelYetenek", "Hız x{0}  ·  Titizlik x{1}  ·  Güler yüz x{2}"),
+						FText::AsNumber(Ap.Hiz), FText::AsNumber(Ap.Titizlik), FText::AsNumber(Ap.GulerYuz)).ToString(),
+					FString(), CigUI::Dim));
+
+				if (Ap.OdenmemisGun > 0)
+				{
+					Rows.Add(MakeRow(
+						FText::Format(LOCTEXT("PersonelOdenmemis", "{0} gündür maaşı ödenmedi"),
+							FText::AsNumber(Ap.OdenmemisGun)).ToString(),
+						FString(), CigUI::Bad));
+				}
+
+				// The offer sits above the raise nag: losing someone outright is
+				// the more urgent of the two.
+				if (Staff->TransferTeklifi > 0)
+				{
+					Rows.Add(MakeRow(
+						FText::Format(LOCTEXT("PersonelTransfer", "Rakip {0} TL teklif etti"),
+							FText::AsNumber(Staff->TransferTeklifi)).ToString(),
+						LOCTEXT("PersonelKarsiTeklif", "karşı teklif").ToString(), CigUI::Bad, true));
+				}
+
 				if (Ap.bWantsRaise)
 				{
 					Rows.Add(MakeRow(CigText::Get(TEXT("tablet.wantsraise")), CigText::Get(TEXT("tablet.raise")), CigUI::Bad, true));
 				}
 			}
-			else
+			else if (Staff)
 			{
-				Rows.Add(MakeRow(CigText::Get(TEXT("tablet.nostaff")), CigText::Get(TEXT("tablet.hire")), CigUI::White, true));
+				Rows.Add(MakeRow(CigText::Get(TEXT("tablet.nostaff")), FString(), CigUI::Dim));
+				for (int32 i = 0; i < Staff->Adaylar.Num(); ++i)
+				{
+					const FCigStaffAday& A = Staff->Adaylar[i];
+					Rows.Add(MakeRow(
+						FString::Printf(TEXT("%d) %s — %s"), i + 1, *A.Name, *CigBalance::Staff(A.Arketip).Label),
+						FText::Format(LOCTEXT("AdayMaas", "{0} TL/gün"), FText::AsNumber(A.MaasBeklentisi)).ToString(),
+						CigUI::White, true));
+					Rows.Add(MakeRow(
+						FText::Format(LOCTEXT("AdayYetenek", "     hız x{0}  ·  titizlik x{1}  ·  güler yüz x{2}"),
+							FText::AsNumber(A.Hiz), FText::AsNumber(A.Titizlik), FText::AsNumber(A.GulerYuz)).ToString(),
+						FString(), CigUI::Dim));
+				}
 			}
 
 			Rows.Add(MakeHeader(CigText::Get(TEXT("tablet.cat"))));

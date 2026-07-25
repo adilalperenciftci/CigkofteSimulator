@@ -63,7 +63,11 @@ void UCigSaveSubsystem::MigrateSave(UCigSaveGame& Save)
 	{
 		MigrateV6ToV7(Save);
 	}
-	// In future: if (Save.SaveVersion < 8) { MigrateV7ToV8(Save); } ...
+	if (Save.SaveVersion < 8)
+	{
+		MigrateV7ToV8(Save);
+	}
+	// In future: if (Save.SaveVersion < 9) { MigrateV8ToV9(Save); } ...
 
 	Save.SaveVersion = CurrentVersion;
 	UE_LOG(LogCigSave, Log, TEXT("Kayıt taşındı: sürüm %d → %d"), From, CurrentVersion);
@@ -122,6 +126,20 @@ void UCigSaveSubsystem::MigrateV6ToV7(UCigSaveGame& Save)
 	// list price, so an empty array is the honest conversion: ApplySave fills
 	// every product with a markup of 1 and the shop keeps charging what it did.
 	Save.UrunCarpanlari.Reset();
+}
+
+void UCigSaveSubsystem::MigrateV7ToV8(UCigSaveGame& Save)
+{
+	// v8 gave staff their own traits. An apprentice hired under v7 had none, so
+	// they migrate to a flat 1 across the board - the same neutral worker the
+	// old formulas assumed. Archetype 0 is the entry-level one, which is the
+	// honest label for someone hired before archetypes existed.
+	Save.ApprenticeArketip = 0;
+	Save.ApprenticeHiz = 1.f;
+	Save.ApprenticeTitizlik = 1.f;
+	Save.ApprenticeGulerYuz = 1.f;
+	Save.ApprenticeOdenmemisGun = 0;
+	Save.StaffTransferTeklifi = 0;
 }
 
 bool UCigSaveSubsystem::SaveNow(ACigkofteGameMode* GM)

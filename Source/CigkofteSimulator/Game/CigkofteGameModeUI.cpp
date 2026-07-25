@@ -233,20 +233,25 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 		{
 			break;
 		}
+		// With nobody hired the number keys pick a candidate; once someone is on
+		// the payroll they drive the job, the raise and the counter-offer.
+		if (!Staff->Apprentice.bHired)
+		{
+			Staff->HireAday(Num - 1);
+			break;
+		}
+
 		if (Num == 1)
 		{
-			if (Staff->Apprentice.bHired)
-			{
-				Staff->CycleTask();
-			}
-			else
-			{
-				Staff->Hire();
-			}
+			Staff->CycleTask();
 		}
 		else if (Num == 2)
 		{
 			Staff->GiveRaise();
+		}
+		else if (Num == 3)
+		{
+			Staff->KarsiTeklifVer();
 		}
 		break;
 	}

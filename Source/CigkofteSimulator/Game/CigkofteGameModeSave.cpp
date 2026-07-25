@@ -209,6 +209,12 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 		Save.ApprenticeSpec = (uint8)A.Spec;
 		Save.ApprenticeDaysSinceRaise = A.DaysSinceRaise;
 		Save.bApprenticeWantsRaise = A.bWantsRaise;
+		Save.ApprenticeArketip = A.Arketip;
+		Save.ApprenticeHiz = A.Hiz;
+		Save.ApprenticeTitizlik = A.Titizlik;
+		Save.ApprenticeGulerYuz = A.GulerYuz;
+		Save.ApprenticeOdenmemisGun = A.OdenmemisGun;
+		Save.StaffTransferTeklifi = Staff->TransferTeklifi;
 	}
 
 	if (CatSys)
@@ -463,6 +469,14 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 		Staff->Apprentice.Spec = (ECigStaffSpec)FMath::Clamp((int32)Save.ApprenticeSpec, 0, 5);
 		Staff->Apprentice.DaysSinceRaise = Save.ApprenticeDaysSinceRaise;
 		Staff->Apprentice.bWantsRaise = Save.bApprenticeWantsRaise;
+		Staff->Apprentice.Arketip = Save.ApprenticeArketip;
+		Staff->Apprentice.OdenmemisGun = Save.ApprenticeOdenmemisGun;
+		Staff->TransferTeklifi = Save.StaffTransferTeklifi;
+		// A zero here means a save written before traits existed; a neutral 1
+		// reproduces exactly how that apprentice used to work.
+		Staff->Apprentice.Hiz = Save.ApprenticeHiz > 0.f ? Save.ApprenticeHiz : 1.f;
+		Staff->Apprentice.Titizlik = Save.ApprenticeTitizlik > 0.f ? Save.ApprenticeTitizlik : 1.f;
+		Staff->Apprentice.GulerYuz = Save.ApprenticeGulerYuz > 0.f ? Save.ApprenticeGulerYuz : 1.f;
 		Staff->RestoreNPC();
 	}
 

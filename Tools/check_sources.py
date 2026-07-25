@@ -79,6 +79,8 @@ CSV_SCHEMA = {
     "Pricing.csv": (
         ["Index", "Label", "TabanFiyat", "Esneklik", "MinCarpan", "MaxCarpan"], 8),
     "Mahalle.csv": (["Index", "Label", "GelirCarpani"], 7),
+    "Staff.csv": (
+        ["Key", "Label", "Hiz", "Titizlik", "GulerYuz", "MaasBeklentisi"], 6),
     "Achievements.csv": (["Key", "Name", "Desc", "Stat", "Threshold"], 20),
 }
 

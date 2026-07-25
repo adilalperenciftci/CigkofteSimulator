@@ -340,6 +340,13 @@ msg.staff.served,{0} bir müşteriyi kendisi ağırladı (+{1} TL).,{0} handled 
 msg.staff.shelved,{0} rafa bir paket hazırladı ({1}/{2}).,{0} prepared a takeaway for the shelf ({1}/{2}).
 msg.staff.askraise,"{0}: 'Usta, maaş konusunu konuşacaktık...' (tabletten zam verebilirsin)","{0}: 'Boss, we should talk about salary...' (you can give a raise from tablet)"
 msg.staff.salary,Çırak maaşı: -{0} TL,Apprentice salary: -{0} TL
+msg.staff.unpaid,"{0}'nin maaşını ödeyemedin ({1}. gün). Morali düşüyor.","Could not pay {0}'s wage (day {1}). Morale is dropping."
+msg.staff.transferoffer,"Rakip dükkân {0}'ye {1} TL teklif etmiş. Tabletten karşı teklif verebilirsin.","A rival offered {0} {1} TL. You can counter from the tablet."
+msg.staff.transferred,{0} rakip dükkâna geçti.,{0} left for a rival shop.
+msg.staff.counteroffer,"{0} kalmayı kabul etti (yeni maaş {1} TL).","{0} agreed to stay (new salary {1} TL)."
+msg.staff.mistake.garnish,{0} garnitürü ziyan etti.,{0} spoiled some garnish.
+msg.staff.mistake.plate,{0} tabak düşürdü — bulaşık arttı.,{0} dropped a plate - more washing up.
+msg.staff.mistake.customer,{0} sıradaki müşteriyi bekletti.,{0} kept the next customer waiting.
 msg.staff.bonus,"{0} bugün ekstra gayretliydi, kasada +40 TL fark var!","{0} worked extra hard today, +40 TL in the register!"
 msg.staff.quit,"{0} istifa etti! 'Böyle çalışılmaz usta...'",{0} quit! 'I can't work like this...'
 staff.task.chop,Doğrama,Chopping

@@ -23,6 +23,10 @@ namespace CigBalance
 	const FCigMahalleRow& Mahalle(int32 Index);
 	int32 MahalleCount();
 
+	// Candidate archetypes the hiring pool draws from.
+	const FCigStaffRow& Staff(int32 Index);
+	int32 StaffCount();
+
 	FString SkillName(int32 Index);
 	FString SkillDesc(int32 Index);
 	FString UpgradeName(int32 Index);

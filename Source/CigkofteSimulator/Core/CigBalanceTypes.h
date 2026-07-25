@@ -130,6 +130,32 @@ struct FCigPricingRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Fiyat") float MaxCarpan = 2.f;
 };
 
+// --- Staff archetypes ---
+// What a candidate walks in with. Everything is a multiplier around 1 so that
+// an apprentice hired before this table existed can be migrated to a flat 1 and
+// keep behaving exactly as they did.
+USTRUCT(BlueprintType)
+struct FCigStaffRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Personel") FString Key;
+	UPROPERTY(EditAnywhere, Category = "Personel") FString Label;
+
+	// Shortens the gap between work ticks.
+	UPROPERTY(EditAnywhere, Category = "Personel") float Hiz = 1.f;
+
+	// Guards against mistakes: wrong garnish, dropped plate, missed customer.
+	UPROPERTY(EditAnywhere, Category = "Personel") float Titizlik = 1.f;
+
+	// Tips and reputation earned while working the counter.
+	UPROPERTY(EditAnywhere, Category = "Personel") float GulerYuz = 1.f;
+
+	// Daily wage the candidate asks for. The fast and the tidy cost more, which
+	// is the whole trade-off the hiring screen is built on.
+	UPROPERTY(EditAnywhere, Category = "Personel") int32 MaasBeklentisi = 100;
+};
+
 // --- Neighbourhood income ---
 USTRUCT(BlueprintType)
 struct FCigMahalleRow : public FTableRowBase

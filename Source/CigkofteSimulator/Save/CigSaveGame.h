@@ -176,6 +176,15 @@ public:
 	UPROPERTY() int32 ApprenticeDaysSinceRaise = 0;
 	UPROPERTY() bool bApprenticeWantsRaise = false;
 
+	// Traits the apprentice was hired with (version 8). The candidate pool is
+	// deliberately not saved: walk-ins are regenerated each morning anyway.
+	UPROPERTY() int32 ApprenticeArketip = 0;
+	UPROPERTY() float ApprenticeHiz = 1.f;
+	UPROPERTY() float ApprenticeTitizlik = 1.f;
+	UPROPERTY() float ApprenticeGulerYuz = 1.f;
+	UPROPERTY() int32 ApprenticeOdenmemisGun = 0;
+	UPROPERTY() int32 StaffTransferTeklifi = 0;
+
 	// --- Cat ---
 	UPROPERTY() FString CatName = TEXT("Pamuk");
 	UPROPERTY() float CatFood = 70.f;

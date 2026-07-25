@@ -319,6 +319,33 @@ namespace
 		};
 	}
 
+	FCigStaffRow MakeStaff(const TCHAR* Key, const TCHAR* Label, float Hiz, float Titizlik,
+		float GulerYuz, int32 MaasBeklentisi)
+	{
+		FCigStaffRow R;
+		R.Key = Key;
+		R.Label = Label;
+		R.Hiz = Hiz;
+		R.Titizlik = Titizlik;
+		R.GulerYuz = GulerYuz;
+		R.MaasBeklentisi = MaasBeklentisi;
+		return R;
+	}
+
+	TArray<FCigStaffRow> DefaultStaff()
+	{
+		// Ordered cheap to dear, because the hiring screen lists them in table
+		// order and reading it as a price ladder makes the trade-off obvious.
+		return {
+			MakeStaff(TEXT("Cirak"),      TEXT("Çırak"),           0.85f, 0.85f, 1.00f,  90),
+			MakeStaff(TEXT("Ogrenci"),    TEXT("Öğrenci"),         0.80f, 0.95f, 1.15f,  80),
+			MakeStaff(TEXT("Guleryuzlu"), TEXT("Güler yüzlü"),     0.95f, 0.95f, 1.35f, 150),
+			MakeStaff(TEXT("Titiz"),      TEXT("Titiz eleman"),    0.95f, 1.35f, 1.00f, 170),
+			MakeStaff(TEXT("Aceleci"),    TEXT("Aceleci"),         1.35f, 0.70f, 0.85f, 140),
+			MakeStaff(TEXT("Tecrubeli"),  TEXT("Tecrübeli usta"),  1.30f, 1.10f, 0.90f, 230)
+		};
+	}
+
 	FCigMahalleRow MakeMahalle(int32 Index, const TCHAR* Label, float GelirCarpani)
 	{
 		FCigMahalleRow R;
@@ -352,6 +379,7 @@ namespace
 		TArray<FCigAchievementRow> Achievements;
 		TArray<FCigPricingRow> Pricing;
 		TArray<FCigMahalleRow> Mahalle;
+		TArray<FCigStaffRow> Staff;
 		bool bLoaded = false;
 
 		void Load()
@@ -363,6 +391,7 @@ namespace
 			Achievements = DefaultAchievements();
 			Pricing = DefaultPricing();
 			Mahalle = DefaultMahalle();
+			Staff = DefaultStaff();
 
 			ForEachCsvRow(TEXT("Skills.csv"), [this](const FCigCsvRow& Row)
 			{
@@ -447,6 +476,18 @@ namespace
 				Row.Flt(TEXT("GelirCarpani"), R.GelirCarpani);
 			});
 
+			ForEachCsvRow(TEXT("Staff.csv"), [this](const FCigCsvRow& Row)
+			{
+				if (FCigStaffRow* R = FindByKey(Staff, Row))
+				{
+					Row.Str(TEXT("Label"), R->Label);
+					Row.Flt(TEXT("Hiz"), R->Hiz);
+					Row.Flt(TEXT("Titizlik"), R->Titizlik);
+					Row.Flt(TEXT("GulerYuz"), R->GulerYuz);
+					Row.Int(TEXT("MaasBeklentisi"), R->MaasBeklentisi);
+				}
+			});
+
 			ForEachCsvRow(TEXT("Achievements.csv"), [this](const FCigCsvRow& Row)
 			{
 				if (FCigAchievementRow* R = FindByKey(Achievements, Row))
@@ -508,7 +549,9 @@ namespace CigBalance
 	const FCigAchievementRow& Achievement(int32 Index) { return At(Tables().Achievements, Index); }
 	const FCigPricingRow& Pricing(int32 Index)         { return At(Tables().Pricing, Index); }
 	const FCigMahalleRow& Mahalle(int32 Index)         { return At(Tables().Mahalle, Index); }
+	const FCigStaffRow& Staff(int32 Index)             { return At(Tables().Staff, Index); }
 	int32 MahalleCount() { return Tables().Mahalle.Num(); }
+	int32 StaffCount() { return Tables().Staff.Num(); }
 	const FCigTraitRow& Trait(int32 Index)             { return At(Tables().Traits, Index); }
 	FString SkillName(int32 Index)                     { const FCigSkillRow& R = Skill(Index); return LocalizedBalanceText(TEXT("bal.skill"), R.Key, TEXT("name"), R.Name); }
 	FString SkillDesc(int32 Index)                     { const FCigSkillRow& R = Skill(Index); return LocalizedBalanceText(TEXT("bal.skill"), R.Key, TEXT("desc"), R.Desc); }
