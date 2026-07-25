@@ -15,27 +15,65 @@ Nothing is added to the repository without an explicit commercial-use permission
 Listed in `.gitignore`; the game falls back to engine primitives when absent.
 Their licences do not permit redistribution from this repository.
 
+Present on the development machine as of 2026-07-26 (so the game already runs
+with real art locally): `dukkan` (317 MB), `CityPark` (3.3 GB),
+`Scene_Bazaar_Vol1` (6.1 GB), `CitySampleBuildings` (15 GB), `ModularBuildingSet`
+(732 MB), `MMSupermarket` (835 MB), `Scene_Banquet`, `Cat_Animation_Pack`,
+`Characters`. Absent: `Fab`, `ModellerEnistem`, `ModellerEnistem2`.
+
 `Content/dukkan`, `Content/Fab`, `Content/ModellerEnistem`,
 `Content/ModellerEnistem2`, `Content/CityPark`, `Content/Scene_Bazaar_Vol1`,
 `Content/CitySampleBuildings`, `Content/ModularBuildingSet`,
 `Content/MMSupermarket`, `Content/Scene_Banquet`, `Content/Cat_Animation_Pack`,
 `Content/Characters`.
 
-## Required and still missing
+## Available in the owner's Fab library — not yet imported
 
-These block Stage 8 and parts of the definition of done. They cannot be authored
-in this environment.
+Checked 2026-07-26 in the account's Fab library (`fab.com/library`, audio filter:
+11 items). These are already owned, so nothing has to be sourced externally. Each
+still needs its Fab licence recorded here once imported, since Fab "free" listings
+carry a specific licence rather than CC0 by default.
 
-| Need | Used by | Expected path | Status |
-|---|---|---|---|
-| Street ambience loop | `UCigAudioSubsystem::TickAmbience` | `/Game/Audio/S_AmbStreet` | missing, layer silent |
-| Night ambience loop | same | `/Game/Audio/S_AmbNight` | missing, layer silent |
-| Rain ambience loop | same | `/Game/Audio/S_AmbRain` | missing, layer silent |
-| Car engine | `ECigSound::CarEngine` | `/Game/Audio/S_Car*` | currently mapped to a metal one-shot |
-| Cat meow | `ECigSound::CatMeow` | `/Game/Audio/S_Cat*` | unmapped, silent |
+| Pack | Publisher | Covers |
+|---|---|---|
+| Free City Ambiences | rawAmbience | `S_AmbStreet`, `S_AmbNight` |
+| Free Thunder Sounds | Gregor Quendel | `S_AmbRain` |
+| Free City & Nature Sounds | Gregor Quendel | street and outdoor layers |
+| Free Crowd Cheering Sounds | Gregor Quendel | match-day crowd (Stage 7) |
+| 50 Free Game Sounds Pack | PlaceHolder Inc | car engine, dishes, general gaps |
 
-Kenney and other CC0 libraries carry suitable ambience beds. Importing them at the
-paths above requires no code change.
+### Import procedure
+
+The ambience layer looks these paths up by name and stays silent when they are
+absent, so importing requires no code change:
+
+| Expected path | Source |
+|---|---|
+| `/Game/Audio/S_AmbStreet` | Free City Ambiences — daytime street loop |
+| `/Game/Audio/S_AmbNight` | Free City Ambiences — night loop |
+| `/Game/Audio/S_AmbRain` | Free Thunder Sounds — rain loop |
+
+1. Add the packs to the project from the Epic Games Launcher, or download the
+   source audio from the Fab listing.
+2. Place or import the chosen loops as `Content/Audio/S_AmbStreet`,
+   `S_AmbNight`, `S_AmbRain`. UE imports `.wav`, `.ogg`, `.flac` and `.aiff`;
+   it does not import `.mp3`, and no converter is installed on this machine.
+3. Confirm the layer resolves: the log line `Ortam sesi yok:` must stop appearing.
+4. Record each pack's exact Fab licence in the table above before committing.
+
+### Redistribution
+
+Fab licences generally permit use in a shipped game but **not** redistribution of
+the source assets. Cooked audio in a packaged build is fine; committing the raw
+pack contents to this public repository is not. Import the loops, verify the
+licence, and add `Content/Audio/S_Amb*` to the repository only if the licence
+allows it — otherwise treat them like the other Fab packs and gitignore them.
+
+## Externally verified alternative (only if the library packs cannot be used)
+
+`Rain in the Gutter Loop` by Ogrebane, opengameart.org, licence stated as **CC0**,
+`rain-gutter-loop_0.mp3`, 1.5 MB. Verified 2026-07-26. Needs conversion to a
+UE-importable format, which this machine cannot do without ffmpeg.
 
 ## Prohibited
 

@@ -5,8 +5,10 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Audio
 
-- The ambience layer resolves three loop assets and stays silent because none
-  ship. Selection, volume and weather switching are implemented and logged once.
+- The ambience layer resolves three loop assets and stays silent because none are
+  imported yet. Selection, volume and weather switching are implemented and logged
+  once. The owner's Fab library already contains suitable packs; see `ASSETS.md`
+  for the import procedure. This is a content step, not a code gap.
 - `CarEngine` is mapped to a metal one-shot and `CatMeow` is unmapped. Both are
   documented in `ASSETS.md` rather than disguised with pitch shifting.
 
