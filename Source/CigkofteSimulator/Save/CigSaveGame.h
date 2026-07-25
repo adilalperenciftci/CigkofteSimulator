@@ -195,6 +195,14 @@ public:
 	UPROPERTY() int32 TopluOdul = 0;
 	UPROPERTY() int32 TopluBaslangicServis = 0;
 
+	// --- Inspection (version 10) ---
+	// The bribe count is the one that matters: it is what makes the next envelope
+	// riskier, so losing it would quietly forgive a whole history.
+	UPROPERTY() int32 RuhsatBitisGunu = 0;
+	UPROPERTY() int32 BasarisizDenetim = 0;
+	UPROPERTY() int32 RusvetSayisi = 0;
+	UPROPERTY() int32 KalanKapaliGun = 0;
+
 	// --- Cat ---
 	UPROPERTY() FString CatName = TEXT("Pamuk");
 	UPROPERTY() float CatFood = 70.f;

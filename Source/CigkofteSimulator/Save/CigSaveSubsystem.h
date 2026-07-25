@@ -23,7 +23,9 @@ public:
 	// Version 6: key bindings entered the save.
 	// Version 7: per-product pricing markups entered the save.
 	// Version 8: staff traits and the standing transfer offer entered the save.
-	static constexpr int32 CurrentVersion = 8;
+	// Version 9: the pending bulk order entered the save.
+	// Version 10: the licence, inspection record and bribe count entered the save.
+	static constexpr int32 CurrentVersion = 10;
 
 	bool HasSave() const;
 	bool SaveNow(ACigkofteGameMode* GM);
@@ -47,4 +49,5 @@ private:
 	static void MigrateV6ToV7(UCigSaveGame& Save);
 	static void MigrateV7ToV8(UCigSaveGame& Save);
 	static void MigrateV8ToV9(UCigSaveGame& Save);
+	static void MigrateV9ToV10(UCigSaveGame& Save);
 };

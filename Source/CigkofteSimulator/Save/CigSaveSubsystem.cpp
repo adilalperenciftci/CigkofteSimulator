@@ -71,7 +71,11 @@ void UCigSaveSubsystem::MigrateSave(UCigSaveGame& Save)
 	{
 		MigrateV8ToV9(Save);
 	}
-	// In future: if (Save.SaveVersion < 10) { MigrateV9ToV10(Save); } ...
+	if (Save.SaveVersion < 10)
+	{
+		MigrateV9ToV10(Save);
+	}
+	// In future: if (Save.SaveVersion < 11) { MigrateV10ToV11(Save); } ...
 
 	Save.SaveVersion = CurrentVersion;
 	UE_LOG(LogCigSave, Log, TEXT("Kayıt taşındı: sürüm %d → %d"), From, CurrentVersion);
@@ -156,6 +160,17 @@ void UCigSaveSubsystem::MigrateV8ToV9(UCigSaveGame& Save)
 	Save.TopluIstenenAdet = 0;
 	Save.TopluOdul = 0;
 	Save.TopluBaslangicServis = 0;
+}
+
+void UCigSaveSubsystem::MigrateV9ToV10(UCigSaveGame& Save)
+{
+	// v10 introduced the licence. A v9 shop was never asked for one, so loading it
+	// already expired would be a fine for paperwork that did not exist yesterday:
+	// the licence starts valid from the day the save is on.
+	Save.RuhsatBitisGunu = Save.Day + 14;
+	Save.BasarisizDenetim = 0;
+	Save.RusvetSayisi = 0;
+	Save.KalanKapaliGun = 0;
 }
 
 bool UCigSaveSubsystem::SaveNow(ACigkofteGameMode* GM)

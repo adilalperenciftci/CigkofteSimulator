@@ -340,6 +340,19 @@ msg.staff.served,{0} bir müşteriyi kendisi ağırladı (+{1} TL).,{0} handled 
 msg.staff.shelved,{0} rafa bir paket hazırladı ({1}/{2}).,{0} prepared a takeaway for the shelf ({1}/{2}).
 msg.staff.askraise,"{0}: 'Usta, maaş konusunu konuşacaktık...' (tabletten zam verebilirsin)","{0}: 'Boss, we should talk about salary...' (you can give a raise from tablet)"
 msg.staff.salary,Çırak maaşı: -{0} TL,Apprentice salary: -{0} TL
+msg.inspect.passed,Denetimden geçtin (puan {0}).,Passed the inspection (score {0}).
+msg.inspect.failed,"Denetimden kaldın (puan {0}). Ceza: {1} TL.","Failed the inspection (score {0}). Fine: {1} TL."
+msg.inspect.report,Müfettişin notu: {0},Inspector's note: {0}
+msg.inspect.closed,Belediye dükkânı geçici olarak kapattı!,The council has temporarily closed the shop!
+msg.inspect.reopened,Dükkân yeniden açıldı.,The shop has reopened.
+msg.inspect.licenceexpired,Ruhsatın süresi doldu! Denetimde ağır ceza yersin.,Your licence has expired! An inspection will hit hard.
+msg.inspect.licencesoon,Ruhsatın {0} gün sonra doluyor (tabletten yenile).,Your licence expires in {0} days (renew from the tablet).
+msg.inspect.licencerenewed,Ruhsat yenilendi ({0} gün geçerli).,Licence renewed (valid for {0} days).
+msg.inspect.licencenomoney,Ruhsat ücreti için para yetmiyor.,Not enough money for the licence fee.
+msg.inspect.complaint,Rakip dükkân belediyeye şikâyette bulundu.,A rival has filed a complaint with the council.
+msg.inspect.bribed,Müfettişe {0} TL verdin. Bu sefer göz yumdu.,You slipped the inspector {0} TL. They looked away this time.
+msg.inspect.bribecaught,Rüşvet yakalandı! {0} TL ceza ve dükkân kapatıldı.,The bribe was caught! {0} TL fine and the shop is closed.
+msg.inspect.bribenomoney,Rüşvet için bile paran yok.,Not even enough money for a bribe.
 msg.event.bulk.offer,"Toplu sipariş teklifi: {1}. güne {0} dürüm, {2} TL. (Tabletten Görevler sekmesi)","Bulk order offer: {0} wraps by day {1}, {2} TL. (Tablet, Quests tab)"
 msg.event.bulk.accepted,"Toplu siparişi kabul ettin: {1}. güne kadar {0} dürüm.","Bulk order accepted: {0} wraps by day {1}."
 msg.event.bulk.declined,Toplu siparişi geri çevirdin.,You turned down the bulk order.

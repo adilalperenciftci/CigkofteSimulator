@@ -130,6 +130,20 @@ struct FCigPricingRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Fiyat") float MaxCarpan = 2.f;
 };
 
+// --- Inspection parameters ---
+// A flat key/value table rather than one row per concept: these are a dozen
+// unrelated scalars (thresholds, fees, risk steps) that share no shape, and
+// forcing them into columns would invent a structure that is not there.
+USTRUCT(BlueprintType)
+struct FCigInspectionRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Denetim") FString Key;
+	UPROPERTY(EditAnywhere, Category = "Denetim") FString Label;
+	UPROPERTY(EditAnywhere, Category = "Denetim") float Deger = 0.f;
+};
+
 // --- Daily events ---
 // Only the numbers live here. The event's name and its start/end announcements
 // stay in Events/CigEventSystem.cpp: they are prose, not balance, and moving

@@ -319,6 +319,34 @@ namespace
 		};
 	}
 
+	FCigInspectionRow MakeInspection(const TCHAR* Key, const TCHAR* Label, float Deger)
+	{
+		FCigInspectionRow R;
+		R.Key = Key;
+		R.Label = Label;
+		R.Deger = Deger;
+		return R;
+	}
+
+	TArray<FCigInspectionRow> DefaultInspection()
+	{
+		return {
+			MakeInspection(TEXT("GecerNotu"),            TEXT("Geçme notu (0-100)"),                       60.f),
+			MakeInspection(TEXT("HijyenAgirligi"),       TEXT("Hijyenin denetim puanındaki ağırlığı"),      0.50f),
+			MakeInspection(TEXT("TazelikAgirligi"),      TEXT("Stok tazeliğinin ağırlığı"),                 0.30f),
+			MakeInspection(TEXT("RuhsatAgirligi"),       TEXT("Ruhsatın ağırlığı"),                         0.20f),
+			MakeInspection(TEXT("RuhsatsizTavan"),       TEXT("Ruhsatsızken alınabilecek en yüksek puan"), 45.f),
+			MakeInspection(TEXT("CezaTabani"),           TEXT("Taban para cezası (TL)"),                  300.f),
+			MakeInspection(TEXT("RuhsatsizCezaCarpani"), TEXT("Ruhsat geçersizse ceza çarpanı"),            2.0f),
+			MakeInspection(TEXT("KapatmaEsigi"),         TEXT("Kaç başarısız denetimde geçici kapatma"),    3.f),
+			MakeInspection(TEXT("RuhsatSuresi"),         TEXT("Ruhsat geçerlilik süresi (gün)"),           14.f),
+			MakeInspection(TEXT("RuhsatUcreti"),         TEXT("Ruhsat yenileme ücreti (TL)"),             250.f),
+			MakeInspection(TEXT("RusvetOrani"),          TEXT("Rüşvetin cezaya oranı"),                     0.60f),
+			MakeInspection(TEXT("RusvetRiskArtisi"),     TEXT("Her rüşvette yakalanma riski artışı"),       0.15f),
+			MakeInspection(TEXT("SikayetRiskArtisi"),    TEXT("Rakip şikâyetinin denetim olasılığına etkisi"), 0.25f)
+		};
+	}
+
 	FCigEventRow MakeEvent(const TCHAR* Key, const TCHAR* Label, int32 MinGun, float Sans, float Sure,
 		float Spawn, float Sabir, float Fiyat, float Teslimat, float Stok, int32 TakvimPeriyodu)
 	{
@@ -421,6 +449,7 @@ namespace
 		TArray<FCigMahalleRow> Mahalle;
 		TArray<FCigStaffRow> Staff;
 		TArray<FCigEventRow> Events;
+		TArray<FCigInspectionRow> Inspection;
 		bool bLoaded = false;
 
 		void Load()
@@ -434,6 +463,7 @@ namespace
 			Mahalle = DefaultMahalle();
 			Staff = DefaultStaff();
 			Events = DefaultEvents();
+			Inspection = DefaultInspection();
 
 			ForEachCsvRow(TEXT("Skills.csv"), [this](const FCigCsvRow& Row)
 			{
@@ -516,6 +546,15 @@ namespace
 				FCigMahalleRow& R = Mahalle[Index];
 				Row.Str(TEXT("Label"), R.Label);
 				Row.Flt(TEXT("GelirCarpani"), R.GelirCarpani);
+			});
+
+			ForEachCsvRow(TEXT("Inspection.csv"), [this](const FCigCsvRow& Row)
+			{
+				if (FCigInspectionRow* R = FindByKey(Inspection, Row))
+				{
+					Row.Str(TEXT("Label"), R->Label);
+					Row.Flt(TEXT("Deger"), R->Deger);
+				}
 			});
 
 			ForEachCsvRow(TEXT("Events.csv"), [this](const FCigCsvRow& Row)
@@ -610,6 +649,18 @@ namespace CigBalance
 	const FCigMahalleRow& Mahalle(int32 Index)         { return At(Tables().Mahalle, Index); }
 	const FCigStaffRow& Staff(int32 Index)             { return At(Tables().Staff, Index); }
 	const FCigEventRow& Event(int32 Index)             { return At(Tables().Events, Index); }
+
+	float Inspection(const TCHAR* Key, float Fallback)
+	{
+		for (const FCigInspectionRow& R : Tables().Inspection)
+		{
+			if (R.Key.Equals(Key, ESearchCase::IgnoreCase))
+			{
+				return R.Deger;
+			}
+		}
+		return Fallback;
+	}
 	int32 MahalleCount() { return Tables().Mahalle.Num(); }
 	int32 StaffCount() { return Tables().Staff.Num(); }
 	const FCigTraitRow& Trait(int32 Index)             { return At(Tables().Traits, Index); }

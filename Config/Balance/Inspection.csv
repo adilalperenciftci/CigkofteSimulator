@@ -1,0 +1,14 @@
+Key,Label,Deger
+GecerNotu,Geçme notu (0-100),60
+HijyenAgirligi,Hijyenin denetim puanındaki ağırlığı,0.50
+TazelikAgirligi,Stok tazeliğinin ağırlığı,0.30
+RuhsatAgirligi,Ruhsatın ağırlığı,0.20
+RuhsatsizTavan,Ruhsatsızken alınabilecek en yüksek puan,45
+CezaTabani,Taban para cezası (TL),300
+RuhsatsizCezaCarpani,Ruhsat geçersizse ceza çarpanı,2.0
+KapatmaEsigi,Kaç başarısız denetimde geçici kapatma,3
+RuhsatSuresi,Ruhsat geçerlilik süresi (gün),14
+RuhsatUcreti,Ruhsat yenileme ücreti (TL),250
+RusvetOrani,Rüşvetin cezaya oranı,0.60
+RusvetRiskArtisi,Her rüşvette yakalanma riski artışı,0.15
+SikayetRiskArtisi,Rakip şikâyetinin denetim olasılığına etkisi,0.25

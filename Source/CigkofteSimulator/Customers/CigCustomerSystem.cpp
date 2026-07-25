@@ -15,6 +15,7 @@
 #include "Economy/CigPricingSystem.h"
 #include "Economy/CigReviewSystem.h"
 #include "Economy/CigRivalSystem.h"
+#include "Economy/CigInspectionSystem.h"
 #include "World/CigWorldBuilder.h"
 #include "Core/CigRandomSubsystem.h"
 #include "Core/CigBalance.h"
@@ -780,29 +781,14 @@ void UCigCustomerSystem::UpdateInspector(float DeltaSeconds)
 		}
 		if (Inspector->bArrived && !Inspector->bLeaving)
 		{
-			const float Hygiene = Hyg ? Hyg->OverallHygiene() : 100.f;
-			if (Hygiene >= 70.f)
+			// The verdict belongs to the inspection system; all that happens
+			// here is that the person who delivered it walks back out.
+			bool bGecti = true;
+			if (UCigInspectionSystem* Denetim = GM->Inspection.Get())
 			{
-				if (Prog) { Prog->AddRep(5.f); }
-				GM->AddMessage(CigText::Get(TEXT("msg.customer.inspector.good")), FLinearColor(0.4f, 1.f, 0.4f));
-				Inspector->Leave(false, GCustomerExit);
+				bGecti = Denetim->Denetle().bGecti;
 			}
-			else if (Hygiene >= 50.f)
-			{
-				GM->AddMessage(CigText::Get(TEXT("msg.customer.inspector.warn")), FLinearColor(1.f, 0.8f, 0.3f));
-				Inspector->Leave(false, GCustomerExit);
-			}
-			else
-			{
-				if (Eco) { Eco->Money -= 200; }
-				if (Prog) { Prog->AddRep(-4.f); }
-				GM->AddMessage(CigText::Get(TEXT("msg.customer.inspector.fine")), FLinearColor(1.f, 0.3f, 0.3f));
-				if (Hyg && Hyg->WorstProblem().Len() > 0)
-				{
-					GM->AddMessage(CigText::Format(TEXT("msg.customer.inspector.report"), *Hyg->WorstProblem()), FLinearColor(1.f, 0.6f, 0.4f));
-				}
-				Inspector->Leave(true, GCustomerExit);
-			}
+			Inspector->Leave(!bGecti, GCustomerExit);
 	Bus().InspectorVisited.Broadcast(Hyg ? Hyg->OverallHygiene() : 100.f);
 			Inspector = nullptr;
 		}

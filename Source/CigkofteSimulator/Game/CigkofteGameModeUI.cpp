@@ -14,6 +14,7 @@
 #include "World/CigWorldBuilder.h"
 #include "Cooking/CigCookingSystem.h"
 #include "Economy/CigPricingSystem.h"
+#include "Economy/CigInspectionSystem.h"
 #include "Events/CigEventSystem.h"
 #include "Core/CigBalance.h"
 #include "Orders/CigOrderSystem.h"
@@ -169,6 +170,20 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 	}
 	case ECigTabletTab::Dukkan:
 	{
+		if (Inspection)
+		{
+			if (Num == 0)
+			{
+				Inspection->RuhsatYenile();
+				break;
+			}
+			if (Num == 9 && Inspection->BekleyenCeza > 0)
+			{
+				Inspection->RusvetVer();
+				break;
+			}
+		}
+
 		const int32 Idx = TabletScroll + Num - 1;
 		if (Num < 1 || Idx < 0 || !Economy)
 		{

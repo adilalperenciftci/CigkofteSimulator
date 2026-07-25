@@ -13,6 +13,7 @@ class UCigOrderSystem;
 class UCigCustomerSystem;
 class UCigEconomySystem;
 class UCigPricingSystem;
+class UCigInspectionSystem;
 class UCigInventorySystem;
 class UCigProgressionSystem;
 class UCigQuestSystem;
@@ -117,6 +118,7 @@ public:
 	UPROPERTY() TObjectPtr<UCigCustomerSystem> Customers;
 	UPROPERTY() TObjectPtr<UCigEconomySystem> Economy;
 	UPROPERTY() TObjectPtr<UCigPricingSystem> Pricing;
+	UPROPERTY() TObjectPtr<UCigInspectionSystem> Inspection;
 	UPROPERTY() TObjectPtr<UCigInventorySystem> Inventory;
 	UPROPERTY() TObjectPtr<UCigProgressionSystem> Progression;
 	UPROPERTY() TObjectPtr<UCigQuestSystem> Quests;

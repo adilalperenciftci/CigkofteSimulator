@@ -6,6 +6,7 @@
 #include "Inventory/CigInventorySystem.h"
 #include "Economy/CigEconomySystem.h"
 #include "Economy/CigPricingSystem.h"
+#include "Economy/CigInspectionSystem.h"
 #include "Core/CigBalance.h"
 #include "Progression/CigSkillSystem.h"
 #include "Progression/CigAchievementSystem.h"
@@ -118,6 +119,35 @@ namespace CigTablet
 
 		case ECigTabletTab::Dukkan:
 		{
+			// Paperwork first: an expired licence turns the next inspection into a
+			// double fine, which matters more than any upgrade on the list below.
+			if (const UCigInspectionSystem* Den = GM->Inspection.Get())
+			{
+				const bool bGecerli = Den->RuhsatGecerli();
+				Rows.Add(MakeRow(
+					LOCTEXT("RuhsatSatiri", "0) Ruhsat ve vergi levhası").ToString(),
+					bGecerli
+						? FText::Format(LOCTEXT("RuhsatGecerli", "{0} gün geçerli  ·  yenile {1} TL"),
+							FText::AsNumber(Den->RuhsatKalanGun()), FText::AsNumber(Den->RuhsatUcreti())).ToString()
+						: FText::Format(LOCTEXT("RuhsatSuresiz", "SÜRESİ DOLDU  ·  yenile {0} TL"),
+							FText::AsNumber(Den->RuhsatUcreti())).ToString(),
+					bGecerli ? CigUI::White : CigUI::Bad, true));
+
+				if (Den->BekleyenCeza > 0)
+				{
+					Rows.Add(MakeRow(
+						LOCTEXT("RusvetSatiri", "9) Müfettişe rüşvet ver").ToString(),
+						FText::Format(LOCTEXT("RusvetTutar", "{0} TL  ·  riskli"),
+							FText::AsNumber(FMath::RoundToInt(Den->BekleyenCeza * 0.6f))).ToString(),
+						CigUI::Bad, true));
+				}
+				if (Den->KapaliMi())
+				{
+					Rows.Add(MakeRow(LOCTEXT("KapaliSatiri", "Dükkân belediye kararıyla kapalı").ToString(),
+						FString(), CigUI::Bad));
+				}
+			}
+
 			const UCigEconomySystem* Eco = GM->Economy.Get();
 			if (!Eco)
 			{

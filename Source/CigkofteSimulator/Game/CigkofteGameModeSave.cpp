@@ -17,6 +17,7 @@
 #include "Customers/CigCustomerSystem.h"
 #include "Economy/CigEconomySystem.h"
 #include "Economy/CigPricingSystem.h"
+#include "Economy/CigInspectionSystem.h"
 #include "Events/CigEventSystem.h"
 #include "Economy/CigRivalSystem.h"
 #include "Economy/CigReviewSystem.h"
@@ -227,6 +228,14 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 		Save.TopluIstenenAdet = T.IstenenAdet;
 		Save.TopluOdul = T.Odul;
 		Save.TopluBaslangicServis = T.BaslangicServis;
+	}
+
+	if (Inspection)
+	{
+		Save.RuhsatBitisGunu = Inspection->RuhsatBitisGunu;
+		Save.BasarisizDenetim = Inspection->BasarisizDenetim;
+		Save.RusvetSayisi = Inspection->RusvetSayisi;
+		Save.KalanKapaliGun = Inspection->KalanKapaliGun;
 	}
 
 	if (CatSys)
@@ -500,6 +509,19 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 		T.IstenenAdet = Save.TopluIstenenAdet;
 		T.Odul = Save.TopluOdul;
 		T.BaslangicServis = Save.TopluBaslangicServis;
+	}
+
+	if (Inspection)
+	{
+		Inspection->BasarisizDenetim = Save.BasarisizDenetim;
+		Inspection->RusvetSayisi = Save.RusvetSayisi;
+		Inspection->KalanKapaliGun = Save.KalanKapaliGun;
+		// A zero expiry means a save from before licences existed; OnInit already
+		// seeded a valid one, so leave that standing rather than expiring it.
+		if (Save.RuhsatBitisGunu > 0)
+		{
+			Inspection->RuhsatBitisGunu = Save.RuhsatBitisGunu;
+		}
 		Staff->RestoreNPC();
 	}
 
