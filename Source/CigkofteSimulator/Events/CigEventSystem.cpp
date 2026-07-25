@@ -10,27 +10,20 @@
 #include "Economy/CigEconomySystem.h"
 #include "Progression/CigProgressionSystem.h"
 
-const FCigEventDef& UCigEventSystem::Def(int32 Index)
+namespace
 {
-	//                     Name                  Start                                                            End                                      MinDay Odds  Time  Spawn Pat.  Price Deliv. Stock Extra
-	static const FCigEventDef Defs[CigEventDefCount] = {
-		{ TEXT("Okul Çıkışı"), TEXT("Okul dağıldı! Öğrenci akını geliyor."), TEXT("Öğrenciler dağıldı."), 1 },
-		{ TEXT("Maç Günü"), TEXT("Bugün derbi var! Maç öncesi herkes dürüm istiyor."), TEXT("Maç başladı, sokaklar boşaldı."), 0 },
-		{ TEXT("Yağmur"), TEXT("Yağmur bastırdı. Sokakta müşteri az, paket servis çok."), TEXT("Yağmur dindi."), 0 },
-		{ TEXT("Sıcak Hava"), TEXT("Kavurucu sıcak! Ayran satışları patlayacak, hamur çabuk bozulur."), TEXT("Hava serinledi."), 0 },
-		{ TEXT("İsot Zammı"), TEXT("İsot fiyatlarına zam geldi! Stok maliyetleri arttı."), TEXT("İsot fiyatları normale döndü."), 0 },
-		{ TEXT("Tedarik Gecikmesi"), TEXT("Yollarda sorun var, kuryeler geç kalıyor."), TEXT("Tedarik normale döndü."), 0 },
-		{ TEXT("Elektrik Kesintisi"), TEXT("Elektrik kesildi! Buzdolabı çalışmıyor."), TEXT("Elektrik geldi."), 7 },
-		{ TEXT("Belediye Denetimi"), TEXT("Belediye bugün denetim yapıyor. Müfettiş yolda olabilir."), TEXT("Denetim günü bitti."), 2 },
-		{ TEXT("Ünlü Müşteri"), TEXT("Ünlü biri mahallede görüldü! VIP kapıda olabilir."), TEXT("Ünlü ayrıldı."), 3 },
-		{ TEXT("Fenomen Ziyareti"), TEXT("Yemek fenomeni çekim için geliyor!"), TEXT("Fenomen çekimini bitirdi."), 4 },
-		{ TEXT("Rakip Kampanyası"), TEXT("Rakipler bugün kampanya yapıyor, müşteri az."), TEXT("Rakip kampanyası bitti."), 0 },
-		{ TEXT("Sokak Festivali"), TEXT("Sokak festivali! Mahalle kaynıyor."), TEXT("Festival sona erdi."), 0 },
-		{ TEXT("Toplu Sipariş"), TEXT("Şirketten toplu sipariş geldi! Büyük paket servis fırsatı."), TEXT("Toplu sipariş süresi doldu."), 5 },
-		{ TEXT("Malzeme Kıtlığı"), TEXT("Toptancıda kıtlık! Bazı stoklar yarıya düştü."), TEXT("Kıtlık aşıldı."), 6 }
-	};
-	return Defs[FMath::Clamp(Index, 0, CigEventDefCount - 1)];
+	// Builds event.<key>.<suffix> from the row key, lower-cased so the text
+	// table reads consistently with the other bal.* keys.
+	FString OlayMetni(int32 Index, const TCHAR* Suffix)
+	{
+		const FString Key = CigBalance::Event(Index).Key.ToLower();
+		return CigText::Get(*FString::Printf(TEXT("event.%s.%s"), *Key, Suffix));
+	}
 }
+
+FString UCigEventSystem::EventName(int32 Index)     { return OlayMetni(Index, TEXT("name")); }
+FString UCigEventSystem::EventStartMsg(int32 Index) { return OlayMetni(Index, TEXT("start")); }
+FString UCigEventSystem::EventEndMsg(int32 Index)   { return OlayMetni(Index, TEXT("end")); }
 
 bool UCigEventSystem::IsEventActive(int32 DefIndex) const
 {
@@ -219,8 +212,6 @@ void UCigEventSystem::TriggerEvent(int32 DefIndex)
 
 void UCigEventSystem::StartEvent(int32 DefIndex)
 {
-	const FCigEventDef& D = Def(DefIndex);
-
 	FCigActiveEvent E;
 	E.DefIndex = DefIndex;
 	E.TimeLeft = CigBalance::Event(DefIndex).Sure;
@@ -228,19 +219,19 @@ void UCigEventSystem::StartEvent(int32 DefIndex)
 
 	if (GM)
 	{
-		GM->AddMessage(FString::Printf(TEXT("OLAY: %s"), D.StartMsg), FLinearColor(1.f, 0.85f, 0.4f));
+		GM->AddMessage(FString::Printf(TEXT("OLAY: %s"), *EventStartMsg(DefIndex)), FLinearColor(1.f, 0.85f, 0.4f));
 	}
-	ApplySpecialStart(D);
-	UE_LOG(LogCig, Log, TEXT("Olay başladı: %s"), D.Name);
+	ApplySpecialStart(CigBalance::Event(DefIndex).OzelTur);
+	UE_LOG(LogCig, Log, TEXT("Olay başladı: %s"), *EventName(DefIndex));
 }
 
-void UCigEventSystem::ApplySpecialStart(const FCigEventDef& D)
+void UCigEventSystem::ApplySpecialStart(int32 OzelTur)
 {
 	if (!GM)
 	{
 		return;
 	}
-	switch (D.SpecialType)
+	switch (OzelTur)
 	{
 	case 1: // öğrenci patlaması
 		if (GM->Customers)
@@ -295,10 +286,9 @@ void UCigEventSystem::ApplySpecialStart(const FCigEventDef& D)
 
 void UCigEventSystem::EndEvent(int32 ActiveIndex)
 {
-	const FCigEventDef& D = Def(Active[ActiveIndex].DefIndex);
 	if (GM)
 	{
-		GM->AddMessage(D.EndMsg, FLinearColor(0.8f, 0.8f, 0.7f));
+		GM->AddMessage(EventEndMsg(Active[ActiveIndex].DefIndex), FLinearColor(0.8f, 0.8f, 0.7f));
 	}
 	Active.RemoveAt(ActiveIndex);
 }
@@ -373,7 +363,7 @@ float UCigEventSystem::SupplyDelayMult() const
 {
 	for (const FCigActiveEvent& E : Active)
 	{
-		if (FCString::Strcmp(Def(E.DefIndex).Name, TEXT("Tedarik Gecikmesi")) == 0)
+		if (E.DefIndex == EventTedarikGecikmesi)
 		{
 			return 2.f;
 		}
@@ -385,7 +375,7 @@ bool UCigEventSystem::IsFridgeBroken() const
 {
 	for (const FCigActiveEvent& E : Active)
 	{
-		if (Def(E.DefIndex).SpecialType == 7)
+		if (CigBalance::Event(E.DefIndex).OzelTur == 7)
 		{
 			return true;
 		}

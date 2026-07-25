@@ -340,6 +340,48 @@ msg.staff.served,{0} bir müşteriyi kendisi ağırladı (+{1} TL).,{0} handled 
 msg.staff.shelved,{0} rafa bir paket hazırladı ({1}/{2}).,{0} prepared a takeaway for the shelf ({1}/{2}).
 msg.staff.askraise,"{0}: 'Usta, maaş konusunu konuşacaktık...' (tabletten zam verebilirsin)","{0}: 'Boss, we should talk about salary...' (you can give a raise from tablet)"
 msg.staff.salary,Çırak maaşı: -{0} TL,Apprentice salary: -{0} TL
+event.okulcikisi.name,Okul Çıkışı,School Rush
+event.okulcikisi.start,Okul dağıldı! Öğrenci akını geliyor.,School's out! A wave of students is coming.
+event.okulcikisi.end,Öğrenciler dağıldı.,The students have moved on.
+event.macgunu.name,Maç Günü,Match Day
+event.macgunu.start,Bugün derbi var! Maç öncesi herkes dürüm istiyor.,Derby day! Everyone wants a wrap before kick-off.
+event.macgunu.end,"Maç başladı, sokaklar boşaldı.",The match started; the streets emptied.
+event.yagmur.name,Yağmur,Rain
+event.yagmur.start,"Yağmur bastırdı. Sokakta müşteri az, paket servis çok.","Rain set in. Fewer walk-ins, more deliveries."
+event.yagmur.end,Yağmur dindi.,The rain stopped.
+event.sicakhava.name,Sıcak Hava,Heatwave
+event.sicakhava.start,"Kavurucu sıcak! Ayran satışları patlayacak, hamur çabuk bozulur.","Scorching heat! Ayran will fly, dough spoils fast."
+event.sicakhava.end,Hava serinledi.,It has cooled down.
+event.isotzammi.name,İsot Zammı,Isot Price Hike
+event.isotzammi.start,İsot fiyatlarına zam geldi! Stok maliyetleri arttı.,Isot prices went up! Stock costs more.
+event.isotzammi.end,İsot fiyatları normale döndü.,Isot prices are back to normal.
+event.tedarikgecikmesi.name,Tedarik Gecikmesi,Supply Delay
+event.tedarikgecikmesi.start,"Yollarda sorun var, kuryeler geç kalıyor.",Trouble on the roads; couriers are running late.
+event.tedarikgecikmesi.end,Tedarik normale döndü.,Supply is back to normal.
+event.elektrikkesintisi.name,Elektrik Kesintisi,Power Cut
+event.elektrikkesintisi.start,Elektrik kesildi! Buzdolabı çalışmıyor.,The power is out! The fridge is dead.
+event.elektrikkesintisi.end,Elektrik geldi.,The power is back.
+event.belediyedenetimi.name,Belediye Denetimi,Council Inspection
+event.belediyedenetimi.start,Belediye bugün denetim yapıyor. Müfettiş yolda olabilir.,The council is inspecting today. An inspector may be on the way.
+event.belediyedenetimi.end,Denetim günü bitti.,Inspection day is over.
+event.unlumusteri.name,Ünlü Müşteri,Celebrity Customer
+event.unlumusteri.start,Ünlü biri mahallede görüldü! VIP kapıda olabilir.,A celebrity was spotted nearby! A VIP may walk in.
+event.unlumusteri.end,Ünlü ayrıldı.,The celebrity has left.
+event.fenomenziyareti.name,Fenomen Ziyareti,Influencer Visit
+event.fenomenziyareti.start,Yemek fenomeni çekim için geliyor!,A food influencer is coming to film!
+event.fenomenziyareti.end,Fenomen çekimini bitirdi.,The influencer wrapped up filming.
+event.rakipkampanyasi.name,Rakip Kampanyası,Rival Campaign
+event.rakipkampanyasi.start,"Rakipler bugün kampanya yapıyor, müşteri az.",Rivals are running a promotion; fewer customers today.
+event.rakipkampanyasi.end,Rakip kampanyası bitti.,The rival campaign has ended.
+event.sokakfestivali.name,Sokak Festivali,Street Festival
+event.sokakfestivali.start,Sokak festivali! Mahalle kaynıyor.,Street festival! The neighbourhood is buzzing.
+event.sokakfestivali.end,Festival sona erdi.,The festival has ended.
+event.toplusiparis.name,Toplu Sipariş,Bulk Order
+event.toplusiparis.start,Şirketten toplu sipariş geldi! Büyük paket servis fırsatı.,A company bulk order came in! A big delivery opportunity.
+event.toplusiparis.end,Toplu sipariş süresi doldu.,The bulk order window closed.
+event.malzemekitligi.name,Malzeme Kıtlığı,Ingredient Shortage
+event.malzemekitligi.start,Toptancıda kıtlık! Bazı stoklar yarıya düştü.,Shortage at the wholesaler! Some stock halved.
+event.malzemekitligi.end,Kıtlık aşıldı.,The shortage is over.
 msg.social.viral,Gönderin viral oldu! Bugün dükkân dolup taşacak.,Your post went viral! The shop will be packed today.
 msg.social.viralgood,Viral gün kapandı — takipçi patlaması yaşadın.,Viral day over - your following exploded.
 msg.social.viralbackfire,Viral gün stoksuz yakaladı seni; herkes eli boş döndü.,The viral day caught you with no stock; everyone left empty-handed.

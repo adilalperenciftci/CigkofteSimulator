@@ -4,21 +4,6 @@
 #include "Game/CigSystem.h"
 #include "CigEventSystem.generated.h"
 
-// The prose half of an event: what it is called and what the player is told.
-// Every number that goes with it lives in Config/Balance/Events.csv, addressed
-// by the same index (see Core/CigBalance.h).
-struct FCigEventDef
-{
-	const TCHAR* Name;
-	const TCHAR* StartMsg;
-	const TCHAR* EndMsg;
-
-	// 0 none, 1 customer rush, 2 inspector, 3 VIP, 4 influencer, 5 bulk order,
-	// 6 shortage, 7 broken fridge. Behaviour rather than balance, so it stays
-	// in code next to the branch that acts on it.
-	int32 SpecialType;
-};
-
 constexpr int32 CigEventDefCount = 14;
 
 // Aktif bir olay.
@@ -64,7 +49,12 @@ public:
 	virtual void OnDayStart(int32 Day) override;
 	virtual void OnDayEnd(int32 Day) override;
 
-	static const FCigEventDef& Def(int32 Index);
+	// An event's wording comes from Config/Text/Strings.csv, keyed off the row
+	// key: event.<key>.name / .start / .end. Nothing about an event lives in code
+	// any more - the numbers are in Events.csv and the prose is in the text table.
+	static FString EventName(int32 Index);
+	static FString EventStartMsg(int32 Index);
+	static FString EventEndMsg(int32 Index);
 
 	// Triggers an event by hand, for debugging and tests.
 	void TriggerEvent(int32 DefIndex);
@@ -79,6 +69,7 @@ public:
 
 	// The bulk order draws its notice period and odds from this row.
 	static constexpr int32 EventTopluSiparis = 12;
+	static constexpr int32 EventTedarikGecikmesi = 5;
 
 	float SpawnMult() const;
 	float PatienceMult() const;
@@ -103,7 +94,7 @@ public:
 private:
 	void StartEvent(int32 DefIndex);
 	void EndEvent(int32 ActiveIndex);
-	void ApplySpecialStart(const FCigEventDef& D);
+	void ApplySpecialStart(int32 OzelTur);
 
 	void TopluSiparisTeklifEt(int32 Day);
 	void TopluSiparisiSonuclandir(int32 Day);

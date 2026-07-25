@@ -417,7 +417,7 @@ void ACigkofteHUD::DrawStatusPanel(ACigkofteGameMode* GM)
 		FString Line = CigText::Format(TEXT("hud.shopstars"), *Stars(GM->Reviews->ShopScore()));
 		if (GM->Events && GM->Events->Active.Num() > 0)
 		{
-			Line += CigText::Format(TEXT("hud.event"), UCigEventSystem::Def(GM->Events->Active[0].DefIndex).Name);
+			Line += CigText::Format(TEXT("hud.event"), *UCigEventSystem::EventName(GM->Events->Active[0].DefIndex));
 		}
 		Row(Line, FLinearColor(1.f, 0.8f, 0.4f), TX, Y, FontBody, BodyScale, 1.f);
 	}

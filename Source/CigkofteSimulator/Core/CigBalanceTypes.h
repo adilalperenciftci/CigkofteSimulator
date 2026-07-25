@@ -194,6 +194,10 @@ struct FCigEventRow : public FTableRowBase
 	// it fires every N days regardless of Sans - that is what makes match day
 	// something the player can plan around instead of hope for.
 	UPROPERTY(EditAnywhere, Category = "Olay") int32 TakvimPeriyodu = 0;
+
+	// 0 none, 1 customer rush, 2 inspector, 3 VIP, 4 influencer, 5 bulk order,
+	// 6 shortage, 7 broken fridge.
+	UPROPERTY(EditAnywhere, Category = "Olay") int32 OzelTur = 0;
 };
 
 // --- Staff archetypes ---

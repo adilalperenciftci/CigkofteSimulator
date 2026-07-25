@@ -87,7 +87,8 @@ CSV_SCHEMA = {
     "Social.csv": (["Key", "Label", "Deger"], 18),
     "Events.csv": (
         ["Key", "Label", "MinGun", "Sans", "Sure", "SpawnCarpani", "SabirCarpani",
-         "FiyatCarpani", "TeslimatCarpani", "StokCarpani", "TakvimPeriyodu"], 14),
+         "FiyatCarpani", "TeslimatCarpani", "StokCarpani", "TakvimPeriyodu",
+         "OzelTur"], 14),
     "Achievements.csv": (["Key", "Name", "Desc", "Stat", "Threshold"], 20),
 }
 

@@ -409,7 +409,7 @@ namespace
 	}
 
 	FCigEventRow MakeEvent(const TCHAR* Key, const TCHAR* Label, int32 MinGun, float Sans, float Sure,
-		float Spawn, float Sabir, float Fiyat, float Teslimat, float Stok, int32 TakvimPeriyodu)
+		float Spawn, float Sabir, float Fiyat, float Teslimat, float Stok, int32 TakvimPeriyodu, int32 OzelTur)
 	{
 		FCigEventRow R;
 		R.Key = Key;
@@ -423,6 +423,7 @@ namespace
 		R.TeslimatCarpani = Teslimat;
 		R.StokCarpani = Stok;
 		R.TakvimPeriyodu = TakvimPeriyodu;
+		R.OzelTur = OzelTur;
 		return R;
 	}
 
@@ -431,20 +432,20 @@ namespace
 		// Order is load-bearing: CigEventSystem exposes EventRain, EventHeat and
 		// EventPowerOut as indices into this table.
 		return {
-			MakeEvent(TEXT("OkulCikisi"),        TEXT("Okul Çıkışı"),        1, 0.20f, 45.f, 1.8f, 0.80f, 0.95f, 1.0f, 1.0f,  0),
-			MakeEvent(TEXT("MacGunu"),           TEXT("Maç Günü"),           2, 0.15f, 60.f, 1.6f, 0.70f, 1.10f, 1.2f, 1.0f,  7),
-			MakeEvent(TEXT("Yagmur"),            TEXT("Yağmur"),             1, 0.18f, -1.f, 0.6f, 1.10f, 1.00f, 1.7f, 1.0f,  0),
-			MakeEvent(TEXT("SicakHava"),         TEXT("Sıcak Hava"),         2, 0.15f, -1.f, 1.1f, 0.90f, 1.00f, 1.0f, 1.0f,  0),
-			MakeEvent(TEXT("IsotZammi"),         TEXT("İsot Zammı"),         3, 0.12f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.5f,  0),
-			MakeEvent(TEXT("TedarikGecikmesi"),  TEXT("Tedarik Gecikmesi"),  2, 0.12f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
-			MakeEvent(TEXT("ElektrikKesintisi"), TEXT("Elektrik Kesintisi"), 3, 0.10f, 50.f, 0.9f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
-			MakeEvent(TEXT("BelediyeDenetimi"),  TEXT("Belediye Denetimi"),  2, 0.12f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
-			MakeEvent(TEXT("UnluMusteri"),       TEXT("Ünlü Müşteri"),       3, 0.10f, 40.f, 1.2f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
-			MakeEvent(TEXT("FenomenZiyareti"),   TEXT("Fenomen Ziyareti"),   4, 0.10f, 40.f, 1.1f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
-			MakeEvent(TEXT("RakipKampanyasi"),   TEXT("Rakip Kampanyası"),   2, 0.12f, -1.f, 0.7f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
-			MakeEvent(TEXT("SokakFestivali"),    TEXT("Sokak Festivali"),    4, 0.10f, -1.f, 1.9f, 0.85f, 1.15f, 1.3f, 1.0f, 12),
-			MakeEvent(TEXT("TopluSiparis"),      TEXT("Toplu Sipariş"),      3, 0.12f, 60.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
-			MakeEvent(TEXT("MalzemeKitligi"),    TEXT("Malzeme Kıtlığı"),    3, 0.08f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.3f,  0)
+			MakeEvent(TEXT("OkulCikisi"),        TEXT("Okul Çıkışı"),        1, 0.20f, 45.f, 1.8f, 0.80f, 0.95f, 1.0f, 1.0f,  0, 1),
+			MakeEvent(TEXT("MacGunu"),           TEXT("Maç Günü"),           2, 0.15f, 60.f, 1.6f, 0.70f, 1.10f, 1.2f, 1.0f,  7, 0),
+			MakeEvent(TEXT("Yagmur"),            TEXT("Yağmur"),             1, 0.18f, -1.f, 0.6f, 1.10f, 1.00f, 1.7f, 1.0f,  0, 0),
+			MakeEvent(TEXT("SicakHava"),         TEXT("Sıcak Hava"),         2, 0.15f, -1.f, 1.1f, 0.90f, 1.00f, 1.0f, 1.0f,  0, 0),
+			MakeEvent(TEXT("IsotZammi"),         TEXT("İsot Zammı"),         3, 0.12f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.5f,  0, 0),
+			MakeEvent(TEXT("TedarikGecikmesi"),  TEXT("Tedarik Gecikmesi"),  2, 0.12f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 0),
+			MakeEvent(TEXT("ElektrikKesintisi"), TEXT("Elektrik Kesintisi"), 3, 0.10f, 50.f, 0.9f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 7),
+			MakeEvent(TEXT("BelediyeDenetimi"),  TEXT("Belediye Denetimi"),  2, 0.12f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 2),
+			MakeEvent(TEXT("UnluMusteri"),       TEXT("Ünlü Müşteri"),       3, 0.10f, 40.f, 1.2f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 3),
+			MakeEvent(TEXT("FenomenZiyareti"),   TEXT("Fenomen Ziyareti"),   4, 0.10f, 40.f, 1.1f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 4),
+			MakeEvent(TEXT("RakipKampanyasi"),   TEXT("Rakip Kampanyası"),   2, 0.12f, -1.f, 0.7f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 0),
+			MakeEvent(TEXT("SokakFestivali"),    TEXT("Sokak Festivali"),    4, 0.10f, -1.f, 1.9f, 0.85f, 1.15f, 1.3f, 1.0f, 12, 0),
+			MakeEvent(TEXT("TopluSiparis"),      TEXT("Toplu Sipariş"),      3, 0.12f, 60.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 5),
+			MakeEvent(TEXT("MalzemeKitligi"),    TEXT("Malzeme Kıtlığı"),    3, 0.08f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.3f,  0, 6)
 		};
 	}
 
@@ -666,6 +667,7 @@ namespace
 					Row.Flt(TEXT("TeslimatCarpani"), R->TeslimatCarpani);
 					Row.Flt(TEXT("StokCarpani"), R->StokCarpani);
 					Row.Int(TEXT("TakvimPeriyodu"), R->TakvimPeriyodu);
+					Row.Int(TEXT("OzelTur"), R->OzelTur);
 				}
 			});
 

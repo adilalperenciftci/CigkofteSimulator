@@ -73,4 +73,29 @@ bool FCigBulkOrderEdgeTest::RunTest(const FString& /*Parameters*/)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigEventTextTest,
+	"Cigkofte.Events.EveryEventHasWording",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigEventTextTest::RunTest(const FString& /*Parameters*/)
+{
+	// Event wording is addressed by a key built at runtime (event.<key>.name),
+	// which is precisely what the static check in Tools/check_sources.py cannot
+	// see: it only follows literal CigText::Get calls. Without this test a typo
+	// in a row key would show the player "event.macgunu.start" mid-game and
+	// nothing would have complained.
+	for (int32 i = 0; i < CigEventDefCount; ++i)
+	{
+		const FString Ad = UCigEventSystem::EventName(i);
+		const FString Bas = UCigEventSystem::EventStartMsg(i);
+		const FString Bit = UCigEventSystem::EventEndMsg(i);
+
+		TestFalse(FString::Printf(TEXT("Olay %d adı ham anahtar olmamalı"), i), Ad.StartsWith(TEXT("event.")));
+		TestFalse(FString::Printf(TEXT("Olay %d başlangıç metni ham anahtar olmamalı"), i), Bas.StartsWith(TEXT("event.")));
+		TestFalse(FString::Printf(TEXT("Olay %d bitiş metni ham anahtar olmamalı"), i), Bit.StartsWith(TEXT("event.")));
+	}
+
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
