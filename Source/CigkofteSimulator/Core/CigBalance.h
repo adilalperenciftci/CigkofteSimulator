@@ -16,6 +16,13 @@ namespace CigBalance
 	const FCigUpgradeRow& Upgrade(int32 Index);
 	const FCigStockRow& Stock(int32 Index);
 	const FCigAchievementRow& Achievement(int32 Index);
+
+	// Indexed by the CigUrun* constants in Core/CigkofteTypes.h.
+	const FCigPricingRow& Pricing(int32 Index);
+	// Row 0 is the shop's street; 1..6 follow ECigDistrict.
+	const FCigMahalleRow& Mahalle(int32 Index);
+	int32 MahalleCount();
+
 	FString SkillName(int32 Index);
 	FString SkillDesc(int32 Index);
 	FString UpgradeName(int32 Index);

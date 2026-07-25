@@ -13,6 +13,8 @@
 #include "Game/CigDaySystem.h"
 #include "World/CigWorldBuilder.h"
 #include "Cooking/CigCookingSystem.h"
+#include "Economy/CigPricingSystem.h"
+#include "Core/CigBalance.h"
 #include "Orders/CigOrderSystem.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Economy/CigEconomySystem.h"
@@ -124,6 +126,27 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 		{
 			Inventory->OrderStock(Item);
 		}
+		break;
+	}
+	case ECigTabletTab::Fiyatlar:
+	{
+		const int32 Urun = Num - 1;
+		if (!Pricing || Urun < 0 || Urun >= CigUrunCount)
+		{
+			break;
+		}
+
+		// Shift turns the same key into a price cut, so one row of number keys
+		// drives both directions without inventing a second control scheme.
+		const APlayerController* PC = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+		const bool bIndirim = PC && (PC->IsInputKeyDown(EKeys::LeftShift) || PC->IsInputKeyDown(EKeys::RightShift));
+
+		Pricing->FiyatDegistir(Urun, bIndirim ? -UCigPricingSystem::CarpanAdimi : UCigPricingSystem::CarpanAdimi);
+		AddMessage(FText::Format(
+			NSLOCTEXT("CigTablet", "FiyatGuncellendi", "{0}: {1} TL"),
+			FText::FromString(CigBalance::Pricing(Urun).Label),
+			FText::AsNumber(Pricing->Fiyat(Urun))).ToString(),
+			FLinearColor(0.8f, 0.9f, 1.f));
 		break;
 	}
 	case ECigTabletTab::Tarifler:

@@ -111,6 +111,12 @@ public:
 	UPROPERTY() TArray<float> SupplierRelation;
 	UPROPERTY() int32 IngredientTier = 1; // 0 cheap, 1 normal, 2 premium
 
+	// --- Pricing (version 7) ---
+	// The player's markup per product, not the list price: the list price is
+	// balance data and may legitimately change under an existing save, whereas
+	// the markup is a decision the player made and must survive.
+	UPROPERTY() TArray<float> UrunCarpanlari;
+
 	// --- Skills & prestige ---
 	UPROPERTY() int32 SkillPoints = 0;
 	UPROPERTY() int32 SkillSpent = 0;

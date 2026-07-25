@@ -12,6 +12,7 @@ class UCigCookingSystem;
 class UCigOrderSystem;
 class UCigCustomerSystem;
 class UCigEconomySystem;
+class UCigPricingSystem;
 class UCigInventorySystem;
 class UCigProgressionSystem;
 class UCigQuestSystem;
@@ -42,6 +43,7 @@ enum class ECigTabletTab : uint8
 {
 	Stok = 0,
 	Tarifler,
+	Fiyatlar,
 	Dukkan,
 	Tedarikci,
 	Rakipler,
@@ -114,6 +116,7 @@ public:
 	UPROPERTY() TObjectPtr<UCigOrderSystem> Orders;
 	UPROPERTY() TObjectPtr<UCigCustomerSystem> Customers;
 	UPROPERTY() TObjectPtr<UCigEconomySystem> Economy;
+	UPROPERTY() TObjectPtr<UCigPricingSystem> Pricing;
 	UPROPERTY() TObjectPtr<UCigInventorySystem> Inventory;
 	UPROPERTY() TObjectPtr<UCigProgressionSystem> Progression;
 	UPROPERTY() TObjectPtr<UCigQuestSystem> Quests;

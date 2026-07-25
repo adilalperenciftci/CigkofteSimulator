@@ -1,6 +1,7 @@
 #include "Core/CigBalance.h"
 #include "Core/CigLog.h"
 #include "Core/CigText.h"
+#include "Core/CigUnlocks.h"
 #include "Core/CigUpgrades.h"
 #include "Core/CigkofteTypes.h"
 #include "Progression/CigSkillSystem.h"
@@ -289,6 +290,57 @@ namespace
 		};
 	}
 
+	FCigPricingRow MakePricing(int32 Index, const TCHAR* Label, int32 TabanFiyat, float Esneklik,
+		float MinCarpan, float MaxCarpan)
+	{
+		FCigPricingRow R;
+		R.Index = Index;
+		R.Label = Label;
+		R.TabanFiyat = TabanFiyat;
+		R.Esneklik = Esneklik;
+		R.MinCarpan = MinCarpan;
+		R.MaxCarpan = MaxCarpan;
+		return R;
+	}
+
+	TArray<FCigPricingRow> DefaultPricing()
+	{
+		// Staples carry a lower elasticity than treats on purpose: nobody walks
+		// past the shop over five lira on a wrap, but they will skip the kunefe.
+		return {
+			MakePricing(CigUrunDurum,        TEXT("Dürüm"),               65, 1.2f, 0.6f, 1.8f),
+			MakePricing(CigUrunCiftPorsiyon, TEXT("Çift porsiyon dürüm"), 110, 1.3f, 0.6f, 1.8f),
+			MakePricing(CigUrunGarnitur,     TEXT("Garnitür (adet)"),      5, 0.8f, 0.5f, 2.0f),
+			MakePricing(CigUrunAyran,        TEXT("Ayran"),               20, 1.1f, 0.5f, 2.0f),
+			MakePricing(CigUrunIcliKofte,    TEXT("İçli köfte"),          45, 1.5f, 0.5f, 2.0f),
+			MakePricing(CigUrunCorba,        TEXT("Mercimek çorbası"),    35, 1.4f, 0.5f, 2.0f),
+			MakePricing(CigUrunKunefe,       TEXT("Künefe"),              70, 1.8f, 0.5f, 2.0f),
+			MakePricing(CigUrunCay,          TEXT("Çay"),                 10, 0.9f, 0.5f, 2.0f)
+		};
+	}
+
+	FCigMahalleRow MakeMahalle(int32 Index, const TCHAR* Label, float GelirCarpani)
+	{
+		FCigMahalleRow R;
+		R.Index = Index;
+		R.Label = Label;
+		R.GelirCarpani = GelirCarpani;
+		return R;
+	}
+
+	TArray<FCigMahalleRow> DefaultMahalle()
+	{
+		return {
+			MakeMahalle(0, TEXT("Ana cadde"),                 1.00f),
+			MakeMahalle(1, TEXT("Semt Pazarı"),               0.90f),
+			MakeMahalle(2, TEXT("Cumhuriyet Meydanı"),        1.05f),
+			MakeMahalle(3, TEXT("Okul ve Park"),              0.95f),
+			MakeMahalle(4, TEXT("Sanayi - Tedarikçi Deposu"), 0.85f),
+			MakeMahalle(5, TEXT("Şehir Stadı"),               1.10f),
+			MakeMahalle(6, TEXT("Sahil Kordonu"),             1.30f)
+		};
+	}
+
 	// ------------------------------------------------------------------ table storage
 
 	struct FCigBalanceTables
@@ -298,6 +350,8 @@ namespace
 		TArray<FCigTraitRow> Traits;
 		TArray<FCigStockRow> Stock;
 		TArray<FCigAchievementRow> Achievements;
+		TArray<FCigPricingRow> Pricing;
+		TArray<FCigMahalleRow> Mahalle;
 		bool bLoaded = false;
 
 		void Load()
@@ -307,6 +361,8 @@ namespace
 			Traits = DefaultTraits();
 			Stock = DefaultStock();
 			Achievements = DefaultAchievements();
+			Pricing = DefaultPricing();
+			Mahalle = DefaultMahalle();
 
 			ForEachCsvRow(TEXT("Skills.csv"), [this](const FCigCsvRow& Row)
 			{
@@ -360,6 +416,37 @@ namespace
 				Row.Int(TEXT("OrderAmount"), R.OrderAmount);
 			});
 
+			ForEachCsvRow(TEXT("Pricing.csv"), [this](const FCigCsvRow& Row)
+			{
+				int32 Index = -1;
+				Row.Int(TEXT("Index"), Index);
+				if (!Pricing.IsValidIndex(Index))
+				{
+					UE_LOG(LogCig, Warning, TEXT("Pricing.csv: geçersiz Index %d — satır atlandı."), Index);
+					return;
+				}
+				FCigPricingRow& R = Pricing[Index];
+				Row.Str(TEXT("Label"), R.Label);
+				Row.Int(TEXT("TabanFiyat"), R.TabanFiyat);
+				Row.Flt(TEXT("Esneklik"), R.Esneklik);
+				Row.Flt(TEXT("MinCarpan"), R.MinCarpan);
+				Row.Flt(TEXT("MaxCarpan"), R.MaxCarpan);
+			});
+
+			ForEachCsvRow(TEXT("Mahalle.csv"), [this](const FCigCsvRow& Row)
+			{
+				int32 Index = -1;
+				Row.Int(TEXT("Index"), Index);
+				if (!Mahalle.IsValidIndex(Index))
+				{
+					UE_LOG(LogCig, Warning, TEXT("Mahalle.csv: geçersiz Index %d — satır atlandı."), Index);
+					return;
+				}
+				FCigMahalleRow& R = Mahalle[Index];
+				Row.Str(TEXT("Label"), R.Label);
+				Row.Flt(TEXT("GelirCarpani"), R.GelirCarpani);
+			});
+
 			ForEachCsvRow(TEXT("Achievements.csv"), [this](const FCigCsvRow& Row)
 			{
 				if (FCigAchievementRow* R = FindByKey(Achievements, Row))
@@ -400,6 +487,8 @@ static_assert((int32)ECigUpgrade::COUNT == 13, "Upgrades tablosu ECigUpgrade ile
 static_assert((int32)ECigAchievement::COUNT == 20, "Achievements tablosu ECigAchievement ile eşleşmiyor (CigBalance.cpp: DefaultAchievements)");
 static_assert(CigStockCount == 18, "Stock tablosu CigStockCount ile eşleşmiyor (CigBalance.cpp: DefaultStock)");
 static_assert(CigTraitCount == 14, "Traits tablosu CigTraitCount ile eşleşmiyor (CigBalance.cpp: DefaultTraits)");
+static_assert(CigUrunCount == 8, "Pricing tablosu CigUrunCount ile eşleşmiyor (CigBalance.cpp: DefaultPricing)");
+static_assert((int32)ECigDistrict::COUNT == 6, "Mahalle tablosu ECigDistrict ile eşleşmiyor (CigBalance.cpp: DefaultMahalle)");
 
 namespace CigBalance
 {
@@ -417,6 +506,9 @@ namespace CigBalance
 	const FCigUpgradeRow& Upgrade(int32 Index)         { return At(Tables().Upgrades, Index); }
 	const FCigStockRow& Stock(int32 Index)             { return At(Tables().Stock, Index); }
 	const FCigAchievementRow& Achievement(int32 Index) { return At(Tables().Achievements, Index); }
+	const FCigPricingRow& Pricing(int32 Index)         { return At(Tables().Pricing, Index); }
+	const FCigMahalleRow& Mahalle(int32 Index)         { return At(Tables().Mahalle, Index); }
+	int32 MahalleCount() { return Tables().Mahalle.Num(); }
 	const FCigTraitRow& Trait(int32 Index)             { return At(Tables().Traits, Index); }
 	FString SkillName(int32 Index)                     { const FCigSkillRow& R = Skill(Index); return LocalizedBalanceText(TEXT("bal.skill"), R.Key, TEXT("name"), R.Name); }
 	FString SkillDesc(int32 Index)                     { const FCigSkillRow& R = Skill(Index); return LocalizedBalanceText(TEXT("bal.skill"), R.Key, TEXT("desc"), R.Desc); }

@@ -2,8 +2,11 @@
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigEventBus.h"
 #include "Economy/CigEconomySystem.h"
+#include "Economy/CigPricingSystem.h"
 #include "Cat/CigCatSystem.h"
 #include "Core/CigRandomSubsystem.h"
+
+#define LOCTEXT_NAMESPACE "CigReviews"
 
 namespace
 {
@@ -146,6 +149,31 @@ void UCigReviewSystem::OnDayEnd(int32 Day)
 			Text = TEXT("Lezzet iyi ama tezgahın hali içler acısıydı.");
 		}
 
+		// Price reaches the reviews before it reaches the ledger: an expensive
+		// shop gets called expensive even when the food is good, and one that
+		// undercuts the street too far gets doubted for the same reason.
+		const UCigPricingSystem* Fiyatlar = GM ? GM->Pricing.Get() : nullptr;
+		if (Fiyatlar && Fiyatlar->PahaliGoruluyor() && Stars > 2)
+		{
+			Stars--;
+			static const FText Pahali[] = {
+				LOCTEXT("YorumPahali1", "Lezzet güzel de bu fiyata bu porsiyon fazla geldi."),
+				LOCTEXT("YorumPahali2", "Mahallenin en pahalı dürümü, kalitesi o kadar önde değil."),
+				LOCTEXT("YorumPahali3", "Cebi yakıyor. Karşı sokakta yarı fiyatına yiyorum.")
+			};
+			Text = Pahali[Rng().PickIndex(UE_ARRAY_COUNT(Pahali))].ToString();
+		}
+		else if (Fiyatlar && Fiyatlar->SuphelUcuzGoruluyor() && Stars >= 4)
+		{
+			Stars--;
+			static const FText Ucuz[] = {
+				LOCTEXT("YorumUcuz1", "Bu fiyata çiğköfte olur mu? İçine ne koyduklarını merak ettim."),
+				LOCTEXT("YorumUcuz2", "Ucuz ama tadı da o kadar; malzemeden kısıyorlar galiba."),
+				LOCTEXT("YorumUcuz3", "Bedavaya yakın, güzel de insan bir tereddüt ediyor.")
+			};
+			Text = Ucuz[Rng().PickIndex(UE_ARRAY_COUNT(Ucuz))].ToString();
+		}
+
 		FString Author = GReviewAuthors[Rng().PickIndex(UE_ARRAY_COUNT(GReviewAuthors))];
 		if (bCritic)
 		{
@@ -170,3 +198,5 @@ void UCigReviewSystem::OnDayEnd(int32 Day)
 	DayAngry = 0;
 	DayInfluencerAngry = 0;
 }
+
+#undef LOCTEXT_NAMESPACE

@@ -59,7 +59,11 @@ void UCigSaveSubsystem::MigrateSave(UCigSaveGame& Save)
 	{
 		MigrateV5ToV6(Save);
 	}
-	// In future: if (Save.SaveVersion < 7) { MigrateV6ToV7(Save); } ...
+	if (Save.SaveVersion < 7)
+	{
+		MigrateV6ToV7(Save);
+	}
+	// In future: if (Save.SaveVersion < 8) { MigrateV7ToV8(Save); } ...
 
 	Save.SaveVersion = CurrentVersion;
 	UE_LOG(LogCigSave, Log, TEXT("Kayıt taşındı: sürüm %d → %d"), From, CurrentVersion);
@@ -110,6 +114,14 @@ void UCigSaveSubsystem::MigrateV5ToV6(UCigSaveGame& Save)
 	// v6 brought key bindings into the save. v5 saves have no field; an empty
 	// array means "default bindings", which is exactly v5 behaviour.
 	Save.Settings.KeyBindings.Reset();
+}
+
+void UCigSaveSubsystem::MigrateV6ToV7(UCigSaveGame& Save)
+{
+	// v7 added the per-product pricing markups. A v6 save was played entirely at
+	// list price, so an empty array is the honest conversion: ApplySave fills
+	// every product with a markup of 1 and the shop keeps charging what it did.
+	Save.UrunCarpanlari.Reset();
 }
 
 bool UCigSaveSubsystem::SaveNow(ACigkofteGameMode* GM)

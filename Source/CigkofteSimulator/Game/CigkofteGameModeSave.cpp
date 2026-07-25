@@ -16,6 +16,7 @@
 #include "Orders/CigOrderSystem.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Economy/CigEconomySystem.h"
+#include "Economy/CigPricingSystem.h"
 #include "Economy/CigRivalSystem.h"
 #include "Economy/CigReviewSystem.h"
 #include "Inventory/CigInventorySystem.h"
@@ -58,6 +59,15 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 		for (int32 i = 0; i < CigSupplierCount; ++i)
 		{
 			Save.SupplierRelation[i] = Economy->SupplierRelation[i];
+		}
+	}
+
+	if (Pricing)
+	{
+		Save.UrunCarpanlari.SetNum(CigUrunCount);
+		for (int32 i = 0; i < CigUrunCount; ++i)
+		{
+			Save.UrunCarpanlari[i] = Pricing->Carpanlar[i];
 		}
 	}
 
@@ -290,6 +300,20 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 		if (Save.bOwnHouse && WorldBuilder)
 		{
 			WorldBuilder->SetHouseOwned();
+		}
+	}
+
+	if (Pricing)
+	{
+		// A short array means a pre-v7 save, or a table that has grown since;
+		// either way the missing products stay at list price. Clamping to the
+		// table's range also repairs a markup that a balance edit put out of
+		// bounds after the save was written.
+		for (int32 i = 0; i < CigUrunCount; ++i)
+		{
+			const FCigPricingRow& Row = CigBalance::Pricing(i);
+			const float Kayitli = Save.UrunCarpanlari.IsValidIndex(i) ? Save.UrunCarpanlari[i] : 1.f;
+			Pricing->Carpanlar[i] = FMath::Clamp(Kayitli, Row.MinCarpan, Row.MaxCarpan);
 		}
 	}
 

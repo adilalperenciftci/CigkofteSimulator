@@ -21,7 +21,8 @@ public:
 	// Version 4: accessibility settings added, the dead Language field dropped.
 	// Version 5: UI text became translatable and Language returned, working.
 	// Version 6: key bindings entered the save.
-	static constexpr int32 CurrentVersion = 6;
+	// Version 7: per-product pricing markups entered the save.
+	static constexpr int32 CurrentVersion = 7;
 
 	bool HasSave() const;
 	bool SaveNow(ACigkofteGameMode* GM);
@@ -42,4 +43,5 @@ private:
 	static void MigrateV3ToV4(UCigSaveGame& Save);
 	static void MigrateV4ToV5(UCigSaveGame& Save);
 	static void MigrateV5ToV6(UCigSaveGame& Save);
+	static void MigrateV6ToV7(UCigSaveGame& Save);
 };

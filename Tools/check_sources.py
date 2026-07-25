@@ -76,6 +76,9 @@ CSV_SCHEMA = {
         ["Key", "Name", "Weight", "MinDay", "RareChance",
          "PatienceMult", "TipChanceDelta", "TipMultOverride"], 14),
     "Stock.csv": (["Index", "Label", "BaseCost", "StartAmount", "OrderAmount"], 18),
+    "Pricing.csv": (
+        ["Index", "Label", "TabanFiyat", "Esneklik", "MinCarpan", "MaxCarpan"], 8),
+    "Mahalle.csv": (["Index", "Label", "GelirCarpani"], 7),
     "Achievements.csv": (["Key", "Name", "Desc", "Stat", "Threshold"], 20),
 }
 

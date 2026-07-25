@@ -12,6 +12,7 @@
 #include "Progression/CigSkillSystem.h"
 #include "Hygiene/CigHygieneSystem.h"
 #include "Events/CigEventSystem.h"
+#include "Economy/CigPricingSystem.h"
 #include "Economy/CigReviewSystem.h"
 #include "Economy/CigRivalSystem.h"
 #include "World/CigWorldBuilder.h"
@@ -211,6 +212,13 @@ float UCigCustomerSystem::NextCustomerInterval() const
 	if (GM && GM->Rivals)
 	{
 		Mult /= FMath::Max(0.4f, GM->Rivals->PlayerPullMult());
+	}
+	if (GM && GM->Pricing)
+	{
+		// This is the gap between the interval and the demand curve: the curve
+		// returns customers-per-day, the interval is seconds-between-customers,
+		// so demand divides rather than multiplies.
+		Mult /= GM->Pricing->GunlukTalepCarpani();
 	}
 
 	return FMath::Max(3.5f, Base * RepFactor * DayFactor * Mult);
@@ -424,8 +432,12 @@ void UCigCustomerSystem::ServeFront()
 	float Quality = Wrap.DoughQuality * (bDirty ? 0.7f : 1.f);
 
 	// --- Price ---
+	// List prices and the player's markup both come from the pricing system; the
+	// recipe and policy multipliers still stack on top of whatever is charged.
 	const FCigRecipe& R = UCigCookingSystem::Recipe(Wrap.Recipe);
-	const int32 BasePrice = Wrap.Portions >= 2 ? 110 : 65;
+	const UCigPricingSystem* Fiyatlar = GM->Pricing.Get();
+	const int32 UrunIndex = Wrap.Portions >= 2 ? CigUrunCiftPorsiyon : CigUrunDurum;
+	const int32 BasePrice = Fiyatlar->Fiyat(UrunIndex);
 	float Price = BasePrice * R.PriceMult * Eco->PolicyPriceMult();
 	Price *= FMath::Clamp(Quality / 100.f, 0.3f, 1.2f);
 	Price *= FMath::Lerp(0.35f, 1.f, Score.Accuracy / 100.f);
@@ -443,15 +455,15 @@ void UCigCustomerSystem::ServeFront()
 			ToppingCount++;
 		}
 	}
-	Price += ToppingCount * 5.f;
+	Price += ToppingCount * Fiyatlar->Fiyat(CigUrunGarnitur);
 	if (Wrap.bAyran)
 	{
-		Price += 20.f;
+		Price += Fiyatlar->Fiyat(CigUrunAyran);
 	}
 	// A menu side is added at full price (the accuracy multiplier does not apply)
 	if (Wrap.Side != ECigSide::Yok)
 	{
-		Price += (float)CigSidePrice(Wrap.Side);
+		Price += (float)Fiyatlar->Fiyat(CigSideUrunIndex(Wrap.Side));
 	}
 
 	// --- Combo ---

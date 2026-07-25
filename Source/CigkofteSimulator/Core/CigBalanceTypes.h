@@ -102,6 +102,50 @@ struct FCigStockRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Stok") int32 OrderAmount = 10;
 };
 
+// --- Pricing ---
+USTRUCT(BlueprintType)
+struct FCigPricingRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	// Index into the pricing table (the CigUrun* constants in Core/CigkofteTypes.h).
+	UPROPERTY(EditAnywhere, Category = "Fiyat") int32 Index = 0;
+
+	// Only there to keep the CSV readable; what the tablet shows comes from the
+	// text table.
+	UPROPERTY(EditAnywhere, Category = "Fiyat") FString Label;
+
+	// List price, i.e. the price at a markup of 1.0.
+	UPROPERTY(EditAnywhere, Category = "Fiyat") int32 TabanFiyat = 65;
+
+	// How sharply demand answers a price change: footfall follows
+	// (price ratio)^-Esneklik. At 0 price does not move footfall at all; at 2 a
+	// 20% hike costs roughly a third of the queue. Staples should sit lower than
+	// treats - nobody skips the wrap over five lira, they skip the kunefe.
+	UPROPERTY(EditAnywhere, Category = "Fiyat") float Esneklik = 1.4f;
+
+	// The range the tablet lets the markup move in. Kept per product because a
+	// giveaway price on tea is harmless, on a two-portion wrap it is not.
+	UPROPERTY(EditAnywhere, Category = "Fiyat") float MinCarpan = 0.5f;
+	UPROPERTY(EditAnywhere, Category = "Fiyat") float MaxCarpan = 2.f;
+};
+
+// --- Neighbourhood income ---
+USTRUCT(BlueprintType)
+struct FCigMahalleRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	// Row 0 is the shop's own street and always counts; rows 1..6 line up with
+	// ECigDistrict and join the average as each district unlocks. That is what
+	// makes the area richer as the map opens up.
+	UPROPERTY(EditAnywhere, Category = "Mahalle") int32 Index = 0;
+	UPROPERTY(EditAnywhere, Category = "Mahalle") FString Label;
+
+	// What the area can afford. Above 1 the same price meets less resistance.
+	UPROPERTY(EditAnywhere, Category = "Mahalle") float GelirCarpani = 1.f;
+};
+
 // --- Achievements ---
 USTRUCT(BlueprintType)
 struct FCigAchievementRow : public FTableRowBase

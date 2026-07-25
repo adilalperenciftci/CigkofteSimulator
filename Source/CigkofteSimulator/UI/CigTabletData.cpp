@@ -5,6 +5,8 @@
 #include "Core/CigkofteTypes.h"
 #include "Inventory/CigInventorySystem.h"
 #include "Economy/CigEconomySystem.h"
+#include "Economy/CigPricingSystem.h"
+#include "Core/CigBalance.h"
 #include "Progression/CigSkillSystem.h"
 #include "Progression/CigAchievementSystem.h"
 #include "Cooking/CigCookingSystem.h"
@@ -16,6 +18,8 @@
 #include "Cat/CigCatSystem.h"
 #include "Progression/CigProgressionSystem.h"
 
+#define LOCTEXT_NAMESPACE "CigTablet"
+
 namespace
 {
 	const TCHAR* TabTextKey(ECigTabletTab Tab)
@@ -24,6 +28,7 @@ namespace
 		{
 		case ECigTabletTab::Stok:       return TEXT("tab.stok");
 		case ECigTabletTab::Tarifler:   return TEXT("tab.tarifler");
+		case ECigTabletTab::Fiyatlar:   return TEXT("tab.fiyatlar");
 		case ECigTabletTab::Dukkan:     return TEXT("tab.dukkan");
 		case ECigTabletTab::Tedarikci:  return TEXT("tab.tedarikci");
 		case ECigTabletTab::Rakipler:   return TEXT("tab.rakipler");
@@ -203,6 +208,51 @@ namespace CigTablet
 					Rows.Add(MakeRow(FString::Printf(TEXT("     %s"), R.Desc), FString(), CigUI::Dim));
 				}
 			}
+			break;
+		}
+
+		case ECigTabletTab::Fiyatlar:
+		{
+			const UCigPricingSystem* Fiyat = GM->Pricing.Get();
+			if (!Fiyat)
+			{
+				break;
+			}
+
+			const float RakipCarpan = Fiyat->RakipOrtalamaCarpani();
+			Rows.Add(MakeRow(
+				LOCTEXT("FiyatRakipBasligi", "Rakip ortalaması").ToString(),
+				FText::Format(LOCTEXT("FiyatRakipDeger", "liste x{0}"),
+					FText::AsNumber(RakipCarpan)).ToString(),
+				CigUI::Dim));
+			Rows.Add(MakeRow(
+				LOCTEXT("FiyatMahalleBasligi", "Mahalle gelir düzeyi").ToString(),
+				FText::Format(LOCTEXT("FiyatMahalleDeger", "x{0}"),
+					FText::AsNumber(Fiyat->MahalleGeliri())).ToString(),
+				CigUI::Dim));
+
+			for (int32 i = 0; i < CigUrunCount; ++i)
+			{
+				const FCigPricingRow& Row = CigBalance::Pricing(i);
+				const float Carpan = Fiyat->Carpan(i);
+
+				// Colour carries the pricing decision at a glance: dear in red,
+				// cheap in green, list price plain.
+				const FLinearColor Renk = Carpan > 1.02f ? CigUI::Bad
+				                        : (Carpan < 0.98f ? CigUI::Good : CigUI::White);
+
+				Rows.Add(MakeRow(
+					FString::Printf(TEXT("%d) %s"), i + 1, *Row.Label),
+					FText::Format(LOCTEXT("FiyatSatiri", "{0} TL  (liste {1} - x{2})"),
+						FText::AsNumber(Fiyat->Fiyat(i)),
+						FText::AsNumber(Row.TabanFiyat),
+						FText::AsNumber(Carpan)).ToString(),
+					Renk, true));
+			}
+
+			Rows.Add(MakeRow(
+				LOCTEXT("FiyatIpucu", "Rakam tuşu fiyatı artırır, Shift ile düşürür.").ToString(),
+				FString(), CigUI::Dim));
 			break;
 		}
 
@@ -386,3 +436,5 @@ namespace CigTablet
 		return Rows;
 	}
 }
+
+#undef LOCTEXT_NAMESPACE

@@ -110,17 +110,40 @@ inline int32 CigSideStockIndex(ECigSide S)
 	}
 }
 
-// Sale price of a side (TL).
-inline int32 CigSidePrice(ECigSide S)
+// ============================== Priceable products ==============================
+// Everything the player can put a price on from the tablet. Indices address
+// Config/Balance/Pricing.csv the same way the CigStock* constants address
+// Stock.csv, so the pricing table needs no enum of its own.
+
+constexpr int32 CigUrunDurum = 0;          // single-portion wrap
+constexpr int32 CigUrunCiftPorsiyon = 1;   // two-portion wrap
+constexpr int32 CigUrunGarnitur = 2;       // charged per topping on the wrap
+constexpr int32 CigUrunAyran = 3;
+constexpr int32 CigUrunIcliKofte = 4;
+constexpr int32 CigUrunCorba = 5;
+constexpr int32 CigUrunKunefe = 6;
+constexpr int32 CigUrunCay = 7;
+constexpr int32 CigUrunCount = 8;
+
+// Product index of a side (-1 = none).
+inline int32 CigSideUrunIndex(ECigSide S)
 {
 	switch (S)
 	{
-	case ECigSide::IcliKofte: return 45;
-	case ECigSide::Corba:     return 35;
-	case ECigSide::Kunefe:    return 70;
-	case ECigSide::Cay:       return 10;
-	default:                  return 0;
+	case ECigSide::IcliKofte: return CigUrunIcliKofte;
+	case ECigSide::Corba:     return CigUrunCorba;
+	case ECigSide::Kunefe:    return CigUrunKunefe;
+	case ECigSide::Cay:       return CigUrunCay;
+	default:                  return -1;
 	}
+}
+
+// List price of a side before the player's own markup. The markup lives in
+// UCigPricingSystem because it is player state, not balance data.
+inline int32 CigSidePrice(ECigSide S)
+{
+	const int32 Urun = CigSideUrunIndex(S);
+	return Urun >= 0 ? CigBalance::Pricing(Urun).TabanFiyat : 0;
 }
 
 // ============================== Wrap toppings ==============================

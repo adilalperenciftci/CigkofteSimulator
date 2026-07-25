@@ -50,6 +50,7 @@ tablet.owned,KURULU,OWNED
 tablet.unlocked,AÇILDI,UNLOCKED
 tab.stok,Stok,Stock
 tab.tarifler,Tarifler,Recipes
+tab.fiyatlar,Fiyatlar,Prices
 tab.dukkan,Dükkân,Shop
 tab.tedarikci,Tedarikçi,Supplier
 tab.rakipler,Rakipler,Rivals
