@@ -27,6 +27,9 @@ namespace CigBalance
 	const FCigStaffRow& Staff(int32 Index);
 	int32 StaffCount();
 
+	// Indexed in the same order as the definitions in CigEventSystem.cpp.
+	const FCigEventRow& Event(int32 Index);
+
 	FString SkillName(int32 Index);
 	FString SkillDesc(int32 Index);
 	FString UpgradeName(int32 Index);

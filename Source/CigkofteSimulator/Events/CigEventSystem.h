@@ -4,21 +4,19 @@
 #include "Game/CigSystem.h"
 #include "CigEventSystem.generated.h"
 
-// A daily event definition. Duration <= 0 means it lasts all day.
+// The prose half of an event: what it is called and what the player is told.
+// Every number that goes with it lives in Config/Balance/Events.csv, addressed
+// by the same index (see Core/CigBalance.h).
 struct FCigEventDef
 {
 	const TCHAR* Name;
 	const TCHAR* StartMsg;
 	const TCHAR* EndMsg;
-	int32 MinDay;
-	float Chance;
-	float Duration;
-	float SpawnMult;
-	float PatienceMult;
-	float PriceMult;
-	float DeliveryMult;   // paket servis sıklığı
-	float StockCostMult;
-	int32 SpecialType;    // 0 yok, 1 müşteri patlaması, 2 müfettiş, 3 VIP, 4 fenomen, 5 toplu sipariş, 6 kıtlık, 7 buzdolabı arızası
+
+	// 0 none, 1 customer rush, 2 inspector, 3 VIP, 4 influencer, 5 bulk order,
+	// 6 shortage, 7 broken fridge. Behaviour rather than balance, so it stays
+	// in code next to the branch that acts on it.
+	int32 SpecialType;
 };
 
 constexpr int32 CigEventDefCount = 14;
@@ -28,6 +26,31 @@ struct FCigActiveEvent
 {
 	int32 DefIndex = 0;
 	float TimeLeft = 0.f; // <0 ise gün boyu
+};
+
+// A bulk order that lands days before it is due.
+//
+// The offer is the whole point: a wedding worth a week's takings is only worth
+// taking if the shop can actually turn out that many wraps on the day, and
+// accepting one it cannot is meant to hurt.
+struct FCigTopluSiparis
+{
+	bool bTeklifVar = false;
+	bool bKabulEdildi = false;
+	int32 TeslimGunu = 0;
+	int32 IstenenAdet = 0;
+	int32 Odul = 0;
+
+	// TotalServed at the moment the order was accepted; progress is measured
+	// against it so wraps sold before accepting do not count.
+	int32 BaslangicServis = 0;
+};
+
+// How a finished bulk order settles up.
+struct FCigTopluSonuc
+{
+	float OdulOrani = 0.f;
+	float ItibarFarki = 0.f;
 };
 
 // Random daily events; the other systems read their multipliers from here.
@@ -54,6 +77,9 @@ public:
 	static constexpr int32 EventHeat = 3;      // Sıcak Hava
 	static constexpr int32 EventPowerOut = 6;  // Elektrik Kesintisi
 
+	// The bulk order draws its notice period and odds from this row.
+	static constexpr int32 EventTopluSiparis = 12;
+
 	float SpawnMult() const;
 	float PatienceMult() const;
 	float PriceMult() const;
@@ -62,10 +88,23 @@ public:
 	float SupplyDelayMult() const;
 	bool IsFridgeBroken() const;
 
+	// Settles a finished bulk order. Pure so the reward-versus-penalty curve can
+	// be checked without playing a week (see Tests/CigEventTests.cpp). Falling
+	// just short still pays something, because a shop that delivered 19 of 20
+	// has not failed the way one that delivered 3 has.
+	static FCigTopluSonuc TopluSiparisSonucu(int32 Yapilan, int32 Istenen);
+
+	void TopluSiparisiKabulEt();
+	void TopluSiparisiReddet();
+
 	TArray<FCigActiveEvent> Active;
+	FCigTopluSiparis TopluSiparis;
 
 private:
 	void StartEvent(int32 DefIndex);
 	void EndEvent(int32 ActiveIndex);
 	void ApplySpecialStart(const FCigEventDef& D);
+
+	void TopluSiparisTeklifEt(int32 Day);
+	void TopluSiparisiSonuclandir(int32 Day);
 };

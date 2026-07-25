@@ -130,6 +130,36 @@ struct FCigPricingRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Fiyat") float MaxCarpan = 2.f;
 };
 
+// --- Daily events ---
+// Only the numbers live here. The event's name and its start/end announcements
+// stay in Events/CigEventSystem.cpp: they are prose, not balance, and moving
+// them would be a job for the text layer rather than this table.
+USTRUCT(BlueprintType)
+struct FCigEventRow : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "Olay") FString Key;
+	UPROPERTY(EditAnywhere, Category = "Olay") FString Label;
+
+	UPROPERTY(EditAnywhere, Category = "Olay") int32 MinGun = 1;
+	UPROPERTY(EditAnywhere, Category = "Olay") float Sans = 0.1f;
+
+	// Seconds the event lasts; -1 means it runs to the end of the day.
+	UPROPERTY(EditAnywhere, Category = "Olay") float Sure = -1.f;
+
+	UPROPERTY(EditAnywhere, Category = "Olay") float SpawnCarpani = 1.f;
+	UPROPERTY(EditAnywhere, Category = "Olay") float SabirCarpani = 1.f;
+	UPROPERTY(EditAnywhere, Category = "Olay") float FiyatCarpani = 1.f;
+	UPROPERTY(EditAnywhere, Category = "Olay") float TeslimatCarpani = 1.f;
+	UPROPERTY(EditAnywhere, Category = "Olay") float StokCarpani = 1.f;
+
+	// 0 leaves the event on the dice. Anything else pins it to the calendar and
+	// it fires every N days regardless of Sans - that is what makes match day
+	// something the player can plan around instead of hope for.
+	UPROPERTY(EditAnywhere, Category = "Olay") int32 TakvimPeriyodu = 0;
+};
+
 // --- Staff archetypes ---
 // What a candidate walks in with. Everything is a multiplier around 1 so that
 // an apprentice hired before this table existed can be migrated to a flat 1 and

@@ -14,6 +14,7 @@
 #include "World/CigWorldBuilder.h"
 #include "Cooking/CigCookingSystem.h"
 #include "Economy/CigPricingSystem.h"
+#include "Events/CigEventSystem.h"
 #include "Core/CigBalance.h"
 #include "Orders/CigOrderSystem.h"
 #include "Customers/CigCustomerSystem.h"
@@ -224,6 +225,21 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 		else if (Idx == (int32)ECigSkill::COUNT)
 		{
 			Skills->DoPrestige();
+		}
+		break;
+	}
+	case ECigTabletTab::Gorevler:
+	{
+		if (Events && Events->TopluSiparis.bTeklifVar)
+		{
+			if (Num == 1)
+			{
+				Events->TopluSiparisiKabulEt();
+			}
+			else if (Num == 2)
+			{
+				Events->TopluSiparisiReddet();
+			}
 		}
 		break;
 	}

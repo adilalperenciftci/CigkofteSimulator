@@ -81,6 +81,9 @@ CSV_SCHEMA = {
     "Mahalle.csv": (["Index", "Label", "GelirCarpani"], 7),
     "Staff.csv": (
         ["Key", "Label", "Hiz", "Titizlik", "GulerYuz", "MaasBeklentisi"], 6),
+    "Events.csv": (
+        ["Key", "Label", "MinGun", "Sans", "Sure", "SpawnCarpani", "SabirCarpani",
+         "FiyatCarpani", "TeslimatCarpani", "StokCarpani", "TakvimPeriyodu"], 14),
     "Achievements.csv": (["Key", "Name", "Desc", "Stat", "Threshold"], 20),
 }
 

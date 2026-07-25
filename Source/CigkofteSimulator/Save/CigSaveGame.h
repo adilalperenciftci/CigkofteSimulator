@@ -185,6 +185,16 @@ public:
 	UPROPERTY() int32 ApprenticeOdenmemisGun = 0;
 	UPROPERTY() int32 StaffTransferTeklifi = 0;
 
+	// --- Bulk order (version 9) ---
+	// An offer only matters until its delivery day, but it has to survive a
+	// save in between: the three days' notice is the whole decision.
+	UPROPERTY() bool bTopluTeklifVar = false;
+	UPROPERTY() bool bTopluKabulEdildi = false;
+	UPROPERTY() int32 TopluTeslimGunu = 0;
+	UPROPERTY() int32 TopluIstenenAdet = 0;
+	UPROPERTY() int32 TopluOdul = 0;
+	UPROPERTY() int32 TopluBaslangicServis = 0;
+
 	// --- Cat ---
 	UPROPERTY() FString CatName = TEXT("Pamuk");
 	UPROPERTY() float CatFood = 70.f;

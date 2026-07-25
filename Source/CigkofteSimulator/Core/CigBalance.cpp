@@ -319,6 +319,46 @@ namespace
 		};
 	}
 
+	FCigEventRow MakeEvent(const TCHAR* Key, const TCHAR* Label, int32 MinGun, float Sans, float Sure,
+		float Spawn, float Sabir, float Fiyat, float Teslimat, float Stok, int32 TakvimPeriyodu)
+	{
+		FCigEventRow R;
+		R.Key = Key;
+		R.Label = Label;
+		R.MinGun = MinGun;
+		R.Sans = Sans;
+		R.Sure = Sure;
+		R.SpawnCarpani = Spawn;
+		R.SabirCarpani = Sabir;
+		R.FiyatCarpani = Fiyat;
+		R.TeslimatCarpani = Teslimat;
+		R.StokCarpani = Stok;
+		R.TakvimPeriyodu = TakvimPeriyodu;
+		return R;
+	}
+
+	TArray<FCigEventRow> DefaultEvents()
+	{
+		// Order is load-bearing: CigEventSystem exposes EventRain, EventHeat and
+		// EventPowerOut as indices into this table.
+		return {
+			MakeEvent(TEXT("OkulCikisi"),        TEXT("Okul Çıkışı"),        1, 0.20f, 45.f, 1.8f, 0.80f, 0.95f, 1.0f, 1.0f,  0),
+			MakeEvent(TEXT("MacGunu"),           TEXT("Maç Günü"),           2, 0.15f, 60.f, 1.6f, 0.70f, 1.10f, 1.2f, 1.0f,  7),
+			MakeEvent(TEXT("Yagmur"),            TEXT("Yağmur"),             1, 0.18f, -1.f, 0.6f, 1.10f, 1.00f, 1.7f, 1.0f,  0),
+			MakeEvent(TEXT("SicakHava"),         TEXT("Sıcak Hava"),         2, 0.15f, -1.f, 1.1f, 0.90f, 1.00f, 1.0f, 1.0f,  0),
+			MakeEvent(TEXT("IsotZammi"),         TEXT("İsot Zammı"),         3, 0.12f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.5f,  0),
+			MakeEvent(TEXT("TedarikGecikmesi"),  TEXT("Tedarik Gecikmesi"),  2, 0.12f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
+			MakeEvent(TEXT("ElektrikKesintisi"), TEXT("Elektrik Kesintisi"), 3, 0.10f, 50.f, 0.9f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
+			MakeEvent(TEXT("BelediyeDenetimi"),  TEXT("Belediye Denetimi"),  2, 0.12f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
+			MakeEvent(TEXT("UnluMusteri"),       TEXT("Ünlü Müşteri"),       3, 0.10f, 40.f, 1.2f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
+			MakeEvent(TEXT("FenomenZiyareti"),   TEXT("Fenomen Ziyareti"),   4, 0.10f, 40.f, 1.1f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
+			MakeEvent(TEXT("RakipKampanyasi"),   TEXT("Rakip Kampanyası"),   2, 0.12f, -1.f, 0.7f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
+			MakeEvent(TEXT("SokakFestivali"),    TEXT("Sokak Festivali"),    4, 0.10f, -1.f, 1.9f, 0.85f, 1.15f, 1.3f, 1.0f, 12),
+			MakeEvent(TEXT("TopluSiparis"),      TEXT("Toplu Sipariş"),      3, 0.12f, 60.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0),
+			MakeEvent(TEXT("MalzemeKitligi"),    TEXT("Malzeme Kıtlığı"),    3, 0.08f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.3f,  0)
+		};
+	}
+
 	FCigStaffRow MakeStaff(const TCHAR* Key, const TCHAR* Label, float Hiz, float Titizlik,
 		float GulerYuz, int32 MaasBeklentisi)
 	{
@@ -380,6 +420,7 @@ namespace
 		TArray<FCigPricingRow> Pricing;
 		TArray<FCigMahalleRow> Mahalle;
 		TArray<FCigStaffRow> Staff;
+		TArray<FCigEventRow> Events;
 		bool bLoaded = false;
 
 		void Load()
@@ -392,6 +433,7 @@ namespace
 			Pricing = DefaultPricing();
 			Mahalle = DefaultMahalle();
 			Staff = DefaultStaff();
+			Events = DefaultEvents();
 
 			ForEachCsvRow(TEXT("Skills.csv"), [this](const FCigCsvRow& Row)
 			{
@@ -476,6 +518,23 @@ namespace
 				Row.Flt(TEXT("GelirCarpani"), R.GelirCarpani);
 			});
 
+			ForEachCsvRow(TEXT("Events.csv"), [this](const FCigCsvRow& Row)
+			{
+				if (FCigEventRow* R = FindByKey(Events, Row))
+				{
+					Row.Str(TEXT("Label"), R->Label);
+					Row.Int(TEXT("MinGun"), R->MinGun);
+					Row.Flt(TEXT("Sans"), R->Sans);
+					Row.Flt(TEXT("Sure"), R->Sure);
+					Row.Flt(TEXT("SpawnCarpani"), R->SpawnCarpani);
+					Row.Flt(TEXT("SabirCarpani"), R->SabirCarpani);
+					Row.Flt(TEXT("FiyatCarpani"), R->FiyatCarpani);
+					Row.Flt(TEXT("TeslimatCarpani"), R->TeslimatCarpani);
+					Row.Flt(TEXT("StokCarpani"), R->StokCarpani);
+					Row.Int(TEXT("TakvimPeriyodu"), R->TakvimPeriyodu);
+				}
+			});
+
 			ForEachCsvRow(TEXT("Staff.csv"), [this](const FCigCsvRow& Row)
 			{
 				if (FCigStaffRow* R = FindByKey(Staff, Row))
@@ -550,6 +609,7 @@ namespace CigBalance
 	const FCigPricingRow& Pricing(int32 Index)         { return At(Tables().Pricing, Index); }
 	const FCigMahalleRow& Mahalle(int32 Index)         { return At(Tables().Mahalle, Index); }
 	const FCigStaffRow& Staff(int32 Index)             { return At(Tables().Staff, Index); }
+	const FCigEventRow& Event(int32 Index)             { return At(Tables().Events, Index); }
 	int32 MahalleCount() { return Tables().Mahalle.Num(); }
 	int32 StaffCount() { return Tables().Staff.Num(); }
 	const FCigTraitRow& Trait(int32 Index)             { return At(Tables().Traits, Index); }

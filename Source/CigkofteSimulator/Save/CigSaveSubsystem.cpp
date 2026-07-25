@@ -67,7 +67,11 @@ void UCigSaveSubsystem::MigrateSave(UCigSaveGame& Save)
 	{
 		MigrateV7ToV8(Save);
 	}
-	// In future: if (Save.SaveVersion < 9) { MigrateV8ToV9(Save); } ...
+	if (Save.SaveVersion < 9)
+	{
+		MigrateV8ToV9(Save);
+	}
+	// In future: if (Save.SaveVersion < 10) { MigrateV9ToV10(Save); } ...
 
 	Save.SaveVersion = CurrentVersion;
 	UE_LOG(LogCigSave, Log, TEXT("Kayıt taşındı: sürüm %d → %d"), From, CurrentVersion);
@@ -140,6 +144,18 @@ void UCigSaveSubsystem::MigrateV7ToV8(UCigSaveGame& Save)
 	Save.ApprenticeGulerYuz = 1.f;
 	Save.ApprenticeOdenmemisGun = 0;
 	Save.StaffTransferTeklifi = 0;
+}
+
+void UCigSaveSubsystem::MigrateV8ToV9(UCigSaveGame& Save)
+{
+	// v9 added the bulk order. A v8 save had none in flight, and the cleared
+	// fields are exactly that: no offer, nothing accepted, nothing owed.
+	Save.bTopluTeklifVar = false;
+	Save.bTopluKabulEdildi = false;
+	Save.TopluTeslimGunu = 0;
+	Save.TopluIstenenAdet = 0;
+	Save.TopluOdul = 0;
+	Save.TopluBaslangicServis = 0;
 }
 
 bool UCigSaveSubsystem::SaveNow(ACigkofteGameMode* GM)

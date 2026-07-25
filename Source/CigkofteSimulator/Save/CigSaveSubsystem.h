@@ -46,4 +46,5 @@ private:
 	static void MigrateV5ToV6(UCigSaveGame& Save);
 	static void MigrateV6ToV7(UCigSaveGame& Save);
 	static void MigrateV7ToV8(UCigSaveGame& Save);
+	static void MigrateV8ToV9(UCigSaveGame& Save);
 };

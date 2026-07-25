@@ -13,6 +13,7 @@
 #include "Economy/CigRivalSystem.h"
 #include "Economy/CigReviewSystem.h"
 #include "Quests/CigQuestSystem.h"
+#include "Events/CigEventSystem.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Staff/CigStaffSystem.h"
 #include "Cat/CigCatSystem.h"
@@ -349,6 +350,35 @@ namespace CigTablet
 
 		case ECigTabletTab::Gorevler:
 		{
+			// The bulk order sits above the daily quest: it is the only thing here
+			// with a deadline the player can still act on.
+			if (const UCigEventSystem* Ev = GM->Events.Get())
+			{
+				const FCigTopluSiparis& T = Ev->TopluSiparis;
+				if (T.bTeklifVar)
+				{
+					Rows.Add(MakeHeader(LOCTEXT("TopluBaslik", "Toplu sipariş teklifi").ToString()));
+					Rows.Add(MakeRow(
+						FText::Format(LOCTEXT("TopluTeklif", "{0}. güne {1} dürüm"),
+							FText::AsNumber(T.TeslimGunu), FText::AsNumber(T.IstenenAdet)).ToString(),
+						FText::Format(LOCTEXT("TopluOdul", "{0} TL"), FText::AsNumber(T.Odul)).ToString(),
+						CigUI::Gold));
+					Rows.Add(MakeRow(LOCTEXT("TopluKabul", "1) Kabul et").ToString(), FString(), CigUI::Good, true));
+					Rows.Add(MakeRow(LOCTEXT("TopluRet", "2) Reddet").ToString(), FString(), CigUI::Dim, true));
+				}
+				else if (T.bKabulEdildi)
+				{
+					const UCigProgressionSystem* Pr = GM->Progression.Get();
+					const int32 Yapilan = Pr ? Pr->TotalServed - T.BaslangicServis : 0;
+					Rows.Add(MakeHeader(LOCTEXT("TopluAktifBaslik", "Toplu sipariş").ToString()));
+					Rows.Add(MakeBarRow(
+						FText::Format(LOCTEXT("TopluIlerleme", "{0}/{1} dürüm  ·  teslim {2}. gün"),
+							FText::AsNumber(Yapilan), FText::AsNumber(T.IstenenAdet),
+							FText::AsNumber(T.TeslimGunu)).ToString(),
+						T.IstenenAdet > 0 ? (float)Yapilan / (float)T.IstenenAdet : 0.f,
+						CigUI::Gold, CigUI::White));
+				}
+			}
 			const UCigQuestSystem* Q = GM->Quests.Get();
 			if (!Q)
 			{

@@ -17,6 +17,7 @@
 #include "Customers/CigCustomerSystem.h"
 #include "Economy/CigEconomySystem.h"
 #include "Economy/CigPricingSystem.h"
+#include "Events/CigEventSystem.h"
 #include "Economy/CigRivalSystem.h"
 #include "Economy/CigReviewSystem.h"
 #include "Inventory/CigInventorySystem.h"
@@ -215,6 +216,17 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 		Save.ApprenticeGulerYuz = A.GulerYuz;
 		Save.ApprenticeOdenmemisGun = A.OdenmemisGun;
 		Save.StaffTransferTeklifi = Staff->TransferTeklifi;
+	}
+
+	if (Events)
+	{
+		const FCigTopluSiparis& T = Events->TopluSiparis;
+		Save.bTopluTeklifVar = T.bTeklifVar;
+		Save.bTopluKabulEdildi = T.bKabulEdildi;
+		Save.TopluTeslimGunu = T.TeslimGunu;
+		Save.TopluIstenenAdet = T.IstenenAdet;
+		Save.TopluOdul = T.Odul;
+		Save.TopluBaslangicServis = T.BaslangicServis;
 	}
 
 	if (CatSys)
@@ -477,6 +489,17 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 		Staff->Apprentice.Hiz = Save.ApprenticeHiz > 0.f ? Save.ApprenticeHiz : 1.f;
 		Staff->Apprentice.Titizlik = Save.ApprenticeTitizlik > 0.f ? Save.ApprenticeTitizlik : 1.f;
 		Staff->Apprentice.GulerYuz = Save.ApprenticeGulerYuz > 0.f ? Save.ApprenticeGulerYuz : 1.f;
+	}
+
+	if (Events)
+	{
+		FCigTopluSiparis& T = Events->TopluSiparis;
+		T.bTeklifVar = Save.bTopluTeklifVar;
+		T.bKabulEdildi = Save.bTopluKabulEdildi;
+		T.TeslimGunu = Save.TopluTeslimGunu;
+		T.IstenenAdet = Save.TopluIstenenAdet;
+		T.Odul = Save.TopluOdul;
+		T.BaslangicServis = Save.TopluBaslangicServis;
 		Staff->RestoreNPC();
 	}
 
