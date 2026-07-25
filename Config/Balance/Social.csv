@@ -1,0 +1,19 @@
+Key,Label,Deger
+TakipciEtkisi,Takipçi çarpanının gücü,0.18
+TakipciTavan,Takipçiden gelebilecek en yüksek çarpan,1.80
+GunlukGonderi,Günlük gönderi hakkı,2
+TanitimTakipci,Ürün tanıtımının getirdiği takipçi,40
+KampanyaTakipci,Kampanya duyurusunun getirdiği takipçi,15
+KampanyaUcreti,Kampanya duyurusu ücreti (TL),150
+KampanyaSpawnEtkisi,Kampanyanın o günkü müşteri akışına etkisi,0.25
+SavunTakipci,Savunmanın takipçi etkisi (kötü yoruma),-25
+SavunItibar,Savunmanın itibar etkisi,-2
+OzurTakipci,Özrün takipçi etkisi,10
+OzurItibar,Özrün itibar etkisi,3
+GormezdenTakipci,Görmezden gelmenin takipçi etkisi,-8
+FenomenKazanc,Memnun fenomenin getirdiği takipçi,350
+FenomenKayip,Küsen fenomenin götürdüğü takipçi oranı,0.35
+ViralSans,Viral gün olasılığı (takipçi başına),0.00004
+ViralCarpan,Viral günde müşteri akışı çarpanı,3.0
+ViralStokEsigi,Viral günün ters tepmemesi için gereken stok,25
+ViralTersTepmeItibar,Viral gün stoksuz geçerse itibar kaybı,-15

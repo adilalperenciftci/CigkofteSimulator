@@ -16,6 +16,7 @@
 #include "Economy/CigReviewSystem.h"
 #include "Economy/CigRivalSystem.h"
 #include "Economy/CigInspectionSystem.h"
+#include "Economy/CigSocialSystem.h"
 #include "World/CigWorldBuilder.h"
 #include "Core/CigRandomSubsystem.h"
 #include "Core/CigBalance.h"
@@ -221,6 +222,11 @@ float UCigCustomerSystem::NextCustomerInterval() const
 		// so demand divides rather than multiplies.
 		Mult /= GM->Pricing->GunlukTalepCarpani();
 	}
+	if (GM && GM->Social)
+	{
+		// Followers, today's campaign and a viral day all arrive as one number.
+		Mult /= GM->Social->GunlukCarpan();
+	}
 
 	return FMath::Max(3.5f, Base * RepFactor * DayFactor * Mult);
 }
@@ -340,6 +346,10 @@ void UCigCustomerSystem::RemoveCustomer(ACigkofteCustomer* C, bool bAngry)
 		if (GM->Reviews)
 		{
 			GM->Reviews->RecordAngryLeave(bInfluencer);
+			if (bInfluencer && GM->Social)
+			{
+				GM->Social->FenomenAyrildi(false);
+			}
 		}
 		if (C->LoyalId >= 0)
 		{
@@ -591,6 +601,11 @@ void UCigCustomerSystem::ServeFront()
 	{
 		GM->AddMessage(CigText::Format(TEXT("msg.customer.notes"), *FString::Join(Score.Notes, TEXT(", "))), FLinearColor(1.f, 0.7f, 0.4f));
 	}
+	if (bInfluencer && GM->Social)
+	{
+		GM->Social->FenomenAyrildi(Score.Accuracy >= 70.f);
+	}
+
 	if (bInfluencer && Score.Accuracy >= 85.f)
 	{
 		GM->AddMessage(CigText::Get(TEXT("msg.customer.influencer.good")), FLinearColor(0.9f, 0.6f, 1.f));

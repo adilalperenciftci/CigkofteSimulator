@@ -75,7 +75,11 @@ void UCigSaveSubsystem::MigrateSave(UCigSaveGame& Save)
 	{
 		MigrateV9ToV10(Save);
 	}
-	// In future: if (Save.SaveVersion < 11) { MigrateV10ToV11(Save); } ...
+	if (Save.SaveVersion < 11)
+	{
+		MigrateV10ToV11(Save);
+	}
+	// In future: if (Save.SaveVersion < 12) { MigrateV11ToV12(Save); } ...
 
 	Save.SaveVersion = CurrentVersion;
 	UE_LOG(LogCigSave, Log, TEXT("Kayıt taşındı: sürüm %d → %d"), From, CurrentVersion);
@@ -171,6 +175,13 @@ void UCigSaveSubsystem::MigrateV9ToV10(UCigSaveGame& Save)
 	Save.BasarisizDenetim = 0;
 	Save.RusvetSayisi = 0;
 	Save.KalanKapaliGun = 0;
+}
+
+void UCigSaveSubsystem::MigrateV10ToV11(UCigSaveGame& Save)
+{
+	// v11 added the follower count. A v10 shop had no online presence at all, so
+	// zero is the honest starting point rather than a gift.
+	Save.Takipci = 0;
 }
 
 bool UCigSaveSubsystem::SaveNow(ACigkofteGameMode* GM)

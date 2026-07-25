@@ -319,16 +319,16 @@ namespace
 		};
 	}
 
-	FCigInspectionRow MakeInspection(const TCHAR* Key, const TCHAR* Label, float Deger)
+	FCigParamRow MakeInspection(const TCHAR* Key, const TCHAR* Label, float Deger)
 	{
-		FCigInspectionRow R;
+		FCigParamRow R;
 		R.Key = Key;
 		R.Label = Label;
 		R.Deger = Deger;
 		return R;
 	}
 
-	TArray<FCigInspectionRow> DefaultInspection()
+	TArray<FCigParamRow> DefaultInspection()
 	{
 		return {
 			MakeInspection(TEXT("GecerNotu"),            TEXT("Geçme notu (0-100)"),                       60.f),
@@ -344,6 +344,30 @@ namespace
 			MakeInspection(TEXT("RusvetOrani"),          TEXT("Rüşvetin cezaya oranı"),                     0.60f),
 			MakeInspection(TEXT("RusvetRiskArtisi"),     TEXT("Her rüşvette yakalanma riski artışı"),       0.15f),
 			MakeInspection(TEXT("SikayetRiskArtisi"),    TEXT("Rakip şikâyetinin denetim olasılığına etkisi"), 0.25f)
+		};
+	}
+
+	TArray<FCigParamRow> DefaultSocial()
+	{
+		return {
+			MakeInspection(TEXT("TakipciEtkisi"),        TEXT("Takipçi çarpanının gücü"),                        0.18f),
+			MakeInspection(TEXT("TakipciTavan"),         TEXT("Takipçiden gelebilecek en yüksek çarpan"),        1.80f),
+			MakeInspection(TEXT("GunlukGonderi"),        TEXT("Günlük gönderi hakkı"),                           2.f),
+			MakeInspection(TEXT("TanitimTakipci"),       TEXT("Ürün tanıtımının getirdiği takipçi"),            40.f),
+			MakeInspection(TEXT("KampanyaTakipci"),      TEXT("Kampanya duyurusunun getirdiği takipçi"),        15.f),
+			MakeInspection(TEXT("KampanyaUcreti"),       TEXT("Kampanya duyurusu ücreti (TL)"),                150.f),
+			MakeInspection(TEXT("KampanyaSpawnEtkisi"),  TEXT("Kampanyanın o günkü müşteri akışına etkisi"),     0.25f),
+			MakeInspection(TEXT("SavunTakipci"),         TEXT("Savunmanın takipçi etkisi (kötü yoruma)"),      -25.f),
+			MakeInspection(TEXT("SavunItibar"),          TEXT("Savunmanın itibar etkisi"),                      -2.f),
+			MakeInspection(TEXT("OzurTakipci"),          TEXT("Özrün takipçi etkisi"),                          10.f),
+			MakeInspection(TEXT("OzurItibar"),           TEXT("Özrün itibar etkisi"),                            3.f),
+			MakeInspection(TEXT("GormezdenTakipci"),     TEXT("Görmezden gelmenin takipçi etkisi"),             -8.f),
+			MakeInspection(TEXT("FenomenKazanc"),        TEXT("Memnun fenomenin getirdiği takipçi"),           350.f),
+			MakeInspection(TEXT("FenomenKayip"),         TEXT("Küsen fenomenin götürdüğü takipçi oranı"),        0.35f),
+			MakeInspection(TEXT("ViralSans"),            TEXT("Viral gün olasılığı (takipçi başına)"),           0.00004f),
+			MakeInspection(TEXT("ViralCarpan"),          TEXT("Viral günde müşteri akışı çarpanı"),              3.0f),
+			MakeInspection(TEXT("ViralStokEsigi"),       TEXT("Viral günün ters tepmemesi için gereken stok"),  25.f),
+			MakeInspection(TEXT("ViralTersTepmeItibar"), TEXT("Viral gün stoksuz geçerse itibar kaybı"),       -15.f)
 		};
 	}
 
@@ -449,7 +473,8 @@ namespace
 		TArray<FCigMahalleRow> Mahalle;
 		TArray<FCigStaffRow> Staff;
 		TArray<FCigEventRow> Events;
-		TArray<FCigInspectionRow> Inspection;
+		TArray<FCigParamRow> Inspection;
+		TArray<FCigParamRow> Social;
 		bool bLoaded = false;
 
 		void Load()
@@ -464,6 +489,7 @@ namespace
 			Staff = DefaultStaff();
 			Events = DefaultEvents();
 			Inspection = DefaultInspection();
+			Social = DefaultSocial();
 
 			ForEachCsvRow(TEXT("Skills.csv"), [this](const FCigCsvRow& Row)
 			{
@@ -550,7 +576,16 @@ namespace
 
 			ForEachCsvRow(TEXT("Inspection.csv"), [this](const FCigCsvRow& Row)
 			{
-				if (FCigInspectionRow* R = FindByKey(Inspection, Row))
+				if (FCigParamRow* R = FindByKey(Inspection, Row))
+				{
+					Row.Str(TEXT("Label"), R->Label);
+					Row.Flt(TEXT("Deger"), R->Deger);
+				}
+			});
+
+			ForEachCsvRow(TEXT("Social.csv"), [this](const FCigCsvRow& Row)
+			{
+				if (FCigParamRow* R = FindByKey(Social, Row))
 				{
 					Row.Str(TEXT("Label"), R->Label);
 					Row.Flt(TEXT("Deger"), R->Deger);
@@ -650,17 +685,23 @@ namespace CigBalance
 	const FCigStaffRow& Staff(int32 Index)             { return At(Tables().Staff, Index); }
 	const FCigEventRow& Event(int32 Index)             { return At(Tables().Events, Index); }
 
-	float Inspection(const TCHAR* Key, float Fallback)
+	namespace
 	{
-		for (const FCigInspectionRow& R : Tables().Inspection)
+		float ParamAra(const TArray<FCigParamRow>& Table, const TCHAR* Key, float Fallback)
 		{
-			if (R.Key.Equals(Key, ESearchCase::IgnoreCase))
+			for (const FCigParamRow& R : Table)
 			{
-				return R.Deger;
+				if (R.Key.Equals(Key, ESearchCase::IgnoreCase))
+				{
+					return R.Deger;
+				}
 			}
+			return Fallback;
 		}
-		return Fallback;
 	}
+
+	float Inspection(const TCHAR* Key, float Fallback) { return ParamAra(Tables().Inspection, Key, Fallback); }
+	float Social(const TCHAR* Key, float Fallback)     { return ParamAra(Tables().Social, Key, Fallback); }
 	int32 MahalleCount() { return Tables().Mahalle.Num(); }
 	int32 StaffCount() { return Tables().Staff.Num(); }
 	const FCigTraitRow& Trait(int32 Index)             { return At(Tables().Traits, Index); }

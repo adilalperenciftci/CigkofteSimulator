@@ -3,6 +3,7 @@
 #include "Game/CigEventBus.h"
 #include "Economy/CigEconomySystem.h"
 #include "Economy/CigPricingSystem.h"
+#include "Economy/CigSocialSystem.h"
 #include "Cat/CigCatSystem.h"
 #include "Core/CigRandomSubsystem.h"
 
@@ -185,6 +186,12 @@ void UCigReviewSystem::OnDayEnd(int32 Day)
 			}
 		}
 		PushReview(Author, Text, Stars, Day);
+		// A poor review is the one the social system offers a reply to; it always
+		// lands at index 0 because PushReview inserts at the front.
+		if (Stars <= 2 && GM->Social)
+		{
+			GM->Social->YanitlanacakYorum = 0;
+		}
 	}
 
 	if (DayAngry >= 3)

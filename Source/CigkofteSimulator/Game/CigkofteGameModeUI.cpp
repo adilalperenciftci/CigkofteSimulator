@@ -15,6 +15,7 @@
 #include "Cooking/CigCookingSystem.h"
 #include "Economy/CigPricingSystem.h"
 #include "Economy/CigInspectionSystem.h"
+#include "Economy/CigSocialSystem.h"
 #include "Events/CigEventSystem.h"
 #include "Core/CigBalance.h"
 #include "Orders/CigOrderSystem.h"
@@ -240,6 +241,23 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 		else if (Idx == (int32)ECigSkill::COUNT)
 		{
 			Skills->DoPrestige();
+		}
+		break;
+	}
+	case ECigTabletTab::Yorumlar:
+	{
+		if (!Social)
+		{
+			break;
+		}
+		switch (Num)
+		{
+		case 1: Social->UrunTanitimiPaylas(); break;
+		case 2: Social->KampanyaDuyurusuPaylas(); break;
+		case 7: Social->YorumaYanitVer(ECigYanit::Savun); break;
+		case 8: Social->YorumaYanitVer(ECigYanit::OzurDile); break;
+		case 9: Social->YorumaYanitVer(ECigYanit::GormezdenGel); break;
+		default: break;
 		}
 		break;
 	}

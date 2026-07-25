@@ -203,6 +203,11 @@ public:
 	UPROPERTY() int32 RusvetSayisi = 0;
 	UPROPERTY() int32 KalanKapaliGun = 0;
 
+	// --- Social (version 11) ---
+	// Only the follower count persists. The daily post allowance, the campaign
+	// and the viral roll all belong to a single day and are rebuilt each morning.
+	UPROPERTY() int32 Takipci = 0;
+
 	// --- Cat ---
 	UPROPERTY() FString CatName = TEXT("Pamuk");
 	UPROPERTY() float CatFood = 70.f;

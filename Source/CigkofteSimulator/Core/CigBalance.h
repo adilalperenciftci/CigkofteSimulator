@@ -30,9 +30,10 @@ namespace CigBalance
 	// Indexed in the same order as the definitions in CigEventSystem.cpp.
 	const FCigEventRow& Event(int32 Index);
 
-	// Inspection parameters, looked up by key. An unknown key returns Fallback,
+	// Flat parameter tables, looked up by key. An unknown key returns Fallback,
 	// so a trimmed CSV cannot silently zero out a threshold.
 	float Inspection(const TCHAR* Key, float Fallback);
+	float Social(const TCHAR* Key, float Fallback);
 
 	FString SkillName(int32 Index);
 	FString SkillDesc(int32 Index);

@@ -25,7 +25,8 @@ public:
 	// Version 8: staff traits and the standing transfer offer entered the save.
 	// Version 9: the pending bulk order entered the save.
 	// Version 10: the licence, inspection record and bribe count entered the save.
-	static constexpr int32 CurrentVersion = 10;
+	// Version 11: the follower count entered the save.
+	static constexpr int32 CurrentVersion = 11;
 
 	bool HasSave() const;
 	bool SaveNow(ACigkofteGameMode* GM);
@@ -50,4 +51,5 @@ private:
 	static void MigrateV7ToV8(UCigSaveGame& Save);
 	static void MigrateV8ToV9(UCigSaveGame& Save);
 	static void MigrateV9ToV10(UCigSaveGame& Save);
+	static void MigrateV10ToV11(UCigSaveGame& Save);
 };

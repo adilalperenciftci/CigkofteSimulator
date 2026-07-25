@@ -7,6 +7,7 @@
 #include "Economy/CigEconomySystem.h"
 #include "Economy/CigPricingSystem.h"
 #include "Economy/CigInspectionSystem.h"
+#include "Economy/CigSocialSystem.h"
 #include "Core/CigBalance.h"
 #include "Progression/CigSkillSystem.h"
 #include "Progression/CigAchievementSystem.h"
@@ -347,6 +348,33 @@ namespace CigTablet
 
 		case ECigTabletTab::Yorumlar:
 		{
+			if (const UCigSocialSystem* Sos = GM->Social.Get())
+			{
+				Rows.Add(MakeHeader(FText::Format(LOCTEXT("SosyalBaslik", "Sosyal medya - {0} takipçi"),
+					FText::AsNumber(Sos->Takipci)).ToString()));
+				Rows.Add(MakeRow(
+					LOCTEXT("SosyalTanitim", "1) Ürün tanıtımı paylaş").ToString(),
+					FText::Format(LOCTEXT("SosyalHak", "{0} gönderi hakkı"),
+						FText::AsNumber(Sos->KalanGonderi)).ToString(),
+					Sos->KalanGonderi > 0 ? CigUI::White : CigUI::Dim, Sos->KalanGonderi > 0));
+				Rows.Add(MakeRow(
+					LOCTEXT("SosyalKampanya", "2) Kampanya duyur").ToString(),
+					Sos->bKampanyaAktif ? LOCTEXT("SosyalKampanyaAktif", "bugün yayında").ToString()
+					                    : LOCTEXT("SosyalKampanyaUcret", "150 TL").ToString(),
+					Sos->bKampanyaAktif ? CigUI::Good : CigUI::White, !Sos->bKampanyaAktif));
+
+				// The reply options only appear while a poor review is actually
+				// waiting; offering them otherwise would be three dead keys.
+				if (Sos->YanitBekleyenVar())
+				{
+					Rows.Add(MakeRow(LOCTEXT("SosyalYanitBasligi", "Kötü yoruma yanıt:").ToString(),
+						FString(), CigUI::Bad));
+					Rows.Add(MakeRow(LOCTEXT("SosyalSavun", "7) Savun").ToString(), FString(), CigUI::White, true));
+					Rows.Add(MakeRow(LOCTEXT("SosyalOzur", "8) Özür dile").ToString(), FString(), CigUI::White, true));
+					Rows.Add(MakeRow(LOCTEXT("SosyalGormezden", "9) Görmezden gel").ToString(), FString(), CigUI::Dim, true));
+				}
+			}
+
 			const UCigReviewSystem* Rev = GM->Reviews.Get();
 			if (!Rev)
 			{

@@ -130,18 +130,19 @@ struct FCigPricingRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Fiyat") float MaxCarpan = 2.f;
 };
 
-// --- Inspection parameters ---
-// A flat key/value table rather than one row per concept: these are a dozen
-// unrelated scalars (thresholds, fees, risk steps) that share no shape, and
-// forcing them into columns would invent a structure that is not there.
+// --- Flat parameter tables ---
+// Used by Inspection.csv and Social.csv. Both are a dozen unrelated scalars
+// (thresholds, fees, risk steps) that share no shape, so a key/value table is
+// the honest form: laying them out in columns would invent a structure that is
+// not there, and one struct serves both rather than two identical ones.
 USTRUCT(BlueprintType)
-struct FCigInspectionRow : public FTableRowBase
+struct FCigParamRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category = "Denetim") FString Key;
-	UPROPERTY(EditAnywhere, Category = "Denetim") FString Label;
-	UPROPERTY(EditAnywhere, Category = "Denetim") float Deger = 0.f;
+	UPROPERTY(EditAnywhere, Category = "Parametre") FString Key;
+	UPROPERTY(EditAnywhere, Category = "Parametre") FString Label;
+	UPROPERTY(EditAnywhere, Category = "Parametre") float Deger = 0.f;
 };
 
 // --- Daily events ---

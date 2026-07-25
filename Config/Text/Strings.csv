@@ -340,6 +340,19 @@ msg.staff.served,{0} bir müşteriyi kendisi ağırladı (+{1} TL).,{0} handled 
 msg.staff.shelved,{0} rafa bir paket hazırladı ({1}/{2}).,{0} prepared a takeaway for the shelf ({1}/{2}).
 msg.staff.askraise,"{0}: 'Usta, maaş konusunu konuşacaktık...' (tabletten zam verebilirsin)","{0}: 'Boss, we should talk about salary...' (you can give a raise from tablet)"
 msg.staff.salary,Çırak maaşı: -{0} TL,Apprentice salary: -{0} TL
+msg.social.viral,Gönderin viral oldu! Bugün dükkân dolup taşacak.,Your post went viral! The shop will be packed today.
+msg.social.viralgood,Viral gün kapandı — takipçi patlaması yaşadın.,Viral day over - your following exploded.
+msg.social.viralbackfire,Viral gün stoksuz yakaladı seni; herkes eli boş döndü.,The viral day caught you with no stock; everyone left empty-handed.
+msg.social.posted,"Ürün tanıtımı paylaştın (+{0} takipçi, toplam {1}).","Posted a product feature (+{0} followers, {1} total)."
+msg.social.campaign,Kampanya duyurusu yayında — bugün müşteri akışı artacak.,Campaign announced - more customers today.
+msg.social.campaignactive,Bugün zaten kampanya duyurdun.,You already announced a campaign today.
+msg.social.noposts,Bugünlük gönderi hakkın kalmadı.,No posts left for today.
+msg.social.nomoney,Kampanya ücreti için para yetmiyor.,Not enough money for the campaign fee.
+msg.social.replied.defend,"Yorumu savundun; tartışma büyüdü (takipçi {0}).","You argued back; the thread grew (followers {0})."
+msg.social.replied.apologise,"Özür diledin, insanlar takdir etti (takipçi {0}).","You apologised and people appreciated it (followers {0})."
+msg.social.replied.ignore,"Yorumu görmezden geldin (takipçi {0}).","You let the review stand (followers {0})."
+msg.social.influencergood,"Fenomen memnun ayrıldı! +{0} takipçi (toplam {1}).","The influencer left happy! +{0} followers ({1} total)."
+msg.social.influencerbad,"Fenomen küstü — {0} takipçi kaybettin (kalan {1}).","The influencer was unimpressed - you lost {0} followers ({1} left)."
 msg.inspect.passed,Denetimden geçtin (puan {0}).,Passed the inspection (score {0}).
 msg.inspect.failed,"Denetimden kaldın (puan {0}). Ceza: {1} TL.","Failed the inspection (score {0}). Fine: {1} TL."
 msg.inspect.report,Müfettişin notu: {0},Inspector's note: {0}

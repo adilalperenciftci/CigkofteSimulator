@@ -18,6 +18,7 @@
 #include "Economy/CigEconomySystem.h"
 #include "Economy/CigPricingSystem.h"
 #include "Economy/CigInspectionSystem.h"
+#include "Economy/CigSocialSystem.h"
 #include "Events/CigEventSystem.h"
 #include "Economy/CigRivalSystem.h"
 #include "Economy/CigReviewSystem.h"
@@ -236,6 +237,11 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 		Save.BasarisizDenetim = Inspection->BasarisizDenetim;
 		Save.RusvetSayisi = Inspection->RusvetSayisi;
 		Save.KalanKapaliGun = Inspection->KalanKapaliGun;
+	}
+
+	if (Social)
+	{
+		Save.Takipci = Social->Takipci;
 	}
 
 	if (CatSys)
@@ -522,6 +528,11 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 		{
 			Inspection->RuhsatBitisGunu = Save.RuhsatBitisGunu;
 		}
+	}
+
+	if (Social)
+	{
+		Social->Takipci = FMath::Max(0, Save.Takipci);
 		Staff->RestoreNPC();
 	}
 
