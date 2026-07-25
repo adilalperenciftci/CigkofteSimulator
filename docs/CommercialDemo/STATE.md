@@ -20,6 +20,12 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
   but nothing used it, and the old roll guaranteed an inspector on even days.
   Replaced with one clamped probability (`DenetimSansi`) capped below certainty.
   Test: `Cigkofte.Inspection.ComplaintRaisesOddsWithoutGuaranteeing`.
+- **0.5 One event lifecycle.** `OnDayEnd` and `OnDayStart` both cleared `Active`
+  directly, so a day-long event (`Sure < 0`, never retired by `UpdateSystem`)
+  vanished without running `EndEvent` or showing its end message. Both now route
+  through `TumOlaylariBitir`, which returns the retired count so the teardown is
+  observable rather than indistinguishable from emptying the array.
+  Test: `Cigkofte.Events.DayLongEventsEndCleanly`.
 
 ## Current task
 
@@ -27,13 +33,16 @@ None in progress.
 
 ## Next exact task
 
-**0.5 — one event lifecycle.** Events with `Sure < 0` are cleared by
-`Active.Empty()` in `UCigEventSystem::OnDayEnd` without running `EndEvent`, so
-their end message never shows and nothing confirms their modifiers stopped.
-Route day-long events through the same `EndEvent` path, guarantee the end message
-fires exactly once, and add a test that a day-long event ends cleanly.
+**0.6 — stable review IDs.** `UCigSocialSystem::YanitlanacakYorum` stores an index
+into `UCigReviewSystem::Reviews`, and `PushReview` inserts at index 0. A second
+review generated the same day therefore silently redirects the pending reply to a
+different review. Add a monotonic `Id` to `FCigReview`, assign it in `PushReview`,
+store the ID rather than the index, look the review up by ID, and cover it with a
+test that generates several reviews in one day. Save version must rise because
+`FCigSaveReview` gains the field.
 
-Then in order: 0.6 stable review IDs, 0.1 unified sale pipeline, 0.4 contracts.
+Then in order: 0.1 unified sale pipeline, 0.4 contracts, 0.7 price score,
+0.8 dialogue context, 0.9 migration tests, 0.10 build scripts.
 
 ## Last successful build
 
@@ -47,7 +56,7 @@ Result: Succeeded.
 
 ## Last test result
 
-`Automation RunTests Cigkofte` — **52 passed, 0 failed**, exit code 0.
+`Automation RunTests Cigkofte` — **53 passed, 0 failed**, exit code 0.
 
 ## Blockers
 

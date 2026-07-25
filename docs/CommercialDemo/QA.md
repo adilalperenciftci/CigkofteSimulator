@@ -24,6 +24,21 @@ New tests observed passing:
 - `Cigkofte.Staff.PackageKeepsDoughSpice`
 - `Cigkofte.Inspection.ComplaintRaisesOddsWithoutGuaranteeing`
 
+## 2026-07-26 — slice 0.5
+
+| Check | Command | Result |
+|---|---|---|
+| Static | `python Tools/check_sources.py` | clean |
+| Build | `Build.bat CigkofteSimulatorEditor Win64 Development` | Succeeded |
+| Tests | `Automation RunTests Cigkofte` | **53 passed, 0 failed**, exit 0 |
+
+New test observed passing: `Cigkofte.Events.DayLongEventsEndCleanly`.
+
+Note: the first version of this test asserted only that `Active` emptied, which
+the previous `Active.Empty()` implementation also satisfied. It was rewritten to
+assert the retired count returned by `TumOlaylariBitir`, which the old path could
+not produce.
+
 ## Not yet executed
 
 Scenario tests required by the commercial-demo standard that do not exist yet:

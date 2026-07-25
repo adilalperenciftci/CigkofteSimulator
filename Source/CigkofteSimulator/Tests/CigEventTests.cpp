@@ -98,4 +98,41 @@ bool FCigEventTextTest::RunTest(const FString& /*Parameters*/)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigEventTeardownTest,
+	"Cigkofte.Events.DayLongEventsEndCleanly",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigEventTeardownTest::RunTest(const FString& /*Parameters*/)
+{
+	// A day-long event carries TimeLeft < 0, so UpdateSystem never retires it and
+	// the day used to end by emptying the array - which dropped it without ever
+	// running EndEvent. The retired count is the observable that separates the
+	// two: emptying the array would also leave Active at zero.
+	UCigEventSystem* Sys = NewObject<UCigEventSystem>();
+	Sys->AddToRoot();
+
+	FCigActiveEvent Zamanli;
+	Zamanli.DefIndex = UCigEventSystem::EventRain;
+	Zamanli.TimeLeft = 30.f;
+	Sys->Active.Add(Zamanli);
+
+	FCigActiveEvent GunBoyu;
+	GunBoyu.DefIndex = 0;
+	GunBoyu.TimeLeft = -1.f;
+	Sys->Active.Add(GunBoyu);
+
+	TestNotEqual(TEXT("Olaylar aktifken çarpan nötr olmamalı"), Sys->SpawnMult(), 1.f);
+
+	TestEqual(TEXT("İki olay da EndEvent üzerinden kapanmalı"), Sys->TumOlaylariBitir(), 2);
+	TestEqual(TEXT("Boş listede kapatılacak olay kalmamalı"), Sys->TumOlaylariBitir(), 0);
+
+	TestEqual(TEXT("Gün sonunda hiçbir olay aktif kalmamalı"), Sys->Active.Num(), 0);
+	TestEqual(TEXT("Çarpanlar nötre dönmeli"), Sys->SpawnMult(), 1.f, 0.001f);
+	TestEqual(TEXT("Sabır çarpanı nötre dönmeli"), Sys->PatienceMult(), 1.f, 0.001f);
+	TestFalse(TEXT("Buzdolabı arızası kalmamalı"), Sys->IsFridgeBroken());
+
+	Sys->RemoveFromRoot();
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

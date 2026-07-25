@@ -39,7 +39,9 @@ bool UCigEventSystem::IsEventActive(int32 DefIndex) const
 
 void UCigEventSystem::OnDayStart(int32 Day)
 {
-	Active.Empty();
+	// Normally a no-op: the previous day retired everything. Anything that did
+	// survive still leaves through the same door rather than disappearing.
+	TumOlaylariBitir();
 
 	// Calendar days come first and outside the two-event budget: match day is
 	// something the player planned around, so a pair of unlucky dice rolls must
@@ -74,8 +76,18 @@ void UCigEventSystem::OnDayStart(int32 Day)
 
 void UCigEventSystem::OnDayEnd(int32 Day)
 {
-	Active.Empty();
+	TumOlaylariBitir();
 	TopluSiparisiSonuclandir(Day);
+}
+
+int32 UCigEventSystem::TumOlaylariBitir()
+{
+	const int32 Bitirilen = Active.Num();
+	for (int32 i = Active.Num() - 1; i >= 0; --i)
+	{
+		EndEvent(i);
+	}
+	return Bitirilen;
 }
 
 FCigTopluSonuc UCigEventSystem::TopluSiparisSonucu(int32 Yapilan, int32 Istenen)

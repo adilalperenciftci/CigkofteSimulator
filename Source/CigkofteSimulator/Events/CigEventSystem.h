@@ -85,6 +85,13 @@ public:
 	// has not failed the way one that delivered 3 has.
 	static FCigTopluSonuc TopluSiparisSonucu(int32 Yapilan, int32 Istenen);
 
+	// Retires every active event through EndEvent and returns how many were
+	// retired. Day-long events carry TimeLeft < 0 and are never picked up by
+	// UpdateSystem, so this is the only thing that ends them; emptying the array
+	// instead would skip their end message. Also used by the debug commands to
+	// clear the board.
+	int32 TumOlaylariBitir();
+
 	void TopluSiparisiKabulEt();
 	void TopluSiparisiReddet();
 
@@ -94,6 +101,7 @@ public:
 private:
 	void StartEvent(int32 DefIndex);
 	void EndEvent(int32 ActiveIndex);
+
 	void ApplySpecialStart(int32 OzelTur);
 
 	void TopluSiparisTeklifEt(int32 Day);
