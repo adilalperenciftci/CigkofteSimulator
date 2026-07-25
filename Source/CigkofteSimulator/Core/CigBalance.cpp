@@ -332,6 +332,8 @@ namespace
 	{
 		return {
 			MakeInspection(TEXT("GecerNotu"),            TEXT("Geçme notu (0-100)"),                       60.f),
+			MakeInspection(TEXT("GunlukDenetimSansi"),   TEXT("Günlük denetim olasılığı"),                  0.30f),
+			MakeInspection(TEXT("DenetimSansTavani"),    TEXT("Denetim olasılığının tavanı"),               0.65f),
 			MakeInspection(TEXT("HijyenAgirligi"),       TEXT("Hijyenin denetim puanındaki ağırlığı"),      0.50f),
 			MakeInspection(TEXT("TazelikAgirligi"),      TEXT("Stok tazeliğinin ağırlığı"),                 0.30f),
 			MakeInspection(TEXT("RuhsatAgirligi"),       TEXT("Ruhsatın ağırlığı"),                         0.20f),

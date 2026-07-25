@@ -1,5 +1,7 @@
 Key,Label,Deger
 GecerNotu,Geçme notu (0-100),60
+GunlukDenetimSansi,Günlük denetim olasılığı,0.30
+DenetimSansTavani,Denetim olasılığının tavanı,0.65
 HijyenAgirligi,Hijyenin denetim puanındaki ağırlığı,0.50
 TazelikAgirligi,Stok tazeliğinin ağırlığı,0.30
 RuhsatAgirligi,Ruhsatın ağırlığı,0.20

@@ -84,6 +84,23 @@ float UCigStaffSystem::HataOlasiligi(float Titizlik, int32 Seviye, float Enerji)
 	return FMath::Clamp(TabanHata / T * SeviyeCarpani * YorgunlukCarpani, 0.f, 0.5f);
 }
 
+FCigPackagedWrap UCigStaffSystem::PaketHazirla(ECigSpice Spice, float Kalite, bool bUzman)
+{
+	// A packaging specialist loses nothing to hurry; anyone else gives up a tenth
+	// of the batch quality.
+	constexpr float AcemiKaybi = 0.9f;
+
+	FCigPackagedWrap P;
+	P.Build.bActive = true;
+	P.Build.bWrapped = true;
+	P.Build.bPacked = true;
+	P.Build.Portions = 1;
+	P.Build.Spice = Spice;
+	P.Build.DoughQuality = Kalite * (bUzman ? 1.f : AcemiKaybi);
+	P.Temp = 100.f;
+	return P;
+}
+
 float UCigStaffSystem::IsAraligi(float Hiz, int32 Seviye)
 {
 	// The old formula was 9 - Level*0.5 with no notion of the person; speed now
@@ -430,16 +447,9 @@ void UCigStaffSystem::DoWork()
 		if (Orders && Cook && Cook->Dough.IsValid() && Orders->Shelf.Num() < UCigOrderSystem::MaxShelf && GM->Inventory && GM->Inventory->HasStock(CigStockLavas))
 		{
 			GM->Inventory->Consume(CigStockLavas);
+			const ECigSpice Acilik = Cook->Dough.Spice;
 			const float Q = Cook->UseServings(1);
-			FCigPackagedWrap P;
-			P.Build.bActive = true;
-			P.Build.bWrapped = true;
-			P.Build.bPacked = true;
-			P.Build.Portions = 1;
-			P.Build.DoughQuality = Q * (Apprentice.Spec == ECigStaffSpec::PaketUzmani ? 1.f : 0.9f);
-			P.Build.Spice = Cook->Dough.IsValid() ? Cook->Dough.Spice : ECigSpice::Orta;
-			P.Temp = 100.f;
-			Orders->Shelf.Add(P);
+			Orders->Shelf.Add(PaketHazirla(Acilik, Q, Apprentice.Spec == ECigStaffSpec::PaketUzmani));
 			GM->AddMessage(CigText::Format(TEXT("msg.staff.shelved"), *Apprentice.Name, Orders->Shelf.Num(), UCigOrderSystem::MaxShelf), FLinearColor(0.7f, 0.95f, 0.8f));
 			bWorked = true;
 		}

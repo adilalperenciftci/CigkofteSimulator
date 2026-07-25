@@ -733,15 +733,11 @@ void UCigCustomerSystem::OnDayStart(int32 Day)
 {
 	CustomerTimer = 3.f;
 
-	// The inspector may turn up every couple of days
-	if (Day >= 2 && (Day % 2 == 0 || Rng().Chance(0.3f)))
-	{
-		InspectorTimer = Rng().FRandRange(30.f, 120.f);
-	}
-	else
-	{
-		InspectorTimer = -1.f;
-	}
+	// One roll, and never a certainty: the complaint warning at day start only
+	// means something if the visit it warns about might still not happen.
+	const UCigInspectionSystem* Denetim = GM ? GM->Inspection.Get() : nullptr;
+	const float Sans = Denetim ? Denetim->BugunkuDenetimSansi() : 0.f;
+	InspectorTimer = (Day >= 2 && Rng().Chance(Sans)) ? Rng().FRandRange(30.f, 120.f) : -1.f;
 }
 
 void UCigCustomerSystem::OnDayEnd(int32 Day)

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Game/CigSystem.h"
+#include "Orders/CigOrderSystem.h"
 #include "CigStaffSystem.generated.h"
 
 class ACigkofteCustomer;
@@ -106,6 +107,11 @@ public:
 
 	// Seconds between work ticks. Faster staff and higher levels both shorten it.
 	static float IsAraligi(float Hiz, int32 Seviye);
+
+	// Builds the shelf package from values the caller already read. Spice must be
+	// captured before UseServings consumes the batch, or the last serving of a
+	// batch packages as medium.
+	static FCigPackagedWrap PaketHazirla(ECigSpice Spice, float Kalite, bool bUzman);
 
 	FCigApprentice Apprentice;
 

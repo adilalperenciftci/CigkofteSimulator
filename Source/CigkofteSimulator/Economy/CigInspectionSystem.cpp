@@ -75,6 +75,18 @@ int32 UCigInspectionSystem::RuhsatUcreti() const
 	return FMath::RoundToInt(Param(TEXT("RuhsatUcreti"), 250.f));
 }
 
+float UCigInspectionSystem::DenetimSansi(float TabanSans, float RiskCarpani, float Tavan)
+{
+	return FMath::Clamp(FMath::Max(TabanSans, 0.f) * FMath::Max(RiskCarpani, 0.f), 0.f, FMath::Clamp(Tavan, 0.f, 1.f));
+}
+
+float UCigInspectionSystem::BugunkuDenetimSansi() const
+{
+	return DenetimSansi(Param(TEXT("GunlukDenetimSansi"), 0.30f),
+		DenetimRiskCarpani(),
+		Param(TEXT("DenetimSansTavani"), 0.65f));
+}
+
 float UCigInspectionSystem::DenetimRiskCarpani() const
 {
 	return 1.f + (bSikayetVar ? Param(TEXT("SikayetRiskArtisi"), 0.25f) : 0.f);
