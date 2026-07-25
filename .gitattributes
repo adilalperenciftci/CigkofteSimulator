@@ -1,0 +1,24 @@
+# Depoda her şey LF olarak saklanır; checkout'ta platformun yerel biçimine
+# çevrilir. Bu olmadan Windows'ta yapılan her commit dosyaların tamamını
+# değişmiş gösterebiliyordu.
+* text=auto eol=lf
+
+# Metin olduğu kesin olanlar (denge dosyaları git'te diff'lenebilsin diye).
+*.h        text
+*.cpp      text
+*.cs       text
+*.csv      text
+*.json     text
+*.md       text
+*.ini      text
+*.yml      text
+*.py       text
+
+# Unreal ikili varlıkları: satır sonu dönüşümüne asla girmemeli.
+*.uasset   binary
+*.umap     binary
+*.png      binary
+*.jpg      binary
+*.ogg      binary
+*.wav      binary
+*.fbx      binary

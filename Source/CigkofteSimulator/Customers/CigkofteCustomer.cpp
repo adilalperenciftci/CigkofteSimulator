@@ -1,0 +1,451 @@
+#include "Customers/CigkofteCustomer.h"
+#include "Core/CigText.h"
+#include "Orders/CigOrderSystem.h"
+#include "Components/StaticMeshComponent.h"
+#include "Components/TextRenderComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/World.h"
+
+ACigkofteCustomer::ACigkofteCustomer()
+{
+	PrimaryActorTick.bCanEverTick = true;
+
+	USceneComponent* Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+	SetRootComponent(Root);
+	Root->SetMobility(EComponentMobility::Movable);
+
+	auto MakePart = [this](const TCHAR* Name, bool bQuery = false)
+	{
+		UStaticMeshComponent* C = CreateDefaultSubobject<UStaticMeshComponent>(Name);
+		C->SetupAttachment(RootComponent);
+		C->SetMobility(EComponentMobility::Movable);
+		C->SetCollisionEnabled(bQuery ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
+		return C;
+	};
+
+	Body = MakePart(TEXT("Body"), true);
+	Body->SetRelativeLocation(FVector(0.f, 0.f, 80.f));
+	Body->SetRelativeScale3D(FVector(0.55f, 0.55f, 1.6f));
+
+	Head = MakePart(TEXT("Head"));
+	Head->SetRelativeLocation(FVector(0.f, 0.f, 182.f));
+	Head->SetRelativeScale3D(FVector(0.4f));
+
+	LeftArm = MakePart(TEXT("LeftArm"));
+	LeftArm->SetRelativeLocation(FVector(0.f, -42.f, 115.f));
+	LeftArm->SetRelativeScale3D(FVector(0.14f, 0.14f, 0.65f));
+
+	RightArm = MakePart(TEXT("RightArm"));
+	RightArm->SetRelativeLocation(FVector(0.f, 42.f, 115.f));
+	RightArm->SetRelativeScale3D(FVector(0.14f, 0.14f, 0.65f));
+
+	Hat = MakePart(TEXT("Hat"));
+	Hat->SetRelativeLocation(FVector(0.f, 0.f, 205.f));
+	Hat->SetRelativeScale3D(FVector(0.28f, 0.28f, 0.12f));
+	Hat->SetVisibility(false);
+
+	Bag = MakePart(TEXT("Bag"));
+	Bag->SetRelativeLocation(FVector(0.f, -55.f, 90.f));
+	Bag->SetRelativeScale3D(FVector(0.22f, 0.12f, 0.3f));
+	Bag->SetVisibility(false);
+
+	GlassL = MakePart(TEXT("GlassL"));
+	GlassL->SetRelativeLocation(FVector(17.f, -8.f, 184.f));
+	GlassL->SetRelativeScale3D(FVector(0.07f));
+	GlassL->SetVisibility(false);
+
+	GlassR = MakePart(TEXT("GlassR"));
+	GlassR->SetRelativeLocation(FVector(17.f, 8.f, 184.f));
+	GlassR->SetRelativeScale3D(FVector(0.07f));
+	GlassR->SetVisibility(false);
+
+	OrderText = CreateDefaultSubobject<UTextRenderComponent>(TEXT("OrderText"));
+	OrderText->SetupAttachment(Root);
+	OrderText->SetMobility(EComponentMobility::Movable);
+	OrderText->SetRelativeLocation(FVector(0.f, 0.f, 245.f));
+	OrderText->SetHorizontalAlignment(EHTA_Center);
+	OrderText->SetWorldSize(20.f);
+	OrderText->SetTextRenderColor(FColor::Green);
+
+	TraitText = CreateDefaultSubobject<UTextRenderComponent>(TEXT("TraitText"));
+	TraitText->SetupAttachment(Root);
+	TraitText->SetMobility(EComponentMobility::Movable);
+	TraitText->SetRelativeLocation(FVector(0.f, 0.f, 272.f));
+	TraitText->SetHorizontalAlignment(EHTA_Center);
+	TraitText->SetWorldSize(15.f);
+	TraitText->SetTextRenderColor(FColor(200, 200, 255));
+
+	// Phase offset for the sway animation - it touches no game state, so it is
+	// deliberately left on the global RNG (see Core/CigRandomSubsystem.h).
+	IdleSeed = FMath::FRandRange(0.f, 100.f);
+}
+
+void ACigkofteCustomer::InitVisuals(int32 Seed)
+{
+	// Appearance derives entirely from Seed, which the caller takes from the
+	// deterministic stream. A negative Seed is only for callers that do not care.
+	VisualSeed = Seed >= 0 ? Seed : FMath::Rand();
+	FRandomStream Rand(VisualSeed);
+
+	UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+	UStaticMesh* Cylinder = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+	UStaticMesh* Cone = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"));
+	UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (!Cube || !Cylinder || !Sphere)
+	{
+		return;
+	}
+
+	Body->SetStaticMesh(Cylinder);
+	Head->SetStaticMesh(Sphere);
+	LeftArm->SetStaticMesh(Cylinder);
+	RightArm->SetStaticMesh(Cylinder);
+	Hat->SetStaticMesh(Cone ? Cone : Cylinder);
+	Bag->SetStaticMesh(Cube);
+	GlassL->SetStaticMesh(Sphere);
+	GlassR->SetStaticMesh(Sphere);
+
+	// Variation in height and proportions
+	HeightScale = Rand.FRandRange(0.85f, 1.15f);
+	const float Width = Rand.FRandRange(0.45f, 0.7f);
+	Body->SetRelativeScale3D(FVector(Width, Width, 1.6f * HeightScale));
+	BodyBaseZ = 80.f * HeightScale;
+	Head->SetRelativeLocation(FVector(0.f, 0.f, 182.f * HeightScale));
+	Hat->SetRelativeLocation(FVector(0.f, 0.f, 205.f * HeightScale));
+	GlassL->SetRelativeLocation(FVector(17.f, -8.f, 184.f * HeightScale));
+	GlassR->SetRelativeLocation(FVector(17.f, 8.f, 184.f * HeightScale));
+	OrderText->SetRelativeLocation(FVector(0.f, 0.f, 245.f * HeightScale));
+	TraitText->SetRelativeLocation(FVector(0.f, 0.f, 272.f * HeightScale));
+
+	static const FLinearColor Shirts[] = {
+		FLinearColor(0.15f, 0.30f, 0.55f),
+		FLinearColor(0.55f, 0.15f, 0.15f),
+		FLinearColor(0.15f, 0.45f, 0.25f),
+		FLinearColor(0.50f, 0.35f, 0.10f),
+		FLinearColor(0.35f, 0.20f, 0.45f),
+		FLinearColor(0.25f, 0.25f, 0.28f)
+	};
+	static const FLinearColor Skins[] = {
+		FLinearColor(0.85f, 0.62f, 0.45f),
+		FLinearColor(0.75f, 0.55f, 0.40f),
+		FLinearColor(0.92f, 0.72f, 0.55f),
+		FLinearColor(0.55f, 0.38f, 0.28f)
+	};
+
+	if (Mat)
+	{
+		BodyMID = UMaterialInstanceDynamic::Create(Mat, this);
+		HeadMID = UMaterialInstanceDynamic::Create(Mat, this);
+		BodyMID->SetVectorParameterValue(TEXT("Color"), Shirts[Rand.RandRange(0, UE_ARRAY_COUNT(Shirts) - 1)]);
+		HeadMID->SetVectorParameterValue(TEXT("Color"), Skins[Rand.RandRange(0, UE_ARRAY_COUNT(Skins) - 1)]);
+		Body->SetMaterial(0, BodyMID);
+		Head->SetMaterial(0, HeadMID);
+		LeftArm->SetMaterial(0, BodyMID);
+		RightArm->SetMaterial(0, BodyMID);
+		Hat->SetMaterial(0, BodyMID);
+		Bag->SetMaterial(0, BodyMID);
+
+		UMaterialInstanceDynamic* GlassMID = UMaterialInstanceDynamic::Create(Mat, this);
+		GlassMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.05f, 0.05f, 0.08f));
+		GlassL->SetMaterial(0, GlassMID);
+		GlassR->SetMaterial(0, GlassMID);
+	}
+
+	// Accessory variation
+	Hat->SetVisibility(Rand.FRand() < 0.30f);
+	Bag->SetVisibility(Rand.FRand() < 0.25f);
+	const bool bGlasses = Rand.FRand() < 0.25f;
+	GlassL->SetVisibility(bGlasses);
+	GlassR->SetVisibility(bGlasses);
+}
+
+void ACigkofteCustomer::ApplyOrderVisuals()
+{
+	FString Line = CigSpiceNameAscii(Spec.Spice);
+	Line += Spec.Portion >= 2 ? *CigText::Get(TEXT("customer.tag.portion")) : *CigText::Get(TEXT("customer.tag.wrap"));
+	if (Spec.bWantsAyran)
+	{
+		Line += *CigText::Get(TEXT("customer.tag.ayran"));
+	}
+	if (Spec.bPacked)
+	{
+		Line += *CigText::Get(TEXT("customer.tag.packed"));
+	}
+	if (bVIP)
+	{
+		Line = CigText::Get(TEXT("customer.tag.vip")) + Line;
+	}
+	OrderText->SetText(FText::FromString(Line));
+	OrderText->SetWorldSize(bVIP ? 26.f : 20.f);
+
+	// Trait label: show at most 2 traits
+	TArray<FString> TraitNames;
+	for (int32 i = 0; i < CigTraitCount && TraitNames.Num() < 2; ++i)
+	{
+		const ECigTrait T = (ECigTrait)(1 << i);
+		if (EnumHasAnyFlags(Traits, T) && T != ECigTrait::SecretCritic) // the undercover critic does not give themselves away
+		{
+			TraitNames.Add(CigTraitName(T));
+		}
+	}
+	if (!LoyalName.IsEmpty())
+	{
+		TraitNames.Insert(LoyalName, 0);
+	}
+	TraitText->SetText(FText::FromString(FString::Join(TraitNames, TEXT(" | "))));
+	TraitText->SetVisibility(TraitNames.Num() > 0);
+
+	// Some traits show in the appearance
+	if (EnumHasAnyFlags(Traits, ECigTrait::Tourist))
+	{
+		Hat->SetVisibility(true);
+	}
+	if (EnumHasAnyFlags(Traits, ECigTrait::Student))
+	{
+		Bag->SetVisibility(true);
+	}
+	if (EnumHasAnyFlags(Traits, ECigTrait::QualityFocused | ECigTrait::SecretCritic))
+	{
+		GlassL->SetVisibility(true);
+		GlassR->SetVisibility(true);
+	}
+	if (bVIP && BodyMID)
+	{
+		BodyMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.95f, 0.75f, 0.1f));
+	}
+	else if (EnumHasAnyFlags(Traits, ECigTrait::Influencer) && BodyMID)
+	{
+		BodyMID->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.85f, 0.3f, 0.75f));
+	}
+}
+
+void ACigkofteCustomer::InitAmbient(const FVector2D& WanderMin, const FVector2D& WanderMax)
+{
+	bAmbient = true;
+	WanderLo = WanderMin;
+	WanderHi = WanderMax;
+	// Pedestrians have no order. TextRender defaults to "Text", so the empty
+	// check did not catch it and the word "Text" showed up along the street.
+	OrderText->SetText(FText::GetEmpty());
+	OrderText->SetVisibility(false);
+	TraitText->SetText(FText::GetEmpty());
+	TraitText->SetVisibility(false);
+	PickWanderTarget();
+}
+
+void ACigkofteCustomer::PickWanderTarget()
+{
+	// Pedestrian wandering is decorative and stays out of the deterministic stream.
+	Target = FVector(FMath::FRandRange(WanderLo.X, WanderHi.X), FMath::FRandRange(WanderLo.Y, WanderHi.Y), 0.f);
+}
+
+void ACigkofteCustomer::SetTarget(const FVector& InTarget)
+{
+	Target = InTarget;
+}
+
+void ACigkofteCustomer::Leave(bool bAngry, const FVector& ExitPos)
+{
+	bLeaving = true;
+	bArrived = false;
+	bSeatMode = false;
+	bSeated = false;
+	bHappy = !bAngry;
+	HopTime = 0.f;
+	Target = ExitPos;
+	OrderText->SetText(FText::FromString(bAngry ? CigText::Get(TEXT("customer.leave.angry")) : CigText::Get(TEXT("customer.leave.happy"))));
+	OrderText->SetTextRenderColor(bAngry ? FColor::Red : FColor::Cyan);
+	OrderText->SetVisibility(true);
+	TraitText->SetVisibility(false);
+}
+
+void ACigkofteCustomer::Deactivate()
+{
+	bAwaitingRecycle = true;
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+	SetActorTickEnabled(false);
+}
+
+void ACigkofteCustomer::Reactivate(const FVector& SpawnPos)
+{
+	// All gameplay state has to be reset: a customer taken from the pool must not
+	// carry the previous one's order, patience or regular identity.
+	Spec = FCigOrderSpec();
+	Traits = ECigTrait::None;
+	LoyalId = -1;
+	LoyalName.Reset();
+	Patience = MaxPatience = 45.f;
+	bArrived = false;
+	bArrivalNotified = false;
+	bLeaving = false;
+	bAmbient = false;
+	bHappy = false;
+	bVIP = false;
+	bSeatMode = false;
+	bSeated = false;
+	HopTime = 0.f;
+	EatPhase = 0.f;
+	bAwaitingRecycle = false;
+
+	SetActorLocation(SpawnPos);
+	SetActorRotation(FRotator::ZeroRotator);
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	SetActorTickEnabled(true);
+
+	if (OrderText) { OrderText->SetVisibility(false); }
+	if (TraitText) { TraitText->SetVisibility(false); }
+}
+
+void ACigkofteCustomer::GoToSeat(const FVector& SeatPos, float InSeatYaw)
+{
+	bSeatMode = true;
+	bSeated = false;
+	bArrived = false;
+	bLeaving = false;
+	Target = SeatPos;
+	SeatYaw = InSeatYaw;
+	OrderText->SetText(FText::FromString(CigText::Get(TEXT("customer.seated"))));
+	OrderText->SetTextRenderColor(FColor(120, 220, 255));
+	OrderText->SetVisibility(true);
+	TraitText->SetVisibility(false);
+}
+
+void ACigkofteCustomer::SetPatienceColor(float Frac01)
+{
+	const FLinearColor Full = bVIP ? FLinearColor(1.f, 0.85f, 0.1f) : FLinearColor::Green;
+	const FLinearColor C = FMath::Lerp(FLinearColor::Red, Full, FMath::Clamp(Frac01, 0.f, 1.f));
+	OrderText->SetTextRenderColor(C.ToFColor(false));
+}
+
+FString ACigkofteCustomer::OrderString() const
+{
+	FString S = UCigOrderSystem::DescribeSpec(Spec);
+	if (bVIP)
+	{
+		S = CigText::Get(TEXT("customer.desc.vip")) + S;
+	}
+	if (!LoyalName.IsEmpty())
+	{
+		S = LoyalName + TEXT(" — ") + S;
+	}
+	return S;
+}
+
+void ACigkofteCustomer::ApplyWalkAnim(bool bWalking, float DeltaSeconds)
+{
+	// Seated pose: the body lowers and the arms swing as if eating.
+	if (bSeated)
+	{
+		EatPhase += DeltaSeconds * 4.f;
+		const float BodyZ = BodyBaseZ - 42.f;
+		const float ArmEat = 20.f + FMath::Abs(FMath::Sin(EatPhase)) * 25.f;
+		Body->SetRelativeLocation(FVector(0.f, 0.f, BodyZ));
+		Body->SetRelativeRotation(FRotator(6.f, 0.f, 0.f));
+		Head->SetRelativeLocation(FVector(6.f, 0.f, BodyZ + 100.f * HeightScale));
+		LeftArm->SetRelativeRotation(FRotator(ArmEat, 0.f, 0.f));
+		RightArm->SetRelativeRotation(FRotator(ArmEat, 0.f, 0.f));
+		return;
+	}
+
+	float BodyZ = BodyBaseZ;
+	float Roll = 0.f;
+	float ArmSwing = 0.f;
+
+	if (bWalking)
+	{
+		WalkPhase += DeltaSeconds * 10.f;
+		BodyZ += FMath::Abs(FMath::Sin(WalkPhase)) * 6.f;
+		Roll = FMath::Sin(WalkPhase) * 4.f;
+		ArmSwing = FMath::Sin(WalkPhase) * 35.f;
+	}
+	else
+	{
+		// A slight sway while waiting
+		const float T = GetWorld()->GetTimeSeconds();
+		Roll = FMath::Sin(T * 1.5f + IdleSeed) * 2.f;
+		ArmSwing = FMath::Sin(T * 1.2f + IdleSeed) * 5.f;
+	}
+
+	// A customer leaving happy gives a little hop
+	if (bLeaving && bHappy && HopTime < 1.4f)
+	{
+		HopTime += DeltaSeconds;
+		BodyZ += FMath::Abs(FMath::Sin(HopTime * 10.f)) * 18.f;
+	}
+
+	Body->SetRelativeLocation(FVector(0.f, 0.f, BodyZ));
+	Body->SetRelativeRotation(FRotator(0.f, 0.f, Roll));
+	Head->SetRelativeLocation(FVector(0.f, 0.f, BodyZ + 102.f * HeightScale));
+	LeftArm->SetRelativeRotation(FRotator(ArmSwing, 0.f, 0.f));
+	RightArm->SetRelativeRotation(FRotator(-ArmSwing, 0.f, 0.f));
+}
+
+void ACigkofteCustomer::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+
+	const FVector Pos = GetActorLocation();
+	const float Speed = bAmbient ? 220.f : 300.f;
+	const FVector NewPos = FMath::VInterpConstantTo(Pos, Target, DeltaSeconds, Speed);
+	SetActorLocation(NewPos);
+
+	const float Dist = FVector::Dist2D(NewPos, Target);
+	const bool bWalking = Dist > 35.f;
+
+	// Face the target while walking, face the shop (+X) while queueing
+	if (bWalking)
+	{
+		const FVector Dir = (Target - NewPos).GetSafeNormal2D();
+		if (!Dir.IsNearlyZero())
+		{
+			SetActorRotation(FRotator(0.f, Dir.Rotation().Yaw, 0.f));
+		}
+	}
+	else if (!bAmbient && !bLeaving)
+	{
+		SetActorRotation(FRotator::ZeroRotator);
+	}
+
+	ApplyWalkAnim(bWalking, DeltaSeconds);
+
+	if (bAmbient)
+	{
+		if (!bWalking)
+		{
+			PickWanderTarget();
+		}
+		return;
+	}
+
+	// Heading to a table / seated
+	if (bSeatMode)
+	{
+		if (!bSeated && Dist < 40.f)
+		{
+			bSeated = true;
+			SetActorRotation(FRotator(0.f, SeatYaw, 0.f));
+		}
+		if (bSeated)
+		{
+			SetActorRotation(FRotator(0.f, SeatYaw, 0.f));
+		}
+		return;
+	}
+
+	if (bLeaving)
+	{
+		if (Dist < 30.f)
+		{
+			// Wait to return to the pool rather than being destroyed (see bAwaitingRecycle).
+			Deactivate();
+		}
+	}
+	else
+	{
+		bArrived = Dist < 35.f;
+	}
+}

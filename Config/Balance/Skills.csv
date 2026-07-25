@@ -1,0 +1,9 @@
+﻿Key,Name,Desc,MaxRank,EffectPerRank
+HizliEl,"Hızlı El","Yoğurma vuruşları rütbe başına %15 daha etkili",3,0.15
+KeskinBicak,"Keskin Bıçak","Doğrama rütbe başına 1 vuruş azalır",2,1.0
+Guleryuzlu,"Güler Yüz","Bahşiş ve itibar kazancı rütbe başına %12 artar",3,0.12
+TemizIsci,"Temiz İşçi","Kirlenme rütbe başına %15 yavaşlar",3,0.85
+DayanikliBunye,"Dayanıklı Bünye","Enerji tüketimi rütbe başına %20 azalır",3,0.80
+HizliAyak,"Hızlı Ayak","Koşu hızı rütbe başına %8 artar",3,0.08
+PazarlikUstasi,"Pazarlık Ustası","Stok maliyeti rütbe başına %8 düşer",3,0.92
+MutfakUstasi,"Mutfak Ustası","Hamur kalitesi rütbe başına %5 artar",3,0.05

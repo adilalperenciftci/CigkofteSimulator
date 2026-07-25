@@ -1,0 +1,76 @@
+Çiğköfte Simulator
+Telif Hakkı (c) 2026 EG Games. Tüm hakları saklıdır.
+Copyright (c) 2026 EG Games. All rights reserved.
+
+--------------------------------------------------------------------------------
+TÜRKÇE
+--------------------------------------------------------------------------------
+
+Bu depodaki kaynak kodu ve belgeler kamuya AÇIK OLARAK GÖRÜNTÜLENEBİLİR, ancak
+AÇIK KAYNAK DEĞİLDİR. Aşağıdaki koşullar geçerlidir:
+
+İZİN VERİLENLER
+  1. Depoyu görüntüleyebilir, klonlayabilir ve kodu inceleme, değerlendirme,
+     eğitim ve referans amacıyla okuyabilirsiniz.
+  2. Kodu kendi bilgisayarınızda derleyip çalıştırabilirsiniz.
+  3. Kaynak gösterdiğiniz sürece kısa kod alıntılarını inceleme yazılarında,
+     eğitim içeriklerinde ve teknik tartışmalarda kullanabilirsiniz.
+
+İZİN VERİLMEYENLER
+  1. Kodun tamamını veya bir kısmını başka bir projede kullanmak, türev eser
+     üretmek veya yeniden dağıtmak.
+  2. Kodu, derlenmiş halini veya oyunun herhangi bir bölümünü ticari ya da
+     ticari olmayan biçimde satmak, yayımlamak veya dağıtmak.
+  3. Bu depodaki içeriği yapay zekâ modeli eğitiminde kullanmak.
+  4. Telif hakkı bildirimlerini kaldırmak veya değiştirmek.
+
+Bu kısıtlamaların dışında kalan her türlü kullanım için önceden yazılı izin
+gerekir: adilerta54@gmail.com
+
+ÜÇÜNCÜ TARAF İÇERİK
+Bu lisans yalnızca EG Games tarafından yazılan koda ve belgelere uygulanır.
+Projede kullanılan üçüncü taraf görsel ve ses assetleri kendi lisanslarına
+tabidir; ayrıntılar için CREDITS.md dosyasına bakınız. Kenney assetleri
+CC0 1.0 (kamu malı) lisanslıdır ve bu lisans onları kapsamaz.
+
+GARANTİ REDDİ
+YAZILIM "OLDUĞU GİBİ" SUNULMAKTADIR; AÇIK VEYA ÖRTÜLÜ HİÇBİR GARANTİ VERİLMEZ.
+TELİF HAKKI SAHİBİ, YAZILIMIN KULLANIMINDAN DOĞAN HİÇBİR TALEP, HASAR VEYA
+SORUMLULUKTAN MESUL DEĞİLDİR.
+
+--------------------------------------------------------------------------------
+ENGLISH
+--------------------------------------------------------------------------------
+
+The source code and documentation in this repository are PUBLICLY VIEWABLE but
+NOT OPEN SOURCE. The following terms apply:
+
+YOU MAY
+  1. View, clone, and read the code for the purposes of review, evaluation,
+     education, and reference.
+  2. Build and run the code on your own machine.
+  3. Quote short excerpts in reviews, educational material, and technical
+     discussion, provided you credit the source.
+
+YOU MAY NOT
+  1. Use any part of the code in another project, create derivative works, or
+     redistribute it.
+  2. Sell, publish, or distribute the code, its compiled form, or any part of
+     the game, commercially or non-commercially.
+  3. Use the contents of this repository to train artificial intelligence
+     models.
+  4. Remove or alter copyright notices.
+
+Any use beyond these terms requires prior written permission:
+adilerta54@gmail.com
+
+THIRD-PARTY CONTENT
+This license covers only the code and documentation authored by EG Games.
+Third-party art and audio assets used by the project remain under their own
+licenses; see CREDITS.md for details. Kenney assets are licensed CC0 1.0
+(public domain) and are not covered by this license.
+
+DISCLAIMER
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES, OR
+OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE.

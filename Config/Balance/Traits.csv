@@ -1,0 +1,15 @@
+﻿Key,Name,Weight,MinDay,RareChance,PatienceMult,TipChanceDelta,TipMultOverride
+Impatient,"Sabırsız",1,1,0,0.60,0,0
+Patient,"Sakin",1,1,0,1.50,0,0
+PriceSensitive,"Hesaplı",1,1,0,1.00,-0.20,0
+Generous,"Eli Açık",1,1,0,1.00,0.35,0.25
+HygieneSensitive,"Titiz",1,1,0,1.00,0,0
+QualityFocused,"Gurme",1,1,0,1.00,0,0
+Influencer,"Fenomen",0,3,0.06,1.00,0,0
+Tourist,"Turist",1,1,0,1.00,0,0
+Student,"Öğrenci",1,1,0,1.00,-0.15,0
+Family,"Aile",1,1,0,1.00,0,0
+Regular,"Müdavim",0,1,0,1.00,0,0
+SpicyFoodLover,"Acı Delisi",1,1,0,1.00,0,0
+Indecisive,"Kararsız",1,1,0,1.00,0,0
+SecretCritic,"Gizli Eleştirmen",0,2,0.07,1.00,0,0

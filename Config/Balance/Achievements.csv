@@ -1,0 +1,21 @@
+﻿Key,Name,Desc,Stat,Threshold
+IlkDurum,"Bereketli Olsun","İlk dürümünü sat",TotalServed,1
+YuzDurum,"Mahallenin Dilinde","100 dürüm sat",TotalServed,100
+BinDurum,"Dürüm Makinesi","1000 dürüm sat",TotalServed,1000
+IlkBinLira,"İlk Bin","Toplam 1.000 TL kazan",TotalEarned,1000
+OnBinLira,"On Bin","Toplam 10.000 TL kazan",TotalEarned,10000
+KasaDolu,"Kasa Dolu","Kasanda aynı anda 20.000 TL bulundur",Money,20000
+MukemmelOn,"Usta İşi","10 kusursuz sipariş çıkar",TotalPerfectOrders,10
+MukemmelYuz,"Kusursuz Yüz","100 kusursuz sipariş çıkar",TotalPerfectOrders,100
+IlkTeslimat,"Kurye","İlk paket servisini teslim et",TotalDeliveries,1
+ElliTeslimat,"Mahalle Kuryesi","50 paket servis teslim et",TotalDeliveries,50
+BesYildiz,"Beş Yıldız","İtibarı 90'ın üstüne çıkar",Rep,90
+TemizMutfak,"Tertemiz","Hijyeni %95'in üstünde tut",Hygiene,95
+OnuncuGun,"Onuncu Gün","10. güne ulaş",Day,10
+OtuzuncuGun,"Bir Ay Dayandı","30. güne ulaş",Day,30
+SonSeviye,"Çiğköfte Ustası","Seviye 10'a ulaş",Level,10
+EvSahibi,"Ev Sahibi","Mahalledeki evi satın al",OwnHouse,1
+KediDostu,"Kedi Dostu","Dükkânın kedisini doyur ve sev",CatHappy,90
+CirakPatronu,"Patron","Bir çırak işe al",ApprenticeHired,1
+TumDukkan,"Tam Donanım","Bütün dükkân geliştirmelerini al",AllUpgrades,1
+Devretme,"Devretme","Dükkânı devredip yeniden başla",PrestigeCount,1

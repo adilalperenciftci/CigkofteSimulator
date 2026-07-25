@@ -1,0 +1,609 @@
+#include "Debug/CigCheatManager.h"
+#include "Game/CigkofteGameMode.h"
+#include "Game/CigDaySystem.h"
+#include "Economy/CigEconomySystem.h"
+#include "Progression/CigProgressionSystem.h"
+#include "Progression/CigSkillSystem.h"
+#include "Customers/CigCustomerSystem.h"
+#include "Hygiene/CigHygieneSystem.h"
+#include "Inventory/CigInventorySystem.h"
+#include "Cooking/CigCookingSystem.h"
+#include "Quests/CigQuestSystem.h"
+#include "Events/CigEventSystem.h"
+#include "Delivery/CigDeliverySystem.h"
+#include "Cat/CigCatSystem.h"
+#include "Cat/CigCat.h"
+#include "Save/CigSaveSubsystem.h"
+#include "World/CigWorldBuilder.h"
+#include "Core/CigUpgrades.h"
+#include "Core/CigRandomSubsystem.h"
+#include "Core/CigBalance.h"
+#include "UI/CigTabletData.h"
+#include "Core/CigLog.h"
+#include "Kismet/GameplayStatics.h"
+#include "Engine/GameInstance.h"
+#include "Engine/World.h"
+#include "UnrealClient.h"
+#include "GameFramework/PlayerController.h"
+#include "TimerManager.h"
+
+ACigkofteGameMode* UCigCheatManager::GM() const
+{
+	return GetWorld() ? GetWorld()->GetAuthGameMode<ACigkofteGameMode>() : nullptr;
+}
+
+namespace
+{
+	UCigRandomSubsystem* CheatRng(const UWorld* World)
+	{
+		UGameInstance* GI = World ? World->GetGameInstance() : nullptr;
+		return GI ? GI->GetSubsystem<UCigRandomSubsystem>() : nullptr;
+	}
+}
+
+void UCigCheatManager::CigSeed()
+{
+	UCigRandomSubsystem* Rng = CheatRng(GetWorld());
+	if (!Rng)
+	{
+		return;
+	}
+	const FString Text = FString::Printf(TEXT("[DEBUG] RNG seed %d (durum %d, %lld çekim)"),
+		Rng->InitialSeed(), Rng->StateSeed(), Rng->DrawCount());
+	UE_LOG(LogCig, Log, TEXT("%s"), *Text);
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		Mode->AddMessage(Text);
+	}
+}
+
+void UCigCheatManager::CigReloadBalance()
+{
+	CigBalance::Reload();
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		// State that is already established (bought upgrades, spent ranks) does not
+		// change; the new numbers apply to calculations from here on.
+		Mode->AddMessage(TEXT("[DEBUG] Denge tabloları yeniden yüklendi."));
+	}
+}
+
+void UCigCheatManager::CigTabletDump()
+{
+	ACigkofteGameMode* Mode = GM();
+	if (!Mode)
+	{
+		return;
+	}
+	for (int32 i = 0; i < (int32)ECigTabletTab::COUNT; ++i)
+	{
+		const ECigTabletTab Tab = (ECigTabletTab)i;
+		const int32 Count = CigTablet::BuildRows(Mode, Tab).Num();
+		UE_LOG(LogCig, Log, TEXT("TABLET sekme %d (%s): %d satir"), i, *CigTablet::TabName(Tab), Count);
+	}
+}
+
+void UCigCheatManager::CigSetSeed(int32 Seed)
+{
+	UCigRandomSubsystem* Rng = CheatRng(GetWorld());
+	if (!Rng)
+	{
+		return;
+	}
+	Rng->SeedWith(Seed);
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		Mode->AddMessage(FString::Printf(TEXT("[DEBUG] RNG seed %d olarak ayarlandı."), Seed));
+	}
+}
+
+void UCigCheatManager::StartDayNow()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		Mode->StartFirstDayIfIntro();
+	}
+}
+
+void UCigCheatManager::AddMoney(int32 Amount)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Economy)
+		{
+			Mode->Economy->Money += Amount;
+			Mode->AddMessage(FString::Printf(TEXT("[DEBUG] Para +%d"), Amount));
+		}
+	}
+}
+
+void UCigCheatManager::AddSkillPoints(int32 Amount)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Skills)
+		{
+			Mode->Skills->GrantPoint(FMath::Max(1, Amount));
+		}
+	}
+}
+
+void UCigCheatManager::UpgradeSkill(int32 Index)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Skills && Index >= 0 && Index < (int32)ECigSkill::COUNT)
+		{
+			Mode->Skills->Upgrade((ECigSkill)Index);
+		}
+	}
+}
+
+void UCigCheatManager::DoPrestige()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Skills)
+		{
+			Mode->Skills->DoPrestige();
+		}
+	}
+}
+
+void UCigCheatManager::GiveSides(int32 Amount)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Inventory)
+		{
+			const int32 N = FMath::Max(1, Amount);
+			Mode->Inventory->Add(CigStockIcliKofte, N);
+			Mode->Inventory->Add(CigStockCorba, N);
+			Mode->Inventory->Add(CigStockKunefe, N);
+			Mode->Inventory->Add(CigStockCayBardak, N);
+			Mode->AddMessage(FString::Printf(TEXT("[DEBUG] Yan ürün stoğu +%d"), N));
+		}
+	}
+}
+
+void UCigCheatManager::SetMoney(int32 Amount)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Economy)
+		{
+			Mode->Economy->Money = Amount;
+		}
+	}
+}
+
+void UCigCheatManager::SetDay(int32 Day)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Days)
+		{
+			Mode->Days->Day = FMath::Max(1, Day);
+			Mode->AddMessage(FString::Printf(TEXT("[DEBUG] Gün = %d"), Mode->Days->Day));
+		}
+	}
+}
+
+void UCigCheatManager::SkipDay()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Days && Mode->Days->IsPlaying())
+		{
+			Mode->Days->TimeLeft = 0.5f;
+		}
+	}
+}
+
+void UCigCheatManager::SpawnCustomer()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Customers)
+		{
+			Mode->Customers->SpawnCustomer();
+		}
+	}
+}
+
+void UCigCheatManager::SpawnInfluencer()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Customers)
+		{
+			Mode->Customers->SpawnCustomer(false, true);
+		}
+	}
+}
+
+void UCigCheatManager::SetReputation(float Rep)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Progression)
+		{
+			Mode->Progression->Rep = FMath::Clamp(Rep, 0.f, 100.f);
+		}
+	}
+}
+
+void UCigCheatManager::SetHygiene(float Value)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Hygiene)
+		{
+			// Pulls overall hygiene roughly to the target by levelling all the dirt
+			const float Dirt = FMath::Clamp(100.f - Value, 0.f, 100.f);
+			Mode->Hygiene->HandDirt = Dirt;
+			Mode->Hygiene->CounterDirt = Dirt;
+			Mode->Hygiene->ChopDirt = Dirt;
+			Mode->Hygiene->TrashFill = Dirt;
+			Mode->Hygiene->DishPile = Dirt;
+			Mode->Hygiene->CatFur = Dirt;
+		}
+	}
+}
+
+void UCigCheatManager::CompleteQuest()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Quests)
+		{
+			Mode->Quests->CompleteQuestNow();
+		}
+	}
+}
+
+void UCigCheatManager::TriggerInspector()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Customers)
+		{
+			Mode->Customers->TriggerInspectorNow();
+		}
+	}
+}
+
+void UCigCheatManager::TriggerEvent(int32 EventIndex)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Events)
+		{
+			Mode->Events->TriggerEvent(EventIndex);
+		}
+	}
+}
+
+void UCigCheatManager::RefillStock()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Inventory)
+		{
+			for (int32 i = 0; i < CigStockCount; ++i)
+			{
+				Mode->Inventory->Stock[i] = 30;
+			}
+			Mode->AddMessage(TEXT("[DEBUG] Stoklar dolduruldu"));
+		}
+	}
+}
+
+void UCigCheatManager::UnlockRecipe()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Cooking)
+		{
+			Mode->Cooking->UnlockSecretRecipe();
+		}
+	}
+}
+
+void UCigCheatManager::UnlockAllUpgrades()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Economy)
+		{
+			for (int32 i = 0; i < (int32)ECigUpgrade::COUNT; ++i)
+			{
+				if (!Mode->Economy->UpgradeOwned[i])
+				{
+					Mode->Economy->UpgradeOwned[i] = true;
+					if (Mode->WorldBuilder)
+					{
+						Mode->WorldBuilder->ApplyUpgradeVisual(i);
+					}
+				}
+			}
+			Mode->AddMessage(TEXT("[DEBUG] Tüm upgrade'ler açıldı"));
+		}
+	}
+}
+
+void UCigCheatManager::SetTimeScale(float Scale)
+{
+	if (UWorld* World = GetWorld())
+	{
+		UGameplayStatics::SetGlobalTimeDilation(World, FMath::Clamp(Scale, 0.1f, 10.f));
+	}
+}
+
+void UCigCheatManager::StartDelivery()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Delivery)
+		{
+			Mode->Delivery->SpawnOrder();
+		}
+	}
+}
+
+void UCigCheatManager::SaveGame()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		Mode->RequestSave();
+	}
+}
+
+void UCigCheatManager::LoadGame()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		Mode->RequestLoad();
+	}
+}
+
+void UCigCheatManager::ResetSave()
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (UCigSaveSubsystem* SaveSys = Mode->GetGameInstance() ? Mode->GetGameInstance()->GetSubsystem<UCigSaveSubsystem>() : nullptr)
+		{
+			SaveSys->DeleteSave();
+			Mode->AddMessage(TEXT("[DEBUG] Kayıt silindi (yeni oyun için yeniden başlat)"));
+		}
+	}
+}
+
+void UCigCheatManager::AddXPCheat(int32 Amount)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->Progression)
+		{
+			Mode->Progression->AddXP(Amount);
+		}
+	}
+}
+
+void UCigCheatManager::RenameCat(const FString& NewName)
+{
+	if (ACigkofteGameMode* Mode = GM())
+	{
+		if (Mode->CatSys)
+		{
+			Mode->CatSys->SetCatName(NewName);
+		}
+	}
+}
+
+// ============================== Showcase tour ==============================
+
+void UCigCheatManager::CigShots()
+{
+	ShotIndex = 0;
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().SetTimer(ShotTimer, this, &UCigCheatManager::ShotStep, 1.6f, true, 1.f);
+	}
+}
+
+void UCigCheatManager::CigTour()
+{
+	ShotIndex = 0;
+	if (UWorld* World = GetWorld())
+	{
+		// The first step is delayed so districts can open and meshes can compile
+		World->GetTimerManager().SetTimer(ShotTimer, this, &UCigCheatManager::TourStep, 2.2f, true, 2.f);
+	}
+}
+
+void UCigCheatManager::TourStep()
+{
+	UWorld* World = GetWorld();
+	ACigkofteGameMode* Mode = GM();
+	APlayerController* PC = World ? World->GetFirstPlayerController() : nullptr;
+	if (!World || !Mode || !PC)
+	{
+		return;
+	}
+
+	auto Place = [PC](const FVector& Loc, float Yaw, float Pitch)
+	{
+		if (APawn* P = PC->GetPawn())
+		{
+			P->SetActorLocation(Loc);
+		}
+		PC->SetControlRotation(FRotator(Pitch, Yaw, 0.f));
+	};
+	auto Shot = [](const TCHAR* Name)
+	{
+		FScreenshotRequest::RequestScreenshot(FString(Name), /*bShowUI=*/false, /*bAddFilenameSuffix=*/false);
+	};
+
+	switch (ShotIndex++)
+	{
+	case 0: // start the day, unlock every district, fill the stock
+		Mode->StartFirstDayIfIntro();
+		if (Mode->Economy) { Mode->Economy->Money = 12000; }
+		if (Mode->Progression) { Mode->Progression->AddXP(3600); }
+		RefillStock();
+		GiveSides(20);
+		break;
+
+	case 1: // shop interior: counters and the new plate/bowl props
+		Place(FVector(-250.f, 0.f, 150.f), 0.f, -8.f);
+		break;
+	case 2:
+		Shot(TEXT("tour_01_dukkan"));
+		break;
+
+	case 3: // seating area: cafe tables and chairs
+		Place(FVector(-150.f, 750.f, 150.f), 120.f, -10.f);
+		break;
+	case 4:
+		Shot(TEXT("tour_02_oturma"));
+		break;
+
+	case 5: // street: CityPark buildings, trees, lamp posts
+		Place(FVector(-1800.f, 0.f, 220.f), 180.f, -5.f);
+		break;
+	case 6:
+		Shot(TEXT("tour_03_cadde"));
+		break;
+
+	case 7: // Cumhuriyet Meydani: the fountain and the statue
+		Place(FVector(-1800.f, 9600.f, 220.f), 90.f, -6.f);
+		break;
+	case 8:
+		Shot(TEXT("tour_04_meydan"));
+		break;
+
+	case 9: // Semt Pazari: bazaar stalls, spices, sacks
+		Place(FVector(-1800.f, -9800.f, 220.f), -90.f, -6.f);
+		break;
+	case 10:
+		Shot(TEXT("tour_05_pazar"));
+		break;
+
+	case 11: // cat: a close-up of the animated model
+		if (Mode->CatSys && Mode->CatSys->Cat)
+		{
+			const FVector CatPos = Mode->CatSys->Cat->GetActorLocation();
+			Place(CatPos + FVector(160.f, 0.f, 70.f), 180.f, -18.f);
+		}
+		break;
+	case 12:
+		Shot(TEXT("tour_06_kedi"));
+		break;
+
+	default:
+		UE_LOG(LogCig, Log, TEXT("CigTour tamam."));
+		PC->ConsoleCommand(TEXT("quit"), true);
+		break;
+	}
+}
+
+void UCigCheatManager::ShotStep()
+{
+	UWorld* World = GetWorld();
+	ACigkofteGameMode* Mode = GM();
+	APlayerController* PC = World ? World->GetFirstPlayerController() : nullptr;
+	if (!World || !Mode || !PC)
+	{
+		return;
+	}
+
+	// Places the player at a point and points them in the requested direction.
+	auto Place = [PC](const FVector& Loc, float Yaw, float Pitch)
+	{
+		if (APawn* P = PC->GetPawn())
+		{
+			P->SetActorLocation(Loc);
+		}
+		PC->SetControlRotation(FRotator(Pitch, Yaw, 0.f));
+	};
+	auto Shot = [World](const TCHAR* Name)
+	{
+		FScreenshotRequest::RequestScreenshot(FString(Name), /*bShowUI=*/true, /*bAddFilenameSuffix=*/false);
+	};
+
+	switch (ShotIndex++)
+	{
+	case 0: // show the shop stocked and upgraded
+		Mode->StartFirstDayIfIntro();
+		if (Mode->Economy) { Mode->Economy->Money = 5400; }
+		if (Mode->Progression) { Mode->Progression->AddXP(900); Mode->Progression->Rep = 82.f; }
+		RefillStock();
+		break;
+
+	case 1: // called early so the customers have time to walk in
+		if (Mode->Customers)
+		{
+			Mode->Customers->SpawnCustomer();
+			Mode->Customers->SpawnCustomer();
+			Mode->Customers->SpawnCustomer(true);
+		}
+		break;
+
+	case 2: // service counter and street
+		Place(FVector(120.f, 0.f, 110.f), 180.f, -7.f);
+		break;
+
+	case 3:
+		Shot(TEXT("01_servis"));
+		break;
+
+	case 4: // ingredient stations
+		Place(FVector(300.f, 0.f, 110.f), 0.f, -14.f);
+		break;
+
+	case 5:
+		Shot(TEXT("02_mutfak"));
+		break;
+
+	case 6: // kneading station
+		Place(FVector(-30.f, -640.f, 110.f), 0.f, -12.f);
+		break;
+
+	case 7:
+		Shot(TEXT("03_yogurma"));
+		break;
+
+	case 8: // tablet: shop upgrades
+		Mode->bTabletOpen = true;
+		Mode->TabletTab = ECigTabletTab::Dukkan;
+		break;
+
+	case 9:
+		Shot(TEXT("04_tablet_dukkan"));
+		break;
+
+	case 10:
+		Mode->TabletTab = ECigTabletTab::Gorevler;
+		break;
+
+	case 11:
+		Shot(TEXT("05_tablet_gorevler"));
+		break;
+
+	case 12:
+		Mode->bTabletOpen = false;
+		Place(FVector(-100.f, 700.f, 110.f), 135.f, -10.f);
+		break;
+
+	case 13:
+		Shot(TEXT("06_salon"));
+		break;
+
+	default:
+		World->GetTimerManager().ClearTimer(ShotTimer);
+		UE_LOG(LogCig, Log, TEXT("CigShots tamam."));
+		PC->ConsoleCommand(TEXT("quit"), true);
+		break;
+	}
+}

@@ -1,0 +1,42 @@
+# Unreal Engine generated / cache directories
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+
+# IDE
+.vs/
+.idea/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Local tooling scratch
+.claude/
+
+# Heavy third-party asset packs (from the EG_OYUN_CIGKOFTE_1 project).
+# They run to hundreds of MB and include individual uassets over GitHub's
+# 100 MB file limit; the code lives in the repo, these stay local.
+Content/dukkan/
+Content/Fab/
+Content/ModellerEnistem/
+Content/ModellerEnistem2/
+Content/Scene_Bazaar_Vol1/
+Content/CityPark/
+Content/CitySampleBuildings/
+Content/ModularBuildingSet/
+Content/MMSupermarket/
+Content/Scene_Banquet/
+Content/Cat_Animation_Pack/
+Content/Characters/
+
+# Generated prompt files (Saved/ is already excluded, but be explicit)
+Saved/Dialogue/

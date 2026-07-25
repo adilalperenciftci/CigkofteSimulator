@@ -1,0 +1,616 @@
+Key,TR,EN
+settings.title,AYARLAR,SETTINGS
+settings.resolution,Çözünürlük,Resolution
+settings.windowmode,Pencere modu,Window mode
+settings.quality,Grafik kalitesi,Graphics quality
+settings.fov,Görüş açısı,Field of view
+settings.sensitivity,Fare hassasiyeti,Mouse sensitivity
+settings.headbob,Kamera sallanması,Head bob
+settings.mastervolume,Ana ses,Master volume
+settings.effectsvolume,Efekt sesi,Effects volume
+settings.musicvolume,Müzik,Music
+settings.uiscale,Arayüz ölçeği,Interface scale
+settings.screenflash,Ekran parlaması,Screen flash
+settings.colorblind,Renk körlüğü,Colourblind mode
+settings.language,Dil,Language
+settings.resettutorial,Eğitimi yeniden başlat,Restart tutorial
+settings.hint.nav,Yukarı/Aşağı seç · Sol/Sağ değiştir · O/Esc kapat,Up/Down select · Left/Right change · O/Esc close
+common.on,Açık,On
+common.off,Kapalı,Off
+window.windowed,Pencere,Windowed
+window.fullscreen,Tam Ekran,Fullscreen
+window.borderless,Çerçevesiz,Borderless
+quality.low,Düşük,Low
+quality.medium,Orta,Medium
+quality.high,Yüksek,High
+quality.epic,Epik,Epic
+colorblind.off,Kapalı,Off
+colorblind.redgreen,Kırmızı-Yeşil,Red-Green
+colorblind.blueyellow,Mavi-Sarı,Blue-Yellow
+action.moveforward,İleri,Move forward
+action.moveback,Geri,Move back
+action.moveleft,Sola,Strafe left
+action.moveright,Sağa,Strafe right
+action.run,Koş,Run
+action.jump,Zıpla,Jump
+action.interact,Etkileşim,Interact
+action.knead,Yoğurma vuruşu,Knead
+action.wrap,Dürümü sar,Wrap
+action.shelf,Rafa kaldır,Shelve
+action.tablet,Tablet,Tablet
+action.settings,Ayarlar,Settings
+action.pause,Duraklat,Pause
+settings.keybinds,Tuş atamaları,Key bindings
+settings.keybinds.hint,Enter ile yeniden ata · R varsayılana döndür,Enter to rebind · R to reset
+settings.keybinds.press,Yeni tuşa bas...,Press a key...
+settings.keybinds.unbound,(atanmamış),(unbound)
+settings.keybinds.reset,Tuş atamaları varsayılana döndü,Key bindings reset to defaults
+tablet.title,TABLET,TABLET
+tablet.owned,KURULU,OWNED
+tablet.unlocked,AÇILDI,UNLOCKED
+tab.stok,Stok,Stock
+tab.tarifler,Tarifler,Recipes
+tab.dukkan,Dükkân,Shop
+tab.tedarikci,Tedarikçi,Supplier
+tab.rakipler,Rakipler,Rivals
+tab.yorumlar,Yorumlar,Reviews
+tab.gorevler,Görevler,Quests
+tab.personel,Personel,Staff
+tab.yetenekler,Yetenekler,Skills
+tab.basarimlar,Başarımlar,Achievements
+tablet.locked.story,KİLİTLİ — hikâye,LOCKED — story
+tablet.noreviews,Henüz yorum yok. Müşterileri memnun et.,No reviews yet. Keep customers happy.
+tablet.dailyquest,GÜNLÜK GÖREV,DAILY QUEST
+tablet.questdone,Tamamlandı! Yarın yeni görev.,Done! New quest tomorrow.
+tablet.storygoal,HİKÂYE HEDEFİ,STORY GOAL
+tablet.stats,İSTATİSTİKLER,STATISTICS
+tablet.regulars,MÜDAVİMLER,REGULARS
+tablet.noregulars,Henüz müdavim yok. %80+ doğrulukla servis yap.,No regulars yet. Serve at 80%+ accuracy.
+tablet.apprentice,ÇIRAK,APPRENTICE
+tablet.nostaff,"Çırak yok. 400 TL peşinat, Seviye 3 gerekli.","No apprentice. 400 TL deposit, requires level 3."
+tablet.wantsraise,ZAM İSTİYOR! Yoksa moral düşer.,WANTS A RAISE! Morale drops otherwise.
+tablet.cat,KEDİ,CAT
+ing.bulgur,Bulgur,Bulgur
+ing.isot,İsot,Isot Pepper
+ing.salca,Salça,Tomato Paste
+ing.su,Su,Water
+ing.baharat,Baharat,Spices
+top.marul,Marul,Lettuce
+top.maydanoz,Maydanoz,Parsley
+top.domates,Domates,Tomato
+top.tursu,Turşu,Pickles
+top.sogan,Soğan,Onion
+top.limon,Limon,Lemon
+top.nareksisi,Nar Ekşisi,Pomegranate Molasses
+stock.ayran,Ayran,Ayran
+stock.lavas,Lavaş,Flatbread
+side.none,Yok,None
+side.iclikofte,İçli Köfte,Stuffed Meatball
+side.corba,Mercimek Çorbası,Lentil Soup
+side.kunefe,Künefe,Kunefe
+side.cay,Çay,Tea
+spice.mild,Az Acılı,Mild
+spice.medium,Orta Acılı,Medium
+spice.hot,Çok Acılı,Hot
+quality.legendary,Efsanevi,Legendary
+quality.master,Usta İşi,Masterful
+quality.good,İyi,Good
+quality.normal,Normal,Normal
+quality.weak,Zayıf,Poor
+quality.failed,Başarısız,Failed
+common.unknown,?,?
+prompt.bulgur,"[E] Bulgur ekle","[E] Add bulgur"
+prompt.isot,"[E] İsot ekle (acı!)","[E] Add isot (hot!)"
+prompt.salca,"[E] Salça ekle","[E] Add tomato paste"
+prompt.su,"[E] Su ekle","[E] Add water"
+prompt.baharat,"[E] Baharat ekle","[E] Add spices"
+prompt.yogurma,"[Sol Tık] Yoğur | dürüm açıksa [E] hamur ekle","[LMB] Knead | [E] add dough to wrap"
+prompt.servis,"[E] Sıradaki müşteriye dürümü ver","[E] Serve the next customer"
+prompt.lavabo,"[E] Ellerini yıka","[E] Wash your hands"
+prompt.cop,"[E] Çöp: dürüm/kase iptal ya da çöpü boşalt","[E] Bin: discard wrap/bowl or empty trash"
+prompt.dograma,"[E] Marul doğra","[E] Chop lettuce"
+prompt.lavas,"[E] Lavaş koy — dürüm hazırlamaya başla","[E] Lay flatbread — start a wrap"
+prompt.paketleme,"[E] Paket/tabak değiştir | [G] Rafa kaldır","[E] Toggle takeaway/plate | [G] Shelve"
+prompt.buzdolabi,"[E] Hamuru buzdolabına koy / çıkar","[E] Put dough in/out of the fridge"
+prompt.temizlik,"[E] Tezgahı ve doğrama alanını sil","[E] Wipe counter and chopping area"
+prompt.bulasik,"[E] Bulaşıkları yıka","[E] Wash the dishes"
+prompt.cay,"[E] Çay iç (15 TL, enerji +40)","[E] Drink tea (15 TL, +40 energy)"
+prompt.mamakabi,"[E] Kediye mama koy (20 TL)","[E] Feed the cat (20 TL)"
+prompt.tarif,"[E] Tarif değiştir","[E] Change recipe"
+prompt.yanurun,"[E] Yan ürün ekle (içli köfte / çorba / künefe / çay)","[E] Add a side (kofte / soup / kunefe / tea)"
+prompt.locked,"Kilitli — Seviye {0}'de açılır","Locked — unlocks at level {0}"
+hud.daytitle,"GÜN {0} — ÇİĞKÖFTECİ","DAY {0} — CIGKOFTE SHOP"
+hud.money,"Para: {0} TL","Cash: {0} TL"
+hud.timeleft,"Kalan süre: {0} sn","Time left: {0}s"
+hud.level,"Seviye {0}","Level {0}"
+hud.popularity,"Popülerlik","Popularity"
+hud.hygiene,"Hijyen","Hygiene"
+hud.shopstars,"Dükkân {0}","Shop {0}"
+hud.event,"   Olay: {0}","   Event: {0}"
+hud.bowl,"KASE — {0} TARİFİ","BOWL — {0} RECIPE"
+hud.targetmix,"Hedef karışım: isot {0}","Target mix: isot {0}"
+hud.scoop,"{0}  {1} / {2} ölçek","{0}  {1} / {2} scoops"
+hud.knead,"Yoğurma","Kneading"
+hud.dough,"HAMUR: {0} porsiyon — {1}, {2}","DOUGH: {0} servings — {1}, {2}"
+hud.freshness,"Tazelik","Freshness"
+hud.fridge,"Buzdolabında: {0} porsiyon (tazelik %{1})","In fridge: {0} servings (freshness {1}%)"
+hud.supplies,"Garnitür {0} | Lavaş {1} | Ayran {2} | Raf {3}/{4}","Toppings {0} | Flatbread {1} | Ayran {2} | Shelf {3}/{4}"
+hud.wrapinprogress,"DÜRÜM HAZIRLANIYOR","WRAP IN PROGRESS"
+hud.wrapcontents,"İçinde: {0} porsiyon çiğköfte ({1})","Contains: {0} servings ({1})"
+hud.wrapempty,"İçi boş — yoğurma kabından hamur ekle (E)","Empty — add dough from the kneading bowl (E)"
+hud.toppingshint,"Garnitürler (rakam tuşları):","Toppings (number keys):"
+hud.onplate,"TABAKTA","ON PLATE"
+hud.wraphint,"F: dürümü sar | Paketleme'de E: paket/tabak","F: roll the wrap | E at packing: takeaway/plate"
+hud.nextcustomer,"SIRADAKİ MÜŞTERİ","NEXT CUSTOMER"
+hud.regular,"MÜDAVİM — {0}","REGULAR — {0}"
+hud.onewrap,"1 dürüm","1 wrap"
+hud.notoppings,"Garnitür istemiyor (sade)","No toppings (plain)"
+hud.noonion,"İstemiyor: soğan!","No onion!"
+hud.noayran,"Ayran: yok","No ayran"
+hud.plate,"Tabakta","Plate"
+hud.patience,"Sabır","Patience"
+hud.delivery,"PAKET SERVİS — sarı ışıklı kapılar","DELIVERIES — doors with yellow lights"
+hud.energy,"Enerji","Energy"
+hud.fuel,"Yakıt","Fuel"
+hud.deliverprompt,"[E] Teslim et (kapıda) / arabadan in","[E] Deliver (at the door) / exit car"
+hud.carlocked,"Araba için Seviye 4 gerek","Car requires level 4"
+hud.cat,"Kedi","Cat"
+hud.petcat,"[E] {0}'u sev","[E] Pet {0}"
+hud.stockparen,"  (stok {0})","  (stock {0})"
+hud.chopprompt,"[E] Marul doğra {0}/{1} (stok {2}, garnitür {3})","[E] Chop lettuce {0}/{1} (stock {2}, prepped {3})"
+hud.keyshint,"Tuşlar: WASD, Boşluk, E, Sol Tık, F, G, T, F1, F5, F9","Keys: WASD, Space, E, LMB, F, G, T, F1, F5, F9"
+hud.twoportions,"2 PORSİYON","2 PORTIONS"
+hud.ayranyes,"Ayran: EVET","Ayran: YES"
+hud.takeaway,"PAKET olacak","TAKEAWAY"
+hud.spiceline,"Acı: {0}   |   {1}","Heat: {0}   |   {1}"
+hud.wantsline,"İstiyor: {0}","Wants: {0}"
+hud.pair,"{0}   |   {1}","{0}   |   {1}"
+hud.packed,"PAKET","TAKEAWAY"
+hud.wrapdone,DÜRÜM — SARILDI,WRAP — ROLLED
+hud.toppingspad,"Garnitürler (LB/RB seç, B uygula):","Toppings (select with LB/RB, apply with B):"
+hud.sideline,"{0}9  {1} Yanında: {2}{3}","{0}9  {1} Side: {2}{3}"
+hud.sideprice," (+{0} TL)"," (+{0} TL)"
+hud.wrappedhint,"Serviste E: teslim et | G: rafa kaldır","E at service: hand over | G: shelve"
+hud.nextvip,SIRADAKİ MÜŞTERİ — VIP!,NEXT CUSTOMER — VIP!
+hud.deliveryrow,"{0}{1} | {2} sn | {3} m | {4}","{0}{1} | {2}s | {3}m | {4}"
+hud.bulkprefix,[TOPLU],[BULK]
+hud.entercar,[E] Arabaya bin,[E] Enter car
+hud.controls.pad,"Sol çubuk yürü | Y zıpla | A etkileşim | RT yoğur | X sar | R3 raf | LB/RB seç, B uygula | Select tablet | Start menü","Left stick move | Y jump | A interact | RT knead | X wrap | R3 shelve | LB/RB select, B apply | Select tablet | Start menu"
+hud.controls.keyboard,"WASD | Boşluk zıpla | E etkileşim | Sol Tık yoğur | 1-8 garnitür | 9 yan ürün | F sar | G raf | T tablet | Esc menü","WASD | Space jump | E interact | LMB knead | 1-8 toppings | 9 side | F wrap | G shelve | T tablet | Esc menu"
+title.presents.spaced,s u n a r,p r e s e n t s
+title.skip,geçmek için E,press E to skip
+title.presents,EG GAMES sunar,EG GAMES presents
+title.name,ÇİĞKÖFTE SİMÜLATÖRÜ,CIGKOFTE SIMULATOR
+title.tagline,Borçlu devraldığın dükkânı mahallenin gururuna dönüştür,Turn the indebted shop you inherited into the pride of the neighbourhood
+menu.continue,Devam Et,Continue
+menu.start,Oyuna Başla,Start Game
+menu.newgame,Yeni Oyun,New Game
+menu.settings,Ayarlar,Settings
+menu.quit,Çıkış,Quit
+menu.save,Oyunu Kaydet,Save Game
+menu.quitgame,Oyundan Çık,Quit Game
+menu.hint,Yukarı/Aşağı seç · E ya da Enter onayla,Up/Down select · E or Enter confirm
+pause.hint,Yukarı/Aşağı seç · Enter onayla · Esc devam,Up/Down select · Enter confirm · Esc resume
+summary.title,GÜN {0} BİTTİ,DAY {0} COMPLETE
+summary.earnings,Kazanç: +{0} TL,Earnings: +{0} TL
+summary.customers,Servis edilen {0}  ·  Kaçan müşteri {1},Served {0}  ·  Customers lost {1}
+summary.rent,Kira: -{0} TL,Rent: -{0} TL
+summary.cash,Kasa: {0} TL,Cash: {0} TL
+summary.rating,Dükkân puanı: {0},Shop rating: {0}
+summary.nextday,Yeni gün başlıyor...,A new day is starting...
+gameover.title,İFLAS ETTİN!,YOU WENT BANKRUPT!
+gameover.reason,Kira {0} TL'ydi; kasa yetmedi. {1} gün dayandın.,Rent was {0} TL and you couldn't cover it. You lasted {1} days.
+gameover.restart,Yeniden başlamak için R,Press R to restart
+common.high,Yüksek,High
+common.low,Düşük,Low
+common.normal,Normal,Normal
+common.veryfast,Çok hızlı,Very fast
+common.slow,Yavaş,Slow
+common.expensive,Pahalı,Expensive
+common.cheap,Ucuz,Cheap
+tablet.salesmult,satış x{0},sales x{0}
+tablet.levelshort,Sv.{0},Lv.{0}
+tablet.recipemix,"     {0} · isot: {1}","     {0} · isot: {1}"
+tablet.pricemult,fiyat x{0},price x{0}
+tablet.supplierdetail,"     Kalite: {0} · Teslimat: {1} · İlişki","     Quality: {0} · Delivery: {1} · Relationship"
+tablet.ingredienttier,{0}) Malzeme kalitesi: {1},{0}) Ingredient quality: {1}
+tablet.costquality,maliyet x{0} · kalite x{1},cost x{0} · quality x{1}
+tablet.yourpopularity,Senin popülerliğin: {0} ({1}),Your popularity: {0} ({1})
+tablet.closed,KAPANDI,CLOSED
+tablet.campaign,KAMPANYA!,CAMPAIGN!
+tablet.rivaldetail,"     Fiyat: {0} · Kalite {1} · Hijyen {2}","     Price: {0} · Quality {1} · Hygiene {2}"
+tablet.overallrating,GENEL PUAN: {0}  ({1} / 5),OVERALL RATING: {0}  ({1} / 5)
+tablet.ratings,Yemek {0}  Servis {1}  Fiyat {2}  Hijyen {3}  Atmosfer {4},Food {0}  Service {1}  Price {2}  Hygiene {3}  Atmosphere {4}
+tablet.reviewday,Gün {0},Day {0}
+tablet.stats.service,Servis {0} · Paket {1} · Kusursuz {2} · Kızan {3},Served {0} · Deliveries {1} · Perfect {2} · Angry {3}
+tablet.stats.earnings,Toplam kazanç {0} TL · En iyi gün {1} TL,Total earnings {0} TL · Best day {1} TL
+tablet.regularstats,{0} ziyaret · güven {1},{0} visits · trust {1}
+tablet.staffline,{0} — Seviye {1} · {2},{0} — Level {1} · {2}
+tablet.salary,{0} TL/gün,{0} TL/day
+tablet.task,Görev: {0},Task: {0}
+tablet.change,(1: değiştir),(1: change)
+tablet.energy,     Enerji,     Energy
+tablet.morale,     Moral,     Morale
+tablet.raise,(2: zam ver),(2: give raise)
+tablet.hire,(1: işe al),(1: hire)
+tablet.satiety,     Tokluk,     Satiety
+tablet.attention,     İlgi,     Attention
+economy.policy.cheap,"Ucuz (x0.8, müşteriler sabırlı)","Cheap (x0.8, customers are patient)"
+economy.policy.expensive,"Pahalı (x1.25, müşteriler sabırsız)","Expensive (x1.25, customers are impatient)"
+economy.policy.normal,Normal (x1.0),Normal (x1.0)
+economy.tier.cheap,Ucuz,Budget
+economy.tier.quality,Kaliteli,Premium
+prompt.glovemax,Yoğurma eldiveni maksimum seviyede,Kneading glove at maximum level
+prompt.isotmax,Premium isot maksimum seviyede,Premium isot at maximum level
+prompt.gloveupgrade,[E] Yoğurma eldiveni Sv.{0} — {1} TL (daha hızlı yoğur),[E] Kneading glove Lv.{0} — {1} TL (knead faster)
+prompt.isotupgrade,[E] Premium isot Sv.{0} — {1} TL (kalite +4),[E] Premium isot Lv.{0} — {1} TL (+4 quality)
+prompt.advertise,[E] Reklam ver — {0} TL (itibar +8),[E] Advertise — {0} TL (+8 reputation)
+msg.money.need,Para yetmiyor! {0} TL gerek.,Not enough money! You need {0} TL.
+msg.economy.branchincome,Şubeden günlük gelir: +250 TL,Daily branch income: +250 TL
+msg.economy.policy,Fiyat politikası: {0},Pricing policy: {0}
+msg.economy.glovemax,Eldiven zaten maksimum seviyede.,The glove is already at maximum level.
+msg.economy.isotmax,İsot zaten maksimum seviyede.,The isot is already at maximum level.
+msg.economy.glovebought,Yoğurma eldiveni Sv.{0} alındı! Kollar makine gibi.,Kneading glove Lv.{0} purchased! Your arms are machines.
+msg.economy.isotbought,Premium isot Sv.{0}! Urfa'dan taze geldi.,Premium isot Lv.{0}! Fresh from Urfa.
+msg.economy.advertised,Reklam verildi! Mahalle senin adını konuşuyor.,Ad placed! The neighbourhood is talking about you.
+msg.economy.alreadyowned,{0} zaten kurulu.,{0} is already installed.
+msg.economy.levelneeded,{0} için Seviye {1} gerek.,You need Level {1} for {0}.
+msg.economy.upgradecost,{0} için {1} TL gerek — para yetmiyor.,You need {1} TL for {0} — not enough money.
+msg.economy.installed,{0} kuruldu! {1},{0} installed! {1}
+msg.economy.supplier,Tedarikçi: {0} — {1},Supplier: {0} — {1}
+msg.economy.ingredientquality,Malzeme kalitesi: {0} (maliyet x{1}; kalite x{2}),Ingredient quality: {0} (cost x{1}; quality x{2})
+msg.economy.relation5,{0} seni tanıdı: %5 indirim!,{0} knows you now: 5% discount!
+msg.economy.relation10,{0} ile aran çok iyi: %10 indirim + hızlı teslimat!,You have a great relationship with {0}: 10% discount + fast delivery!
+msg.economy.houseowned,Ev zaten senin!,You already own the house!
+msg.economy.houselevel,Ev almak için Seviye 5 olmalısın.,You must be Level 5 to buy the house.
+msg.economy.housecost,Ev {0} TL — paran yetmiyor.,The house costs {0} TL — not enough money.
+msg.economy.housebought,EVİ SATIN ALDIN! Her gün +150 TL kira geliri.,YOU BOUGHT THE HOUSE! +150 TL rental income each day.
+msg.economy.fuelfull,Depo zaten dolu.,The fuel tank is already full.
+msg.economy.fuelcost,Yakıt {0} TL — para yetmiyor.,Fuel costs {0} TL — not enough money.
+msg.economy.refueled,Depo fullendi (-{0} TL).,Tank filled (-{0} TL).
+msg.economy.carhealthy,Araç zaten sapasağlam.,The car is already in perfect condition.
+msg.economy.repaircost,Tamir {0} TL — para yetmiyor.,Repairs cost {0} TL — not enough money.
+msg.economy.repaired,Araç tamir edildi (-{0} TL).,Car repaired (-{0} TL).
+msg.inventory.nomoney,Para yetmiyor! {0} paketi {1} TL.,Not enough money! A pack of {0} costs {1} TL.
+msg.inventory.delayed,"Tedarikçi: 'Abi kusura bakma, biraz gecikeceğiz...'","Supplier: 'Sorry boss, we're running a little late...'"
+msg.inventory.ordered,"Kurye yola çıktı: {0} {1} ({2} TL, ~{3} sn)","Courier is on the way: {0} {1} ({2} TL, ~{3}s)"
+msg.inventory.arrived,Kurye geldi: +{0} {1},Courier arrived: +{0} {1}
+msg.inventory.garnishfull,Garnitür kabı dolu ({0}).,The topping container is full ({0}).
+msg.inventory.nolettuce,Marul bitti! Tabletten (T) sipariş ver.,Out of lettuce! Order from the tablet (T).
+msg.inventory.garnishready,Garnitür hazır! ({0} adet) Dürüme marul eklemek için kullanılır.,Toppings ready! ({0}) Use them to add lettuce to wraps.
+msg.hygiene.hands,Eller tertemiz! Müşteriler bunu sever.,Your hands are spotless! Customers like that.
+msg.hygiene.cleaned,Tezgâh ve doğrama alanı pırıl pırıl.,The counter and chopping area are sparkling clean.
+msg.hygiene.alreadyclean,Zaten temizdi ama olsun; parlıyor.,It was already clean; now it shines.
+msg.hygiene.nodishes,Bulaşık yok. Keyfine bak.,No dishes. Enjoy the break.
+msg.hygiene.dishesdone,Bulaşıklar bitti. Mutfak nefes aldı.,Dishes done. The kitchen can breathe again.
+msg.hygiene.binempty,Çöp zaten boş.,The bin is already empty.
+msg.hygiene.binemptied,Çöp boşaltıldı. Sinekler üzgün.,Bin emptied. The flies are disappointed.
+msg.day.started,Gün {0} başladı! Bereketli olsun.,Day {0} has begun! May it be prosperous.
+msg.day.rentincome,Evden kira geliri: +150 TL,Rental income from the house: +150 TL
+msg.station.locked,{0} henüz kapalı — Seviye {1}'de açılıyor.,{0} is still locked — unlocks at Level {1}.
+msg.tea.fullenergy,Enerjin zaten yerinde; çay keyif için içilir ama şimdi iş var.,Your energy is already full; tea is nice but there's work to do.
+msg.tea.nomoney,Çay 15 TL (demlik masrafı) — para yetmiyor.,Tea costs 15 TL — not enough money.
+msg.tea.drank,Çay içtin. Enerji +40; stres azaldı. Şimdi tezgâha!,You drank tea. +40 energy; stress reduced. Back to the counter!
+msg.ui.recipeselected,Tarif seçildi: {0},Recipe selected: {0}
+msg.ui.recipelocked,Bu tarif henüz kilitli.,This recipe is still locked.
+msg.ui.supplierselected,Tedarikçi seçildi: {0},Supplier selected: {0}
+msg.ui.saved,Oyun kaydedildi.,Game saved.
+cooking.mix,{0} ölçek bulgur · {1} su · {2} salça · {3} baharat · {4} isot,{0} scoops bulgur · {1} water · {2} tomato paste · {3} spices · {4} isot
+cooking.isot.light,Hafif,Light
+cooking.isot.medium,Orta,Medium
+cooking.isot.strong,Yoğun,Strong
+float.money.plus,+{0} TL,+{0} TL
+float.doughready,HAMUR HAZIR!,DOUGH READY!
+float.combo,KOMBO x{0}!,COMBO x{0}!
+float.cat.purr,Mirrr ~,Purr ~
+float.achievement,BAŞARIM: {0},ACHIEVEMENT: {0}
+float.customer.vip, (VIP x3!), (VIP x3!)
+float.customer.tip, +bahşiş, +tip
+float.customer.earn,+{0} TL{1}{2},+{0} TL{1}{2}
+label.inspector,MUFETTIS,INSPECTOR
+label.staff.apprentice,ÇIRAK {0},APPRENTICE {0}
+customer.tag.portion, PORSIYON, PORTION
+customer.tag.wrap, DURUM, WRAP
+customer.tag.ayran, +AYRAN, +AYRAN
+customer.tag.packed, PAKET, TAKEAWAY
+customer.tag.vip,VIP!,VIP!
+customer.desc.vip,VIP:,VIP:
+customer.leave.angry,BOYLE ISYERI MI OLUR!,WHAT KIND OF PLACE IS THIS!
+customer.leave.happy,ELINE SAGLIK USTA!,THANKS BOSS!
+customer.seated,Afiyet olsun!,Enjoy your meal!
+msg.cat.nopet,"{0} şu an ilgi istemiyor. (Kedidir, yapar.)",{0} doesn't want attention right now. (It's a cat.)
+msg.cat.petted,{0}'u sevdin. Müşteriler bu samimiyeti hissediyor (+1 popülerlik).,You petted {0}. Customers feel that warmth (+1 popularity).
+msg.cat.full,"{0} tok, mamaya dönüp bakmadı bile.",{0} is full and ignored the food.
+msg.cat.nomoney,Mama 20 TL — para yetmiyor.,Cat food costs 20 TL — not enough money.
+msg.cat.fed,{0} mamasını afiyetle yedi (-20 TL).,{0} happily ate the food (-20 TL).
+msg.cat.renamed,Kedinin yeni adı: {0},Cat's new name: {0}
+msg.cat.happyday,{0} bugün keyifli — dükkana uğur getiriyor (+2 popülerlik).,{0} is cheerful today — brings luck to the shop (+2 popularity).
+msg.cat.sadday,{0} küs ve aç... Tüy dökümü hijyeni tehdit ediyor!,{0} is upset and hungry... Shedding is hurting hygiene!
+msg.cat.hungry,{0} acıktı! Mama kabına mama koy (E).,{0} is hungry! Put food in the bowl (E).
+msg.staff.alreadyhired,{0} zaten çalışıyor (günlük {1} TL).,{0} is already working ({1} TL/day).
+msg.staff.needlevel,Çırak için Seviye 3 gerek.,Apprentice requires Level 3.
+msg.staff.nomoney,Çırak peşinatı 400 TL — para yetmiyor.,Apprentice deposit is 400 TL — not enough money.
+msg.staff.hired,{0} işe başladı! Görevi tabletten değiştirebilirsin (Personel sekmesi).,{0} started working! You can change the task from the tablet (Staff tab).
+msg.staff.taskchanged,{0}'nin yeni görevi: {1},{0}'s new task: {1}
+msg.staff.raise,{0}'ye zam yaptın (yeni maaş {1} TL). Morali yerine geldi!,You gave {0} a raise (new salary {1} TL). Morale is restored!
+msg.staff.levelup,{0} ustalaşıyor! (Çırak seviyesi {1}),{0} is improving! (Apprentice level {1})
+msg.staff.newspec,{0} artık {1}!,{0} is now {1}!
+msg.staff.served,{0} bir müşteriyi kendisi ağırladı (+{1} TL).,{0} handled a customer alone (+{1} TL).
+msg.staff.shelved,{0} rafa bir paket hazırladı ({1}/{2}).,{0} prepared a takeaway for the shelf ({1}/{2}).
+msg.staff.askraise,"{0}: 'Usta, maaş konusunu konuşacaktık...' (tabletten zam verebilirsin)","{0}: 'Boss, we should talk about salary...' (you can give a raise from tablet)"
+msg.staff.salary,Çırak maaşı: -{0} TL,Apprentice salary: -{0} TL
+msg.staff.bonus,"{0} bugün ekstra gayretliydi, kasada +40 TL fark var!","{0} worked extra hard today, +40 TL in the register!"
+msg.staff.quit,"{0} istifa etti! 'Böyle çalışılmaz usta...'",{0} quit! 'I can't work like this...'
+staff.task.chop,Doğrama,Chopping
+staff.task.clean,Temizlik,Cleaning
+staff.task.cashier,Kasa/Servis,Cashier/Service
+staff.task.pack,Paket Hazırlama,Pack Preparation
+staff.task.stock,Stok Takibi,Stock Tracking
+staff.spec.service,Servis Uzmanı,Service Specialist
+staff.spec.chop,Doğrama Uzmanı,Chopping Specialist
+staff.spec.hygiene,Hijyen Uzmanı,Hygiene Specialist
+staff.spec.pack,Paket Servis Uzmanı,Delivery Packaging Specialist
+staff.spec.master,Çiğköfte Ustası,Cigkofte Master
+staff.spec.none,Uzmanlık yok,No specialty
+msg.skill.pointsgained,+{0} yetenek puanı! Tabletten (T) Yetenekler sekmesine bak.,+{0} skill point! Check Skills tab on tablet (T).
+msg.skill.maxrank,Bu yetenek zaten son rütbede.,This skill is already at max rank.
+msg.skill.nopoints,Yetenek puanın yok — seviye atla.,No skill points — level up first.
+msg.skill.upgraded,YETENEK: {0} rütbe {1}/{2} — {3},SKILL: {0} rank {1}/{2} — {3}
+msg.skill.prestigereq,Seviye {0}/{1} · Kasa {2}/{3} TL,Level {0}/{1} · Cash {2}/{3} TL
+msg.skill.prestigeneed,Devretmek için: {0},To prestige: {0}
+msg.skill.prestigedone,DÜKKÂN DEVREDİLDİ! {0}. dükkân — kalıcı gelir bonusu %{1}. Unvan: {2},SHOP HANDED OVER! Shop #{0} — permanent income bonus {1}%. Title: {2}
+skill.prestige.0,Mahalle Esnafı,Neighborhood Shopkeeper
+skill.prestige.1,İki Dükkân Sahibi,Two-Shop Owner
+skill.prestige.2,Zincir Kuruyor,Building a Chain
+skill.prestige.3,Şehrin Çiğköftecisi,City's Cigkofte Master
+skill.prestige.4,Çiğköfte İmparatoru,Cigkofte Emperor
+msg.achievement.unlocked,BAŞARIM AÇILDI: {0} — {1} ({2}/{3}),ACHIEVEMENT UNLOCKED: {0} — {1} ({2}/{3})
+msg.rival.campaign,{0} kampanya başlattı! Broşürler her yerde.,{0} launched a campaign! Flyers are everywhere.
+msg.rival.scandal,"Dedikodu: {0}'de müşteriler zehirlenme şüphesiyle şikayetçi olmuş!","Rumor: customers complained about food poisoning at {0}!"
+msg.rival.growing,{0} büyüyor... Tezgah sayısını artırmışlar.,{0} is growing... They increased their counters.
+msg.rival.closed,{0} KAPANDI! Mahallede tek gerçek çiğköfteci kaldı gibi...,{0} CLOSED! Looks like you're the only real cigkofte shop left...
+msg.delivery.new,PAKET SERVİS: {0} — {1},DELIVERY ORDER: {0} — {1}
+msg.delivery.bulk,TOPLU SİPARİŞ: {0} — 2 paket birden götür! ({1} TL),BULK ORDER: {0} — deliver 2 packages! ({1} TL)
+msg.delivery.expired,Paket servis zaman aşımına uğradı ({0})! İtibar düştü.,Delivery order expired ({0})! Reputation dropped.
+msg.delivery.nopack,"Yanında paket yok! (Gerekli: {0} — Paketleme istasyonunda G ile rafa koy, raftakiler otomatik yanında)",No packaged wrap on you! (Need: {0} — shelf with G at packaging station)
+msg.delivery.done,Teslimat tamam! +{0} TL (puan %{1},Delivery complete! +{0} TL (score {1}%
+msg.delivery.note.cold,", paket soğumuştu",", package was cold"
+msg.delivery.note.miss,", sipariş pek tutmadı",", order didn't match well"
+msg.delivery.done.suffix,),)
+msg.cooking.secretunlocked,Eski usta gizli tarifini emanet etti! (Tarif panosundan seç),The old master entrusted you with a secret recipe! (Select from recipe board)
+msg.cooking.recipecycled,Tarif: {0} — {1} (satış x{2}),Recipe: {0} — {1} (sales x{2})
+msg.cooking.finishdoughfirst,Önce hazır hamuru bitir (ya da çöpe at)!,Finish current dough first (or dump it)!
+msg.cooking.ingredientout,{0} bitti! Tabletten (T) sipariş ver.,Out of {0}! Order from tablet (T).
+msg.cooking.bowlfull,Kase doldu! Yoğurmaya başla.,Bowl is full! Start kneading.
+msg.cooking.addduringknead,"Yoğururken malzeme ekledin, kıvam biraz bozuldu.","You added ingredients while kneading, texture got worse."
+msg.cooking.doughready,Hamur zaten hazır — dürüm hazırlamaya başla!,Dough is already ready — start preparing wraps!
+msg.cooking.notenough,Malzeme yetersiz! En az 6 birim ve bulgur şart.,Not enough ingredients! Need at least 6 units and bulgur.
+msg.cooking.nowater,"Su yok — hamur kupkuru, yoğrulmuyor!",No water — dough is too dry to knead!
+msg.cooking.overknead,"Hamur fazla yoğruldu, biraz sertleşti.",Dough was over-kneaded and got a bit tough.
+msg.cooking.finished,"Hamur hazır! 6 birim — {0}, {1} ({2} tarifi)","Dough ready! 6 servings — {0}, {1} ({2} recipe)"
+msg.cooking.dumped,Kaseyi ve hamuru çöpe boşalttın. Temiz sayfa.,You dumped the bowl and dough. Fresh start.
+msg.cooking.fridge.in,Hamur buzdolabına kaldırıldı (tazelik korunuyor).,Dough moved to fridge (freshness preserved).
+msg.cooking.fridge.out,Hamur buzdolabından alındı.,Dough taken from fridge.
+msg.cooking.fridge.swap,Hamurlar takas edildi.,Doughs swapped.
+msg.cooking.fridge.empty,"Buzdolabı boş, tezgahta da hamur yok.",Fridge is empty and there's no dough on the counter.
+msg.cooking.spoiled.counter,Tezgahtaki hamur bozuldu! Çöpe gitti.,Counter dough spoiled! Thrown away.
+msg.cooking.spoiled.fridge,Buzdolabındaki hamur bozuldu!,Fridge dough spoiled!
+msg.customer.regular.arrived,"{0} geldi! ({1}. ziyaret) 'Selam usta, her zamankinden!'","{0} arrived! ({1}th visit) 'Hi boss, same as usual!'"
+msg.customer.influencer.angry,Fenomen müşteri sinirle çekim yaparak gitti! Bu her yere yayılacak...,Influencer customer left angrily while recording! This will spread everywhere...
+msg.customer.vip.leftangry,VIP müşteri küplere binip gitti! İtibar çakıldı!,VIP customer stormed off! Reputation crashed!
+msg.customer.leftangry,Müşteri beklemekten sıkılıp gitti!,Customer got tired of waiting and left!
+msg.customer.regular.new,"{0} artık müdavimin! 'Ben buraya hep geleceğim usta.'","{0} is now your regular! 'I'll always come here, boss.'"
+msg.customer.none,Tezgahta bekleyen müşteri yok.,No customer waiting at the counter.
+msg.customer.nowrap,Elinde sarılmış dürüm yok! Lavaş + hamur + garnitür + sarma (F).,You have no wrapped dürüm! Flatbread + dough + toppings + wrap (F).
+msg.customer.hygienecomplaint,"Titiz müşteri: 'Bu tezgahın hali ne böyle?!'","Hygiene-sensitive customer: 'What is this counter condition?!'"
+msg.customer.familychain,"Aile memnun kaldı, akrabaları da yolda!","Family is satisfied, relatives are on the way!"
+msg.customer.served,+{0} TL | Doğruluk %{1} | Kalite: {2},+{0} TL | Accuracy {1}% | Quality: {2}
+msg.customer.notes,Notlar: {0},Notes: {0}
+msg.customer.influencer.good,Fenomen hikaye paylaştı! Mahalle bunu konuşuyor. (itibar x3),Influencer shared a story! The neighborhood is talking. (rep x3)
+msg.customer.regular.tip,"{0}: 'İşte bu! Üstü kalsın.' (+15 TL)","{0}: 'That's it! Keep the change.' (+15 TL)"
+msg.customer.regular.memory,"{0}: 'Geçen sefer de böyle olmuştu...' (hataları unutmuyor)","{0}: 'It was like this last time too...' (doesn't forget mistakes)"
+msg.customer.dialogue,Müşteri: '{0}',Customer: '{0}'
+msg.customer.inspector.good,"Müfettiş: 'Tertemiz işletme, tebrikler!' (+5 popülerlik)","Inspector: 'Spotless business, congratulations!' (+5 popularity)"
+msg.customer.inspector.warn,"Müfettiş: 'İdare eder ama dikkat et...' (uyarı)","Inspector: 'Acceptable, but be careful...' (warning)"
+msg.customer.inspector.fine,"Müfettiş: 'Bu ne pislik! 200 TL ceza!'","Inspector: 'What is this filth! 200 TL fine!'"
+msg.customer.inspector.report,Müfettiş raporu: {0},Inspector report: {0}
+msg.customer.inspector.incoming,Sağlık müfettişi geliyor! Hijyene dikkat!,Health inspector is coming! Watch your hygiene!
+msg.order.wrapexists,Tezgahta zaten açık bir lavaş var. (Çöp istasyonunda iptal edebilirsin),There is already an open flatbread on the counter. (You can cancel at trash station)
+msg.order.nolavas,Lavaş bitti! Tabletten (T) sipariş ver.,Out of flatbread! Order from tablet (T).
+msg.order.wrapstarted,"Lavaş tezgahta. Yoğurma kabından hamur ekle (E), garnitür için rakam tuşları.","Flatbread is on the counter. Add dough with (E), use number keys for toppings."
+msg.order.alreadywrapped,"Dürüm sarıldı, artık içine hamur giremez.","Wrap is already rolled, you can't add dough now."
+msg.order.maxportion,En fazla 2 porsiyon sığar!,Maximum 2 portions fit!
+msg.order.nodough,Hamur yok! Önce malzeme + yoğurma.,No dough! Add ingredients and knead first.
+msg.order.portionadded,"Çiğköfte eklendi ({0} porsiyon, {1}).","Cigkofte added ({0} portions, {1})."
+msg.order.toppingremoved,{0} çıkarıldı (ziyan oldu).,{0} removed (wasted).
+msg.order.nogarnish,Doğranmış marul yok! Doğrama istasyonuna git.,No chopped lettuce! Go to chopping station.
+msg.order.toppingout,{0} bitti! Tabletten sipariş ver.,Out of {0}! Order from tablet.
+msg.order.toppingadded,{0} eklendi.,{0} added.
+msg.order.ayranremoved,Ayran geri kondu.,Ayran returned.
+msg.order.noayran,Ayran bitti! Tabletten sipariş ver.,Out of ayran! Order from tablet.
+msg.order.ayranadded,Yanına ayran kondu.,Ayran added as side drink.
+msg.order.needwrapforside,Önce lavaş koy — yan ürün siparişe eklenir.,Place flatbread first — side item is added to an order.
+msg.order.noside,Yan ürün yok.,No side item.
+msg.order.sideadded,Yanına {0} kondu (+{1} TL).,{0} added as side (+{1} TL).
+msg.order.nosidestock,Yan ürün stoğu yok! Tabletten içli köfte/çorba/künefe/çay sipariş et.,No side stock! Order kofte/soup/kunefe/tea from tablet.
+msg.order.packed,Paket olarak hazırlanıyor.,Preparing as takeaway.
+msg.order.plate,Tabakta servis edilecek.,Will be served on a plate.
+msg.order.wrapalreadydone,Zaten sarılı. Servise götür ya da rafa kaldır.,Already wrapped. Serve it or shelf it.
+msg.order.emptywrap,İçi boş dürüm mü olur? Önce çiğköfte ekle!,An empty wrap? Add cigkofte first!
+msg.order.wrapfinished,Dürüm sarıldı! Servis tezgahına götür (E) veya paketle rafa kaldır.,Wrap rolled! Bring to service counter (E) or shelf it for delivery.
+msg.order.needwrapped,Önce sarılmış bir dürüm gerek.,You need a wrapped dürüm first.
+msg.order.shelffull,Paket rafı dolu!,Delivery shelf is full!
+msg.order.shelved,Paket rafa kondu ({0}/{1}). Paket servis için hazır.,Package placed on shelf ({0}/{1}). Ready for delivery.
+msg.order.discarded,Yarım dürüm çöpe gitti.,Half-made wrap was trashed.
+order.note.spiceclose,acılık biraz farklı,spice level is a bit off
+order.note.spicewrong,acılık tamamen yanlış!,spice level is completely wrong!
+order.note.portionlow,porsiyon eksik,portion is missing
+order.note.portionhigh,porsiyon fazla,portion is too much
+order.note.toppingmissing,{0} eksik,{0} missing
+order.note.toppingextra,{0} istememişti,{0} was not requested
+order.note.ayranmissing,ayran unutuldu,ayran forgotten
+order.note.ayranextra,istenmeyen ayran,unwanted ayran
+order.note.packneeded,paket olacaktı,should have been takeaway
+order.note.plateneeded,tabakta olacaktı,should have been on plate
+order.note.sidemissing,{0} unutuldu,{0} was forgotten
+order.note.sideextra,{0} istememişti,{0} was not requested
+order.note.prepslow,biraz yavaş hazırlandı,prepared a bit slowly
+order.note.preptoolate,çok yavaş hazırlandı,prepared too slowly
+order.desc.twopart,", 2 porsiyon",", 2 portions"
+order.desc.single,", dürüm",", wrap"
+order.desc.noonion, | soğansız, | no onion
+order.desc.withayran, | ayranlı, | with ayran
+order.desc.side, | yanında {0}, | side {0}
+order.desc.packed, | PAKET, | TAKEAWAY
+order.desc.plate, | tabakta, | on plate
+order.wrap.portion,{0} porsiyon,{0} portions
+order.wrap.spice, ({0}), ({0})
+order.wrap.ayran, | ayran, | ayran
+order.wrap.side, | {0}, | {0}
+order.wrap.packed, | paket, | takeaway
+order.wrap.plate, | tabak, | plate
+order.wrap.wrapped, | SARILI, | WRAPPED
+quest.daily.serve,{0} dürüm sat,Sell {0} wraps
+quest.daily.portion,{0} porsiyonluk sipariş sat,Sell {0} double-portion orders
+quest.daily.delivery,2 paket servis teslim et,Deliver 2 takeaway orders
+quest.daily.accurate,{0} isabetli servis yap (%80+ doğruluk),Make {0} accurate serves (80%+ accuracy)
+quest.daily.wash,3 kez ellerini yıka,Wash your hands 3 times
+quest.daily.clean,3 temizlik işi yap (tezgah/bulaşık/çöp),Do 3 cleaning tasks (counter/dishes/bin)
+msg.quest.dailynew,GÜNÜN GÖREVİ: {0} — Ödül {1} TL,DAILY QUEST: {0} — Reward {1} TL
+msg.quest.dailydone,GÖREV TAMAM! +{0} TL · +20 XP,QUEST COMPLETE! +{0} TL · +20 XP
+msg.quest.story.rentintro,"Ev Sahibi: 'Dükkanı devraldın ama borcun bende. Akşam kirayı aksatma!'","Landlord: 'You took over the shop, but you owe me. Don't miss rent tonight!'"
+quest.story.payrent,İlk kirayı öde (gün sonunda kasada para kalsın),Pay first rent (keep cash positive at day end)
+quest.story.serve10,10 müşteriyi memnun et ({0}/10),Satisfy 10 customers ({0}/10)
+quest.story.threestars,Dükkân puanını 3 yıldıza çıkar,Raise shop score to 3 stars
+quest.story.delivery3,3 paket servis teslim et ({0}/3),Deliver 3 takeaway orders ({0}/3)
+quest.story.hire,Çırak işe al (tabletten),Hire an apprentice (from tablet)
+quest.story.renovate,3 dükkân geliştirmesi kur,Install 3 shop upgrades
+quest.story.rival,Bir rakibi popülerlikte geç,Surpass a rival in popularity
+quest.story.car,Aracı bakıma al (tamir + full depo),Service the car (repair + full tank)
+quest.story.branch,İkinci şubeyi aç (tablet > dükkân),Open second branch (tablet > shop)
+quest.story.brand,Markanı kur: 5000 TL birikim + 5 sadık müşteri,Build your brand: 5000 TL savings + 5 loyal customers
+quest.story.festival,Festival: bir günde 15 servis yap,Festival: make 15 serves in one day
+quest.story.best,Şehrin en iyisi ol: itibar 90+,Become best in town: reputation 90+
+quest.story.done,Hikâye tamamlandı — sen artık bir efsanesin!,Story completed — you are now a legend!
+msg.quest.storydone,HİKÂYE HEDEFİ TAMAMLANDI! +{0} TL · +40 XP,STORY GOAL COMPLETE! +{0} TL · +40 XP
+msg.quest.story.serve10,"Muhtar: 'Kirayı ödemişsin, aferin. Şimdi mahalleye kendini sevdir bakalım.'","Headman: 'You paid rent, good. Now make the neighborhood love you.'"
+msg.quest.story.threestars,"Kurye: 'İnternette hakkında yazıyorlar usta, puanına dikkat et!'","Courier: 'They're talking about you online, boss. Watch your rating!'"
+msg.quest.story.opendelivery,"Ev Sahibi: 'Paket servis yapmıyor musun? Bak millet evine istiyor.'","Landlord: 'No deliveries yet? People want it at home.'"
+msg.quest.story.hire,"Eski Usta: 'Tek başına bu tezgah dönmez evlat, kendine bir çırak bul.'","Old Master: 'You can't run this counter alone, find an apprentice.'"
+msg.quest.story.renovate,"Muhtar: 'Dükkan biraz eski kaldı, elden geçirsen?'","Headman: 'Shop looks old, maybe renovate it?'"
+msg.quest.story.beatrival,"Rakip Dükkan Sahibi: 'Bu mahallede tek çiğköfteci bize yeter, çok büyüme!'","Rival Owner: 'One cigkofte shop is enough in this area, don't grow too much!'"
+msg.quest.story.upgradecar,"Kurye: 'Senin araba kaç yıllık? Bir bakım yaptır şuna.'","Courier: 'How old is your car? Get it serviced.'"
+msg.quest.story.secondbranch,"Eski Usta: 'Vakti geldi. İkinci şubeyi aç, adını büyüt.'","Old Master: 'Time has come. Open a second branch and grow your name.'"
+msg.quest.story.ownbrand,"Muhtar: 'Artık marka olma vaktin geldi. Birikim yap, müdavimlerini artır.'","Headman: 'Time to become a brand. Save up and grow your regulars.'"
+msg.quest.story.festival,"Muhtar: 'Sokak festivali yaklaşıyor! O gün rekor kırmalısın.'","Headman: 'Street festival is coming! You must break a record that day.'"
+msg.quest.story.bestintown,"Fenomen: 'Şehrin en iyisi ünvanı boş durmuyor. İtibarını zirveye taşı!'","Influencer: 'Best-in-town title isn't free. Push your reputation to the top!'"
+msg.quest.story.completed,"Eski Usta: 'Gizli tarifim artık senin. Sen bu şehrin çiğköfte efsanesisin!'","Old Master: 'My secret recipe is yours now. You're this city's cigkofte legend!'"
+tutorial.1,1/8 — Arka tezgahtan malzeme ekle (E): bulgur + su şart,1/8 — Add ingredients from back counter (E): bulgur + water required
+tutorial.2,"2/8 — Yoğurma kabında ritimle yoğur (Sol Tık), hamuru bitir","2/8 — Knead rhythmically in bowl (LMB), finish the dough"
+tutorial.3,3/8 — Müşteri gelince siparişine bak (sağ alt panel),3/8 — Check order when customer arrives (bottom-right panel)
+tutorial.4,4/8 — Lavaş istasyonu (E) > yoğurma kabından hamur (E) > garnitür (rakamlar) > sar (F),4/8 — Flatbread station (E) > dough from bowl (E) > toppings (numbers) > wrap (F)
+tutorial.5,"5/8 — Servis tezgahına git, dürümü müşteriye ver (E)","5/8 — Go to service counter, give wrap to customer (E)"
+tutorial.6,6/8 — Tableti aç (T) ve bir stok siparişi ver,6/8 — Open tablet (T) and place one stock order
+tutorial.7,7/8 — Ellerini yıka (Lavabo) ya da tezgahı sil (Temizlik),7/8 — Wash hands (Sink) or wipe counter (Cleaning)
+tutorial.8,"8/8 — Günü tamamla, kirayı ödemeyi unutma!","8/8 — Finish the day, don't forget to pay rent!"
+msg.tutorial.wraphint,"Rehber: Şimdi yoğurma kabına gidip E ile hamur ekle, sonra F ile sar.","Guide: Go to kneading bowl, add dough with E, then wrap with F."
+msg.tutorial.done,Eğitim tamamlandı! Artık dükkan senin. (Ayarlardan tekrar başlatabilirsin),Tutorial complete! The shop is yours now. (You can restart from settings)
+msg.tutorial.guide,Rehber: {0},Guide: {0}
+msg.tutorial.reset,Eğitim yeniden başlatıldı.,Tutorial restarted.
+msg.tutorial.skip,Eğitim atlandı.,Tutorial skipped.
+bal.skill.hizliel.name,Hızlı El,Quick Hands
+bal.skill.hizliel.desc,Yoğurma vuruşları rütbe başına %15 daha etkili,Kneading hits are 15% more effective per rank
+bal.skill.keskinbicak.name,Keskin Bıçak,Sharp Knife
+bal.skill.keskinbicak.desc,Doğrama rütbe başına 1 vuruş azalır,Chopping needs 1 less hit per rank
+bal.skill.guleryuzlu.name,Güler Yüz,Friendly Face
+bal.skill.guleryuzlu.desc,Bahşiş ve itibar kazancı rütbe başına %12 artar,Tip and reputation gain increase 12% per rank
+bal.skill.temizisci.name,Temiz İşçi,Clean Worker
+bal.skill.temizisci.desc,Kirlenme rütbe başına %15 yavaşlar,Dirt buildup slows by 15% per rank
+bal.skill.dayaniklibunye.name,Dayanıklı Bünye,Sturdy Body
+bal.skill.dayaniklibunye.desc,Enerji tüketimi rütbe başına %20 azalır,Energy drain is reduced by 20% per rank
+bal.skill.hizliayak.name,Hızlı Ayak,Fast Feet
+bal.skill.hizliayak.desc,Koşu hızı rütbe başına %8 artar,Run speed increases 8% per rank
+bal.skill.pazarlikustasi.name,Pazarlık Ustası,Bargaining Master
+bal.skill.pazarlikustasi.desc,Stok maliyeti rütbe başına %8 düşer,Stock cost drops 8% per rank
+bal.skill.mutfakustasi.name,Mutfak Ustası,Kitchen Master
+bal.skill.mutfakustasi.desc,Hamur kalitesi rütbe başına %5 artar,Dough quality increases 5% per rank
+bal.upgrade.buyukbuzdolabi.name,Büyük Buzdolabı,Large Fridge
+bal.upgrade.buyukbuzdolabi.desc,Hamur tazeliği çok daha yavaş düşer,Dough freshness decays much slower
+bal.upgrade.ikinciyogurma.name,İkinci Yoğurma,Second Knead
+bal.upgrade.ikinciyogurma.desc,Yoğurma vuruşları %40 daha etkili,Kneading hits are 40% more effective
+bal.upgrade.hizlidograma.name,Hızlı Doğrama,Fast Chopping
+bal.upgrade.hizlidograma.desc,Garnitür 2 vuruşta hazır,Toppings are ready in 2 hits
+bal.upgrade.yenitabela.name,Yeni Tabela,New Signboard
+bal.upgrade.yenitabela.desc,Müşteriler %15 daha sık gelir,Customers come 15% more often
+bal.upgrade.klima.name,Klima,Air Conditioner
+bal.upgrade.klima.desc,Müşteri sabrı +%20,Customer patience +20%
+bal.upgrade.muziksistemi.name,Müzik Sistemi,Music System
+bal.upgrade.muziksistemi.desc,Atmosfer +1 yıldız · sabır +%8,Atmosphere +1 star · patience +8%
+bal.upgrade.ikincikasa.name,İkinci Kasa,Second Register
+bal.upgrade.ikincikasa.desc,Kuyruk kapasitesi +2,Queue capacity +2
+bal.upgrade.disoturma.name,Dış Oturma Alanı,Outdoor Seating
+bal.upgrade.disoturma.desc,Aile müşterileri artar · atmosfer +0.5,More family customers · atmosphere +0.5
+bal.upgrade.buyukcop.name,Büyük Çöp Kutusu,Large Trash Bin
+bal.upgrade.buyukcop.desc,Çöp iki kat geç dolar,Trash fills up twice as slowly
+bal.upgrade.hijyenekipmani.name,Hijyen Ekipmanı,Hygiene Equipment
+bal.upgrade.hijyenekipmani.desc,Kirlenme %35 yavaşlar,Dirt buildup slows by 35%
+bal.upgrade.iyilavabo.name,Daha İyi Lavabo,Better Sink
+bal.upgrade.iyilavabo.desc,El yıkarken tezgah da kısmen temizlenir,Hand washing also partly cleans the counter
+bal.upgrade.dekorasyon.name,Dekorasyon,Decoration
+bal.upgrade.dekorasyon.desc,Atmosfer +1 yıldız · itibar kazancı +%10,Atmosphere +1 star · reputation gain +10%
+bal.upgrade.yenisube.name,Yeni Şube,New Branch
+bal.upgrade.yenisube.desc,Her gün +250 TL pasif gelir,+250 TL passive income per day
+bal.trait.impatient.name,Sabırsız,Impatient
+bal.trait.patient.name,Sakin,Patient
+bal.trait.pricesensitive.name,Hesaplı,Price-sensitive
+bal.trait.generous.name,Eli Açık,Generous
+bal.trait.hygienesensitive.name,Titiz,Hygiene-sensitive
+bal.trait.qualityfocused.name,Gurme,Gourmet
+bal.trait.influencer.name,Fenomen,Influencer
+bal.trait.tourist.name,Turist,Tourist
+bal.trait.student.name,Öğrenci,Student
+bal.trait.family.name,Aile,Family
+bal.trait.regular.name,Müdavim,Regular
+bal.trait.spicyfoodlover.name,Acı Delisi,Spice Lover
+bal.trait.indecisive.name,Kararsız,Indecisive
+bal.trait.secretcritic.name,Gizli Eleştirmen,Secret Critic
+bal.achievement.ilkdurum.name,Bereketli Olsun,May It Be Prosperous
+bal.achievement.ilkdurum.desc,İlk dürümünü sat,Sell your first wrap
+bal.achievement.yuzdurum.name,Mahallenin Dilinde,Talk of the Neighborhood
+bal.achievement.yuzdurum.desc,100 dürüm sat,Sell 100 wraps
+bal.achievement.bindurum.name,Dürüm Makinesi,Wrap Machine
+bal.achievement.bindurum.desc,1000 dürüm sat,Sell 1000 wraps
+bal.achievement.ilkbinlira.name,İlk Bin,First Thousand
+bal.achievement.ilkbinlira.desc,Toplam 1.000 TL kazan,"Earn a total of 1,000 TL"
+bal.achievement.onbinlira.name,On Bin,Ten Thousand
+bal.achievement.onbinlira.desc,Toplam 10.000 TL kazan,"Earn a total of 10,000 TL"
+bal.achievement.kasadolu.name,Kasa Dolu,Cash Loaded
+bal.achievement.kasadolu.desc,Kasanda aynı anda 20.000 TL bulundur,"Hold 20,000 TL at once"
+bal.achievement.mukemmelon.name,Usta İşi,Masterwork
+bal.achievement.mukemmelon.desc,10 kusursuz sipariş çıkar,Serve 10 perfect orders
+bal.achievement.mukemmelyuz.name,Kusursuz Yüz,Perfect Hundred
+bal.achievement.mukemmelyuz.desc,100 kusursuz sipariş çıkar,Serve 100 perfect orders
+bal.achievement.ilkteslimat.name,Kurye,Courier
+bal.achievement.ilkteslimat.desc,İlk paket servisini teslim et,Complete your first delivery
+bal.achievement.elliteslimat.name,Mahalle Kuryesi,Neighborhood Courier
+bal.achievement.elliteslimat.desc,50 paket servis teslim et,Complete 50 deliveries
+bal.achievement.besyildiz.name,Beş Yıldız,Five Stars
+bal.achievement.besyildiz.desc,İtibarı 90'ın üstüne çıkar,Raise reputation above 90
+bal.achievement.temizmutfak.name,Tertemiz,Spotless
+bal.achievement.temizmutfak.desc,Hijyeni %95'in üstünde tut,Keep hygiene above 95%
+bal.achievement.onuncugun.name,Onuncu Gün,Tenth Day
+bal.achievement.onuncugun.desc,10. güne ulaş,Reach day 10
+bal.achievement.otuzuncugun.name,Bir Ay Dayandı,Lasted a Month
+bal.achievement.otuzuncugun.desc,30. güne ulaş,Reach day 30
+bal.achievement.sonseviye.name,Çiğköfte Ustası,Cigkofte Master
+bal.achievement.sonseviye.desc,Seviye 10'a ulaş,Reach level 10
+bal.achievement.evsahibi.name,Ev Sahibi,Home Owner
+bal.achievement.evsahibi.desc,Mahalledeki evi satın al,Buy the house in the neighborhood
+bal.achievement.kedidostu.name,Kedi Dostu,Cat Friend
+bal.achievement.kedidostu.desc,Dükkânın kedisini doyur ve sev,Feed and pet the shop cat
+bal.achievement.cirakpatronu.name,Patron,Boss
+bal.achievement.cirakpatronu.desc,Bir çırak işe al,Hire an apprentice
+bal.achievement.tumdukkan.name,Tam Donanım,Fully Equipped
+bal.achievement.tumdukkan.desc,Bütün dükkân geliştirmelerini al,Buy all shop upgrades
+bal.achievement.devretme.name,Devretme,Handover
+bal.achievement.devretme.desc,Dükkânı devredip yeniden başla,Prestige and restart the shop

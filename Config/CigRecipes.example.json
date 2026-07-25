@@ -1,0 +1,14 @@
+[
+  {
+    "_comment": "Bu dosyayı 'CigRecipes.json' olarak kopyalayıp değerleri değiştirerek tarif dengesini yeniden derlemeden ayarlayabilirsiniz. Yalnızca yazdığınız alanlar geçersiz kılınır; gerisi C++ varsayılanında kalır. index = tarif sırası (0=Klasik ... 7=Gizli Tarif). İsim ve açıklama koddan gelir.",
+    "index": 0,
+    "priceMult": 1.05,
+    "qualityPotential": 92.0
+  },
+  {
+    "index": 5,
+    "priceMult": 1.4,
+    "unlockLevel": 4,
+    "freshDuration": 130.0
+  }
+]

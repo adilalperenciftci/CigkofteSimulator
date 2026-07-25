@@ -1,0 +1,14 @@
+﻿Key,Name,Desc,Cost,MinLevel
+BuyukBuzdolabi,"Büyük Buzdolabı","Hamur tazeliği çok daha yavaş düşer",700,2
+IkinciYogurma,"İkinci Yoğurma","Yoğurma vuruşları %40 daha etkili",900,3
+HizliDograma,"Hızlı Doğrama","Garnitür 2 vuruşta hazır",500,2
+YeniTabela,"Yeni Tabela","Müşteriler %15 daha sık gelir",600,1
+Klima,"Klima","Müşteri sabrı +%20",800,2
+MuzikSistemi,"Müzik Sistemi","Atmosfer +1 yıldız, sabır +%8",450,1
+IkinciKasa,"İkinci Kasa","Kuyruk kapasitesi +2",750,3
+DisOturma,"Dış Oturma Alanı","Aile müşterileri artar, atmosfer +0.5",650,2
+BuyukCop,"Büyük Çöp Kutusu","Çöp iki kat geç dolar",300,1
+HijyenEkipmani,"Hijyen Ekipmanı","Kirlenme %35 yavaşlar",550,2
+IyiLavabo,"Daha İyi Lavabo","El yıkarken tezgah da kısmen temizlenir",400,1
+Dekorasyon,"Dekorasyon","Atmosfer +1 yıldız, itibar kazancı +%10",500,1
+YeniSube,"Yeni Şube","Her gün +250 TL pasif gelir",4000,6

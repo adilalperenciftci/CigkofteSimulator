@@ -1,0 +1,19 @@
+﻿Index,Label,BaseCost,StartAmount,OrderAmount
+0,"Bulgur",50,20,10
+1,"İsot",70,12,10
+2,"Salça",60,12,10
+3,"Su",25,20,10
+4,"Baharat",50,10,10
+5,"Marul",45,6,10
+6,"Ayran",60,6,10
+7,"Maydanoz",35,6,10
+8,"Domates",40,6,10
+9,"Turşu",45,6,10
+10,"Soğan",30,6,10
+11,"Limon",35,6,10
+12,"Nar Ekşisi",50,6,10
+13,"Lavaş",40,10,10
+14,"İçli Köfte",220,0,10
+15,"Mercimek Çorbası",160,0,10
+16,"Künefe",340,0,10
+17,"Çay",40,0,10

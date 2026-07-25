@@ -1,0 +1,35 @@
+name: Kaynak kontrolu
+
+# Tam bir Unreal derlemesi ucretsiz runner'da hem cok uzun surer hem motor
+# kurulumu ister. Bu is akisi onun yerine derleyicinin yakalamadigi seylere
+# bakar: dosya kodlamasi, baslik hijyeni ve denge CSV'lerinin sema butunlugu.
+# Editor derlemesi yerelde yapilir (bkz. README "Kurulum").
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Kaynak ve denge dosyalarini dogrula
+        run: python Tools/check_sources.py
+
+      - name: Satir sonu tutarliligi
+        # .gitattributes depoda LF diyor. Bir dosya CRLF ile commit'lenmisse
+        # git bunu normalize edilmemis olarak gorur ve burada yakalanir.
+        run: |
+          if git ls-files --eol | grep -E 'i/crlf|i/mixed'; then
+            echo "::error::Depoda CRLF ya da karisik satir sonu iceren dosya var (.gitattributes LF bekliyor)."
+            exit 1
+          fi
+          echo "Satir sonlari temiz."
