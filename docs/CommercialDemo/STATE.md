@@ -55,17 +55,24 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 - **0.8 Dialogue context describes the food, not the order.** Half the dialogue
   table was unreachable. See below.
 
+- **0.9 Save migration tests.** The chain is walked from every version. See below.
+
+**Stage 0 is complete.** All ten slices are done and every defect listed in
+`BASELINE.md` is closed.
+
 ## Current task
 
 None in progress.
 
 ## Next exact task
 
-**0.9 — save migration tests.** The last Stage 0 item. Needs a GameMode test
-harness, which 0.1 also wanted and left outstanding, so build that first and use
-it for both.
+**A GameMode test harness**, carried over from 0.1 and now the first item of
+Stage 1. Nothing can currently stand up `ACigkofteGameMode` with its systems in
+a test, so the sale parity test and a `CaptureSave`/`ApplySave` round-trip are
+both still covered by static rules and reading rather than by a test. Everything
+in Stage 1 wants it too.
 
-That closes Stage 0. Stage 1 (tactile food preparation) is next.
+Then Stage 1 proper: 1.1 mixture visual state driven from food state.
 
 ## What 0.1 changed
 
@@ -183,6 +190,44 @@ table cannot distinguish a missing ayran from wrong spice. Widening the key
 would multiply the 2400 buckets and invalidate the generated table; the AI
 prompt does distinguish them. Recorded in `KNOWN_LIMITATIONS.md`.
 
+## What 0.9 changed
+
+`MigrateSave` is a row of independent `if`s and then an unconditional
+`SaveVersion = CurrentVersion`. A missing link therefore does not fail to
+compile, does not throw, and does not even leave the version wrong — the save
+simply arrives half-converted and is stamped current. This project has already
+shipped one version-stamp bug of that family.
+
+Four tests now walk it. The load-bearing one starts a save at every version from
+1 to 12 and checks two things: that the money, day, level, reputation and serve
+count a player already had survive untouched, and that `RuhsatBitisGunu` equals
+`Day + 14` for every pre-v10 start. That second assertion is the one that
+actually detects a broken chain, because the licence date is the only field any
+conversion writes to a value no default produces — checking the version stamp
+alone would pass against a completely gutted `MigrateSave`.
+
+The others cover: migrating a current save changes nothing (the version-stamp
+bug seen from the other side), v11 reviews come out with unique newest-first IDs
+and a counter parked past them with the stale pending reply dropped, and the
+guards hold — a pre-licence shop does not open already fined, a corrupt UI scale
+comes back inside the legible range, and a pre-pricing save returns to list
+price rather than being silently repriced.
+
+`MigrateSave` was made public. The justification is the same as `PushReview` in
+0.6: it is the entire schema contract, it takes a save and nothing else, and the
+thing that decides whether a year-old file still opens should be checkable
+directly rather than only through a subsystem that needs a game around it.
+
+Verified by deleting the `MigrateV9ToV10` call from the chain: 2 of the 4 tests
+failed, and restoring it returned 65 of 65.
+
+## Corrected from the previous entry
+
+`STATE.md` said 0.9 needed the GameMode harness first. It did not — migration is
+static and needs no world. The harness is still genuinely missing, and what it
+blocks is the sale parity test and a `CaptureSave`/`ApplySave` round-trip, both
+of which remain untested.
+
 ## Last successful build
 
 ```
@@ -193,7 +238,12 @@ Result: static PASS, build PASS, tests PASS, data PASS, package SKIPPED.
 
 ## Last test result
 
-`Automation RunTests Cigkofte` — **61 passed, 0 failed**, exit code 0.
+`Automation RunTests Cigkofte` — **65 passed, 0 failed**, exit code 0.
+
+Test groups added on this branch: `Cigkofte.Sale`, `Cigkofte.Reviews`,
+`Cigkofte.SaveMigration`. Still missing from the commercial-demo test standard:
+`FoodVisualState`, `InventoryBatches`, `Placement`, `Localization`,
+`DataValidation` — all belong to stages not yet started.
 
 ## Blockers
 

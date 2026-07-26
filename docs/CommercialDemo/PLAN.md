@@ -20,11 +20,18 @@ are internally consistent. Stage 0 adds no player-facing feature by design.
 | 0.4 | Unified bulk-order contracts | 0.1 | done |
 | 0.7 | PriceScore from real per-product prices | 0.1 | done |
 | 0.8 | Dialogue context uses the delivered wrap | 0.1 | done |
-| 0.9 | Save migration tests | 0.1, 0.4 | todo |
+| 0.9 | Save migration tests | 0.1, 0.4 | done |
 
 0.1 is sequenced after 0.2 deliberately: the spice defect lives in the staff sale
 path, and fixing it first means the extraction has one correct behaviour to
 preserve rather than two divergent ones to reconcile.
+
+**Stage 0 is complete.** One item it surfaced is carried forward rather than
+closed: there is still no way to stand up a `ACigkofteGameMode` with its systems
+in a test, so anything whose behaviour only exists once the systems are wired
+together — the sale parity test from 0.1, a save round-trip through
+`CaptureSave`/`ApplySave` — is covered by static rules and reading rather than by
+a test. That harness is the first item of Stage 1.
 
 ## Stage 1 — tactile food preparation
 
