@@ -52,18 +52,20 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
   goodwill bonus, patience and footfall all answered the cheap/normal/expensive
   toggle instead of the bill. See below.
 
+- **0.8 Dialogue context describes the food, not the order.** Half the dialogue
+  table was unreachable. See below.
+
 ## Current task
 
 None in progress.
 
 ## Next exact task
 
-**0.8 — dialogue context uses the delivered wrap.** `RequestServeDialogue` is
-filled from the order that was asked for rather than the wrap that was handed
-over, so a customer can thank the player for something they did not get.
+**0.9 — save migration tests.** The last Stage 0 item. Needs a GameMode test
+harness, which 0.1 also wanted and left outstanding, so build that first and use
+it for both.
 
-Then: 0.9 migration tests, which also wants the GameMode test harness 0.1 left
-outstanding.
+That closes Stage 0. Stage 1 (tactile food preparation) is next.
 
 ## What 0.1 changed
 
@@ -151,6 +153,36 @@ The second is what would silently reintroduce this defect — either by
 double-charging the policy or by reopening the gap between what is charged and
 what is judged. Verified by re-injecting the duplicate multiply.
 
+## What 0.8 changed
+
+`RequestServeDialogue` filled the context from the order the customer asked for
+and copied the delivered side across from it — the comment even said so:
+`bGotAyran = C->Spec.bWantsAyran`. So every service looked, to the dialogue
+system, like a service that went right.
+
+That is not just a wrong prompt. The bucket key's a-flag is
+`bWantedAyran == bGotAyran`, so it was pinned to 1, and the 1200 buckets written
+for a wrong order could never be addressed. The evidence is in the seed table:
+all fourteen of its buckets were `a1`. Nobody had written a single line for a
+wrong order, because no runtime state could reach one.
+
+The context now carries `RequestedSpice` alongside `ServedSpice` and takes the
+delivered wrap as a parameter, so `OrderMatched()` is a real comparison.
+`MistakeSummary()` names what went wrong and the AI prompt carries it: an
+accuracy percentage says the order was wrong without saying what was wrong, so
+the line came back generically disappointed. Fourteen `a0` seed lines were
+written so the newly reachable half is not empty.
+
+`check_sources.py` now fails if the dialogue table covers only one side of the
+a-flag. A table written entirely against one value of a flag is the symptom of a
+runtime that can only produce that value, which is exactly how this went
+unnoticed. Verified by deleting the `a0` rows.
+
+Not fixed here: the bucket key has one bit for "order correct", so the offline
+table cannot distinguish a missing ayran from wrong spice. Widening the key
+would multiply the 2400 buckets and invalidate the generated table; the AI
+prompt does distinguish them. Recorded in `KNOWN_LIMITATIONS.md`.
+
 ## Last successful build
 
 ```
@@ -161,7 +193,7 @@ Result: static PASS, build PASS, tests PASS, data PASS, package SKIPPED.
 
 ## Last test result
 
-`Automation RunTests Cigkofte` — **60 passed, 0 failed**, exit code 0.
+`Automation RunTests Cigkofte` — **61 passed, 0 failed**, exit code 0.
 
 ## Blockers
 

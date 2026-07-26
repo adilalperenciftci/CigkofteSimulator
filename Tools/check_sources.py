@@ -221,7 +221,19 @@ def check_dialogue() -> None:
     if bad_keys > 5:
         fail(f"{rel}: toplam {bad_keys} bozuk anahtar var (ilk 5'i yukarıda).")
 
-    print(f"  diyalog: {len(rows)} replik, {len({k for k, _ in seen})} kova doğrulandı")
+    # The a-flag says whether the customer got the order they asked for. The
+    # table used to be written entirely against a1, because the runtime copied
+    # the delivered order from the requested one and could never produce a0 -
+    # so every line for a wrong order was missing and nobody noticed. A table
+    # covering only one side of a flag means half the runtime states fall back
+    # to canned lines.
+    buckets = {k for k, _ in seen}
+    for flag, ne_olur in (("_a1_", "doğru siparişe"), ("_a0_", "yanlış siparişe")):
+        if not any(flag in b for b in buckets):
+            fail(f"{rel}: {ne_olur} ait hiç replik yok ({flag} kovası boş) — "
+                 f"o durumdaki her müşteri hazır cümleye düşer.")
+
+    print(f"  diyalog: {len(rows)} replik, {len(buckets)} kova doğrulandı")
 
 
 def check_text() -> None:

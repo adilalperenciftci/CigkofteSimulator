@@ -522,7 +522,7 @@ void UCigCustomerSystem::ServeFront()
 
 	// Ask the AI (or the offline fallback) for the line the customer will say.
 	// Asynchronous: the game does not wait; the reply lands in the message feed.
-	RequestServeDialogue(C, Score.Accuracy, Quality, FinalPrice, Tip > 0);
+	RequestServeDialogue(C, Wrap, Score.Accuracy, Quality, FinalPrice, Tip > 0);
 
 	// The wrap has been handed over.
 	Orders->Wrap = FCigWrapBuild();
@@ -589,7 +589,8 @@ void UCigCustomerSystem::FinishCustomerVisit(ACigkofteCustomer* C)
 	}
 }
 
-void UCigCustomerSystem::RequestServeDialogue(ACigkofteCustomer* C, float Accuracy, float Quality, int32 FinalPrice, bool bTipped)
+void UCigCustomerSystem::RequestServeDialogue(ACigkofteCustomer* C, const FCigWrapBuild& Teslim,
+	float Accuracy, float Quality, int32 FinalPrice, bool bTipped)
 {
 	if (!C || !GM || !GM->GetGameInstance()) { return; }
 
@@ -604,9 +605,13 @@ void UCigCustomerSystem::RequestServeDialogue(ACigkofteCustomer* C, float Accura
 	Ctx.Quality = Quality;
 	Ctx.Hygiene = (GM->Hygiene) ? GM->Hygiene->OverallHygiene() : 100.f;
 	Ctx.PatienceFrac = C->MaxPatience > 0.f ? FMath::Clamp(C->Patience / C->MaxPatience, 0.f, 1.f) : 1.f;
-	Ctx.ServedSpice = C->Spec.Spice;
+	// The order on one side, the food on the other. Copying the delivered side
+	// from the requested side made every service look correct, which silenced
+	// every line written for a wrong order.
+	Ctx.RequestedSpice = C->Spec.Spice;
+	Ctx.ServedSpice = Teslim.Spice;
 	Ctx.bWantedAyran = C->Spec.bWantsAyran;
-	Ctx.bGotAyran = C->Spec.bWantsAyran; // we do not assume the ayran on the delivered wrap here
+	Ctx.bGotAyran = Teslim.bAyran;
 	Ctx.FinalPrice = FinalPrice;
 	Ctx.bTipped = bTipped;
 	if (C->LoyalId >= 0)

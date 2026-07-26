@@ -3,6 +3,17 @@
 Genuine, non-blocking limitations of the current branch. Defects that are simply
 not fixed yet belong in `PLAN.md`, not here.
 
+## Dialogue
+
+- The bucket key carries one bit for "the order was correct", so the offline
+  line table cannot tell a missing ayran from the wrong spice — both land in the
+  same `a0` bucket. Widening the key would multiply the 2400 buckets and
+  invalidate the generated table, so it is deliberate. The AI prompt does name
+  the specific mistake; only the offline fallback is coarse.
+- The seed table covers 21 of 2400 buckets. Everything else falls back to the
+  canned mood lines, which is the designed behaviour until the generator is run
+  with an API key (see `AI/CigDialogueTable.h`).
+
 ## Audio
 
 - The night ambience is the daytime street recording low-passed rather than a

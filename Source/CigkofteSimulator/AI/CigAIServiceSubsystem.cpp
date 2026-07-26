@@ -73,13 +73,22 @@ FString UCigAIServiceSubsystem::BuildRequestBody(const FCigDialogueContext& Cont
 		Context.Mood() == FCigDialogueContext::EMood::Unhappy   ? TEXT("hoşnutsuz") :
 		                                                          TEXT("kızgın");
 
+	// An accuracy percentage says the order was wrong; it does not say what was
+	// wrong, so the line comes back generically disappointed. Naming the mistake
+	// is what lets the customer complain about the thing they were handed.
+	const FString Hatalar = Context.MistakeSummary();
+	const FString HataMetni = Hatalar.IsEmpty()
+		? FString(TEXT(" Sipariş istendiği gibi geldi."))
+		: FString::Printf(TEXT(" Siparişte hata var: %s."), *Hatalar);
+
 	FString UserText = FString::Printf(
-		TEXT("Müşteri profili: %s.%s%s Sipariş doğruluğu %%%.0f, kalite %%%.0f, tezgah hijyeni %%%.0f. ")
+		TEXT("Müşteri profili: %s.%s%s Sipariş doğruluğu %%%.0f, kalite %%%.0f, tezgah hijyeni %%%.0f.%s ")
 		TEXT("Bekleme durumu: %s. Genel ruh hali: %s. Bu müşterinin çiğköfteciye söyleyeceği TEK bir Türkçe cümle yaz."),
 		*Context.TraitSummary(),
 		Context.bVIP ? TEXT(" (VIP)") : TEXT(""),
 		Context.bRegular ? *FString::Printf(TEXT(" Müdavim (%d ziyaret, %d kötü anı)."), Context.PastVisits, Context.RememberedMistakes) : TEXT(""),
 		Context.Accuracy, Context.Quality, Context.Hygiene,
+		*HataMetni,
 		Context.PatienceFrac < 0.25f ? TEXT("çok bekledi") : TEXT("makul sürede alındı"),
 		MoodTr);
 

@@ -71,6 +71,52 @@ bool FCigDialogueContextKeyMatchesGeneratorTest::RunTest(const FString& /*Parame
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigDialogueWrongOrderTest,
+	"Cigkofte.Dialogue.WrongOrderReachesItsOwnBucket",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigDialogueWrongOrderTest::RunTest(const FString& /*Parameters*/)
+{
+	// Regression. The caller filled the delivered side of the context from the
+	// requested side, so the a-flag was pinned to 1 and the 1200 buckets written
+	// for a wrong order could never be addressed. What proves the fix is not
+	// that a correct order still keys to a1, but that a wrong one keys to a0.
+	FCigDialogueContext Dogru;
+	Dogru.Accuracy = 95.f;
+	Dogru.Quality = 90.f;
+	Dogru.RequestedSpice = ECigSpice::CokAci;
+	Dogru.ServedSpice = ECigSpice::CokAci;
+	Dogru.bWantedAyran = true;
+	Dogru.bGotAyran = true;
+
+	TestTrue(TEXT("Doğru sipariş eşleşmiş sayılmalı"), Dogru.OrderMatched());
+	TestTrue(TEXT("Doğru siparişin anahtarı a1 olmalı"), Dogru.CacheKey().Contains(TEXT("_a1_")));
+
+	// Missing ayran.
+	FCigDialogueContext AyranYok = Dogru;
+	AyranYok.bGotAyran = false;
+	TestFalse(TEXT("Eksik ayran eşleşme sayılmamalı"), AyranYok.OrderMatched());
+	TestTrue(TEXT("Eksik ayran a0 kovasına düşmeli"), AyranYok.CacheKey().Contains(TEXT("_a0_")));
+
+	// Ayran nobody asked for is also a mistake, in the other direction.
+	FCigDialogueContext FazlaAyran = Dogru;
+	FazlaAyran.bWantedAyran = false;
+	TestFalse(TEXT("İstenmeyen ayran da hata sayılmalı"), FazlaAyran.OrderMatched());
+
+	// Wrong spice, which the context could not express at all before.
+	FCigDialogueContext YanlisAci = Dogru;
+	YanlisAci.ServedSpice = ECigSpice::AzAci;
+	TestFalse(TEXT("Yanlış acılık eşleşme sayılmamalı"), YanlisAci.OrderMatched());
+	TestTrue(TEXT("Yanlış acılık a0 kovasına düşmeli"), YanlisAci.CacheKey().Contains(TEXT("_a0_")));
+
+	// The prompt has to be able to name the mistake, not just score it.
+	TestTrue(TEXT("Doğru siparişte hata metni boş olmalı"), Dogru.MistakeSummary().IsEmpty());
+	TestFalse(TEXT("Eksik ayran hata metninde geçmeli"), AyranYok.MistakeSummary().IsEmpty());
+	TestFalse(TEXT("Yanlış acılık hata metninde geçmeli"), YanlisAci.MistakeSummary().IsEmpty());
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigDialogueDominantTraitTest,
 	"Cigkofte.Dialogue.DominantTraitFollowsPriority",
 	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)

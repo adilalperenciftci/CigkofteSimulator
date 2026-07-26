@@ -21,9 +21,17 @@ struct FCigDialogueContext
 	float Quality = 0.f;            // 0-100 wrap quality
 	float Hygiene = 100.f;          // 0-100 counter hygiene
 	float PatienceFrac = 1.f;       // 0-1 (1 = served immediately)
+
+	// What was asked for against what was handed over. Both halves are needed:
+	// a customer can only complain about the wrong wrap if the context knows the
+	// wrap was wrong. These used to be filled from the order alone, with the
+	// delivered side copied from the requested side, so every service looked
+	// like a service that went right.
+	ECigSpice RequestedSpice = ECigSpice::Orta;
 	ECigSpice ServedSpice = ECigSpice::Orta;
 	bool bWantedAyran = false;
 	bool bGotAyran = false;
+
 	int32 FinalPrice = 0;
 	bool bTipped = false;
 
@@ -89,22 +97,57 @@ struct FCigDialogueContext
 
 	int32 DominantTraitIndex() const { return DominantTraitIndex(Traits); }
 
+	// Was the order actually fulfilled as asked. Kept as one predicate because
+	// the bucket key has room for one bit, and because a customer who got the
+	// wrong wrap reacts to that fact rather than to which detail was wrong.
+	bool OrderMatched() const
+	{
+		return bWantedAyran == bGotAyran && RequestedSpice == ServedSpice;
+	}
+
+	// The specific mistakes, in words, for the AI prompt. Empty when the order
+	// was right. The prompt carries scores otherwise, and a percentage does not
+	// tell the customer what to complain about.
+	FString MistakeSummary() const
+	{
+		TArray<FString> Notlar;
+		if (RequestedSpice != ServedSpice)
+		{
+			Notlar.Add(FString::Printf(TEXT("%s istedi, %s verildi"),
+				*CigSpiceName(RequestedSpice), *CigSpiceName(ServedSpice)));
+		}
+		if (bWantedAyran && !bGotAyran)
+		{
+			Notlar.Add(TEXT("ayran istedi, gelmedi"));
+		}
+		else if (!bWantedAyran && bGotAyran)
+		{
+			Notlar.Add(TEXT("istemediği hâlde ayran geldi"));
+		}
+		return FString::Join(Notlar, TEXT("; "));
+	}
+
 	// The bucket key. Both the runtime AI cache and the pre-generated line table
 	// are addressed by it, so the two share one space. Constantly varying fields
 	// such as price are deliberately left out.
+	//
+	// bOrderOk is the a-flag. Half the table is written for the case where it is
+	// false, so it has to be able to be false: the caller used to copy the
+	// delivered ayran from the requested one, which pinned it to true and left
+	// 1200 of the 2400 buckets unreachable.
 	static FString BucketKey(int32 MoodIdx, int32 TraitIdx, bool bVIP, bool bRegular,
-		bool bAyranOk, bool bHygieneLow, bool bPatienceLow)
+		bool bOrderOk, bool bHygieneLow, bool bPatienceLow)
 	{
 		return FString::Printf(TEXT("m%d_t%d_v%d_r%d_a%d_h%d_p%d"),
 			MoodIdx, TraitIdx,
 			bVIP ? 1 : 0, bRegular ? 1 : 0,
-			bAyranOk ? 1 : 0, bHygieneLow ? 1 : 0, bPatienceLow ? 1 : 0);
+			bOrderOk ? 1 : 0, bHygieneLow ? 1 : 0, bPatienceLow ? 1 : 0);
 	}
 
 	FString CacheKey() const
 	{
 		return BucketKey((int32)Mood(), DominantTraitIndex(), bVIP, bRegular,
-			bWantedAyran == bGotAyran, Hygiene < 50.f, PatienceFrac < 0.25f);
+			OrderMatched(), Hygiene < 50.f, PatienceFrac < 0.25f);
 	}
 };
 
