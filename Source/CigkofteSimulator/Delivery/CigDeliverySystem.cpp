@@ -7,6 +7,7 @@
 #include "Orders/CigOrderSystem.h"
 #include "Economy/CigEconomySystem.h"
 #include "Economy/CigReviewSystem.h"
+#include "Economy/CigSaleSystem.h"
 #include "Progression/CigProgressionSystem.h"
 #include "Events/CigEventSystem.h"
 #include "Vehicles/CigCar.h"
@@ -195,10 +196,13 @@ bool UCigDeliverySystem::TryDeliverAt(const FVector& PlayerPos)
 		Reward += 25; // speed tip
 	}
 
-	Eco->Earn(Reward);
-	if (GM->Days)
+	if (GM->Sales)
 	{
-		GM->Days->RegisterSale(Reward);
+		GM->Sales->GeliriKaydet(Reward);
+	}
+	else
+	{
+		Eco->Earn(Reward);
 	}
 	if (GM->Progression)
 	{

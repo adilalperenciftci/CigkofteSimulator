@@ -364,6 +364,36 @@ def check_decoupling() -> None:
         print("  kuplaj: yayıncılar görev sistemini doğrudan çağırmıyor")
 
 
+def check_single_sale_pipeline() -> None:
+    """The day's takings must be booked in exactly one place.
+
+    RegisterSale is what the day summary, the best-day record and every
+    end-of-day comparison are built on. It used to be called from the counter,
+    from the staff system and from deliveries, and each caller booked a slightly
+    different set of consequences alongside it - which is how a staff sale ended
+    up invisible to bulk orders and achievements. Routing everything through
+    UCigSaleSystem fixed that, and this keeps a fourth caller from appearing the
+    next time someone needs to pay the player.
+    """
+    offenders = []
+    for path in sorted(SOURCE.rglob("*.cpp")):
+        rel = path.relative_to(ROOT).as_posix()
+        # The sale system is the one legitimate caller. Tests may name it in
+        # their comments.
+        if "CigSaleSystem" in path.name or path.parent.name == "Tests":
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for n, line in enumerate(text.splitlines(), 1):
+            if "RegisterSale(" in line:
+                offenders.append(f"{rel}:{n}")
+
+    if offenders:
+        fail("Gün hasılatı satış hattı dışından kaydediliyor "
+             f"(UCigSaleSystem üzerinden geç): {', '.join(offenders)}")
+    else:
+        print("  satış: gün hasılatı yalnızca satış hattından kaydediliyor")
+
+
 def check_repo_files() -> None:
     for name in ("LICENSE", "CREDITS.md", "README.md", ".gitattributes"):
         if not (ROOT / name).exists():
@@ -378,6 +408,7 @@ def main() -> int:
     check_dialogue()
     check_text()
     check_decoupling()
+    check_single_sale_pipeline()
     check_repo_files()
 
     if problems:

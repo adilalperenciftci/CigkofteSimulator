@@ -6,6 +6,7 @@
 #include "Customers/CigkofteCustomer.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Economy/CigEconomySystem.h"
+#include "Economy/CigSaleSystem.h"
 #include "Inventory/CigInventorySystem.h"
 #include "Hygiene/CigHygieneSystem.h"
 #include "Orders/CigOrderSystem.h"
@@ -421,21 +422,36 @@ void UCigStaffSystem::DoWork()
 						ToppingCount++;
 					}
 				}
-				if (ToppingCount <= 2 && Cook->Dough.Servings >= 1)
+				if (ToppingCount <= 2 && Cook->Dough.Servings >= 1 && GM->Sales)
 				{
+					const ECigSpice Acilik = Cook->Dough.Spice;
 					const float Q = Cook->UseServings(1);
 					const float BaseAcc = 55.f + Apprentice.Level * 5.f + (Apprentice.Spec == ECigStaffSpec::ServisUzmani ? 15.f : 0.f);
-					const int32 Price = FMath::RoundToInt(55.f * FMath::Clamp(Q / 100.f, 0.3f, 1.f) * (BaseAcc / 100.f));
-					if (GM->Economy)
-					{
-						GM->Economy->Earn(Price);
-					}
-					if (GM->Days)
-					{
-						GM->Days->RegisterSale(Price);
-					}
+
+					// The apprentice builds a plain wrap to the customer's order.
+					// Describing it rather than naming a price is the point: the
+					// same wrap the player would hand over is now priced by the
+					// same list, so raising prices raises what staff bring in
+					// instead of leaving them stuck on an old hardcoded 55.
+					FCigSatisTalebi Talep;
+					Talep.Kaynak = ECigSatisKaynagi::Personel;
+					Talep.Wrap.bActive = true;
+					Talep.Wrap.bWrapped = true;
+					Talep.Wrap.bPacked = C->Spec.bPacked;
+					Talep.Wrap.Portions = 1;
+					Talep.Wrap.DoughQuality = Q;
+					Talep.Wrap.Spice = Acilik;
+					Talep.Wrap.ToppingMask = C->Spec.ToppingMask;
+					Talep.Accuracy = BaseAcc;
+					Talep.Quality = Q;
+					Talep.Traits = C->Traits;
+					Talep.bSadik = C->LoyalId >= 0;
+					Talep.SabirKesri = C->MaxPatience > 0.f ? C->Patience / C->MaxPatience : 1.f;
+
+					const FCigSatisSonucu Sonuc = GM->Sales->SatisiIsle(Talep);
+
 					Cust->RemoveCustomer(C, false);
-					GM->AddMessage(CigText::Format(TEXT("msg.staff.served"), *Apprentice.Name, Price), FLinearColor(0.7f, 0.95f, 0.8f));
+					GM->AddMessage(CigText::Format(TEXT("msg.staff.served"), *Apprentice.Name, Sonuc.Toplam), FLinearColor(0.7f, 0.95f, 0.8f));
 					bWorked = true;
 				}
 			}

@@ -8,6 +8,7 @@
 #include "Customers/CigCustomerSystem.h"
 #include "Economy/CigEconomySystem.h"
 #include "Economy/CigPricingSystem.h"
+#include "Economy/CigSaleSystem.h"
 #include "Economy/CigInspectionSystem.h"
 #include "Economy/CigSocialSystem.h"
 #include "Economy/CigRivalSystem.h"
@@ -67,6 +68,8 @@ void ACigkofteGameMode::InitGame(const FString& MapName, const FString& Options,
 	CreateSystem(Rivals);
 	// After Rivals: pricing reads their prices to answer with its own.
 	CreateSystem(Pricing);
+	// After Pricing: every sale is priced off the list it publishes.
+	CreateSystem(Sales);
 	CreateSystem(Inspection);
 	CreateSystem(Social);
 	CreateSystem(Quests);

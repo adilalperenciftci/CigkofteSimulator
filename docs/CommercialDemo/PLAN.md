@@ -15,12 +15,12 @@ are internally consistent. Stage 0 adds no player-facing feature by design.
 | 0.3 | Complaint risk feeds the inspector roll | — | done |
 | 0.5 | Every event ends through one lifecycle | — | done |
 | 0.6 | Stable review IDs for the reply queue | — | done |
-| 0.1 | One authoritative sale pipeline | 0.2 | todo |
+| 0.10 | Build/test/package scripts, honest CI | — | done |
+| 0.1 | One authoritative sale pipeline | 0.2 | done |
 | 0.4 | Unified bulk-order contracts | 0.1 | todo |
 | 0.7 | PriceScore from real per-product prices | 0.1 | todo |
 | 0.8 | Dialogue context uses the delivered wrap | 0.1 | todo |
 | 0.9 | Save migration tests | 0.1, 0.4 | todo |
-| 0.10 | Build/test/package scripts, honest CI | — | todo |
 
 0.1 is sequenced after 0.2 deliberately: the spice defect lives in the staff sale
 path, and fixing it first means the extraction has one correct behaviour to

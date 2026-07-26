@@ -8,6 +8,7 @@
 #include "Core/CigBalance.h"
 #include "Core/CigText.h"
 #include "Economy/CigEconomySystem.h"
+#include "Economy/CigSaleSystem.h"
 #include "Progression/CigProgressionSystem.h"
 
 namespace
@@ -204,9 +205,11 @@ void UCigEventSystem::TopluSiparisiSonuclandir(int32 Day)
 	const FCigTopluSonuc Sonuc = TopluSiparisSonucu(Yapilan, TopluSiparis.IstenenAdet);
 	const int32 Kazanc = FMath::RoundToInt(TopluSiparis.Odul * Sonuc.OdulOrani);
 
-	if (Kazanc > 0 && GM->Economy)
+	// A contract payout is takings like any other, so it counts towards the day
+	// and towards the best-day record instead of appearing only in the balance.
+	if (Kazanc > 0 && GM->Sales)
 	{
-		GM->Economy->Earn(Kazanc);
+		GM->Sales->GeliriKaydet(Kazanc);
 	}
 	Prog->AddRep(Sonuc.ItibarFarki);
 

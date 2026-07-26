@@ -58,8 +58,6 @@ public:
 	TArray<FCigLoyalCustomer> Loyals;
 	int32 NextLoyalId = 1;
 
-	int32 Combo = 0;
-
 	// --- Inspector ---
 	UPROPERTY() TObjectPtr<ACigkofteCustomer> Inspector;
 	float InspectorTimer = -1.f;
