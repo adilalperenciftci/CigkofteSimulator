@@ -27,53 +27,72 @@ with real art locally): `dukkan` (317 MB), `CityPark` (3.3 GB),
 `Content/MMSupermarket`, `Content/Scene_Banquet`, `Content/Cat_Animation_Pack`,
 `Content/Characters`.
 
-## Available in the owner's Fab library — not yet imported
+## The owner's Fab audio library
 
 Checked 2026-07-26 in the account's Fab library (`fab.com/library`, audio filter:
-11 items). These are already owned, so nothing has to be sourced externally. Each
-still needs its Fab licence recorded here once imported, since Fab "free" listings
-carry a specific licence rather than CC0 by default.
+11 items). Fab "free" does not mean one licence: each listing carries its own,
+and only some of them permit redistribution. That distinction decided which pack
+the shipped ambience actually came from.
 
-| Pack | Publisher | Covers |
+| Pack | Publisher | Licence | Browser download | Redistributable |
+|---|---|---|---|---|
+| Free City & Nature Sounds | Gregor Quendel | CC BY 4.0 | `.unitypackage`, 403.89 MB | yes, with attribution |
+| Free City Ambiences | rawAmbience | Fab Standard | `free_city_ambiences.zip`, 169.44 MB | no |
+| Free Thunder Sounds | Gregor Quendel | CC BY 4.0 | none — Launcher only | yes, but unreachable |
+| Free Crowd Cheering Sounds | Gregor Quendel | not yet checked | — | — |
+| 50 Free Game Sounds Pack | PlaceHolder Inc | not yet checked | — | — |
+
+The Fab website only offers a direct download when the publisher uploaded an
+"additional file"; otherwise the pack is reachable solely through the Epic Games
+Launcher or the Fab UE5 plugin. Free Thunder Sounds is in that second group, so
+its rain material could not be fetched even though its licence is the permissive
+one.
+
+## Ambience beds — done
+
+All three beds are in the repository and resolve at runtime.
+
+| Path | Source | State |
 |---|---|---|
-| Free City Ambiences | rawAmbience | `S_AmbStreet`, `S_AmbNight` |
-| Free Thunder Sounds | Gregor Quendel | `S_AmbRain` |
-| Free City & Nature Sounds | Gregor Quendel | street and outdoor layers |
-| Free Crowd Cheering Sounds | Gregor Quendel | match-day crowd (Stage 7) |
-| 50 Free Game Sounds Pack | PlaceHolder Inc | car engine, dishes, general gaps |
+| `/Game/Audio/S_AmbStreet` | Free City & Nature Sounds — traffic street, cars and tram | 45.0 s, stereo 44.1 kHz, looping |
+| `/Game/Audio/S_AmbNight` | same recording, calmest stretch, low-passed | 45.0 s, stereo 44.1 kHz, looping |
+| `/Game/Audio/S_AmbRain` | Free City & Nature Sounds — rain on various textures | 43.0 s, stereo 44.1 kHz, looping |
 
-### Import procedure
+Everything came from the CC BY 4.0 pack rather than the two packs the paths were
+originally sketched against. Fab Standard forbids redistributing the source
+audio, so a `Free City Ambiences` bed could have shipped in a packaged build but
+not in this public repository — which would have left the repo with two beds and
+a hole. Attribution and the exact edits are recorded in `CREDITS.md`, as CC BY
+requires.
 
-The ambience layer looks these paths up by name and stays silent when they are
-absent, so importing requires no code change:
+The night bed is derived from the day recording rather than sourced separately.
+The pack has no night city ambience, and deriving it has an advantage over
+finding one: night is the same street heard later, so it should be the same
+street. The calmest 45 s window (starting 190 s in, chosen by scoring every
+window for loudness and spikiness) low-passed at 900 Hz gives distance and an
+empty road without changing location.
 
-| Expected path | Source |
-|---|---|
-| `/Game/Audio/S_AmbStreet` | Free City Ambiences — daytime street loop |
-| `/Game/Audio/S_AmbNight` | Free City Ambiences — night loop |
-| `/Game/Audio/S_AmbRain` | Free Thunder Sounds — rain loop |
+### How they were produced
 
-1. Add the packs to the project from the Epic Games Launcher, or download the
-   source audio from the Fab listing.
-2. Place or import the chosen loops as `Content/Audio/S_AmbStreet`,
-   `S_AmbNight`, `S_AmbRain`. UE imports `.wav`, `.ogg`, `.flac` and `.aiff`;
-   it does not import `.mp3`, and no converter is installed on this machine.
-3. Confirm the layer resolves: the log line `Ortam sesi yok:` must stop appearing.
-4. Record each pack's exact Fab licence in the table above before committing.
+Reproducible from the two downloads with the scripts in this repository's
+history; no editor work and no manual audio tool was involved.
 
-### Redistribution
-
-Fab licences generally permit use in a shipped game but **not** redistribution of
-the source assets. Cooked audio in a packaged build is fine; committing the raw
-pack contents to this public repository is not. Import the loops, verify the
-licence, and add `Content/Audio/S_Amb*` to the repository only if the licence
-allows it — otherwise treat them like the other Fab packs and gitignore them.
-
-## Externally verified alternative (only if the library packs cannot be used)
-
-`Rain in the Gutter Loop` by Ogrebane, opengameart.org, licence stated as **CC0**,
-`rain-gutter-loop_0.mp3`, 1.5 MB. Verified 2026-07-26. Needs conversion to a
-UE-importable format, which this machine cannot do without ffmpeg.
+1. `free city ambiences` and `city_nature_sounds_unity.unitypackage` downloaded
+   from the Fab library in the browser. A `.unitypackage` is a gzipped tar, so
+   the source WAVs were extracted with `tar` and mapped back to their real names
+   through each entry's `pathname` file.
+2. Loops cut with a tail crossfade: the material just past the loop end is faded
+   over the opening with an equal-power curve, so the last sample leads into the
+   first. Verified by comparing the wrap-point step against the file's own
+   sample-to-sample motion — 118, 22 and 253 against p99.9 steps of 1112, 573
+   and 12122, so no seam is audible.
+3. Imported as `USoundWave` through a headless `-run=pythonscript` commandlet
+   with `looping = True`. That flag is not cosmetic: `TickAmbience` spawns each
+   bed once and never retriggers it, so a one-shot import would play for
+   45 seconds and then leave the rest of the day silent.
+4. Verified by reloading the saved assets in a second commandlet and resolving
+   the exact object paths `ResolveOrtam` passes to `LoadObject`. All three
+   return `SoundWave`; the `Ortam sesi yok:` log line no longer fires.
 
 ## Prohibited
 
