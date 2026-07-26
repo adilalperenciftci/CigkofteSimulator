@@ -74,18 +74,26 @@ empty road without changing location.
 
 ### How they were produced
 
-Reproducible from the two downloads with the scripts in this repository's
-history; no editor work and no manual audio tool was involved.
+`Tools/make_ambience.py` rebuilds all three from the downloaded pack:
 
-1. `free city ambiences` and `city_nature_sounds_unity.unitypackage` downloaded
-   from the Fab library in the browser. A `.unitypackage` is a gzipped tar, so
-   the source WAVs were extracted with `tar` and mapped back to their real names
-   through each entry's `pathname` file.
-2. Loops cut with a tail crossfade: the material just past the loop end is faded
-   over the opening with an equal-power curve, so the last sample leads into the
-   first. Verified by comparing the wrap-point step against the file's own
-   sample-to-sample motion — 118, 22 and 253 against p99.9 steps of 1112, 573
-   and 12122, so no seam is audible.
+```
+python Tools/make_ambience.py <city_nature_sounds_unity.unitypackage> <outdir>
+```
+
+Verified byte-identical to the committed assets' sources. No editor work and no
+manual audio tool is involved, which is the point: the source pack is licensed
+and cannot live in the repository, so without a script "where did S_AmbNight
+come from" would have no answer.
+
+What the script does, and what was checked:
+
+1. `.unitypackage` is a gzipped tar, so the source WAVs are extracted with `tar`
+   and mapped back to their real names through each entry's `pathname` file.
+2. Loops are cut with a tail crossfade: the material just past the loop end is
+   faded over the opening with an equal-power curve, so the last sample leads
+   into the first. The script checks each wrap-point step against the file's own
+   sample-to-sample motion and reports OK or CLICK — 118, 22 and 253 against
+   p99.9 steps of 1112, 573 and 12122.
 3. Imported as `USoundWave` through a headless `-run=pythonscript` commandlet
    with `looping = True`. That flag is not cosmetic: `TickAmbience` spawns each
    bed once and never retriggers it, so a one-shot import would play for
@@ -93,6 +101,11 @@ history; no editor work and no manual audio tool was involved.
 4. Verified by reloading the saved assets in a second commandlet and resolving
    the exact object paths `ResolveOrtam` passes to `LoadObject`. All three
    return `SoundWave`; the `Ortam sesi yok:` log line no longer fires.
+
+**Not verified: nobody has listened to them.** Every check above is analytic —
+format, seam arithmetic, the looping flag, path resolution. Whether the night bed
+reads as night, and whether the layer sits at the right level against the Kenney
+one-shots, needs a play session. Tracked in `KNOWN_LIMITATIONS.md`.
 
 ## Prohibited
 

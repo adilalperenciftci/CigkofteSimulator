@@ -3,6 +3,21 @@
 Genuine, non-blocking limitations of the current branch. Defects that are simply
 not fixed yet belong in `PLAN.md`, not here.
 
+## Verification
+
+- **Nobody has played the game on this branch.** Every check is static analysis,
+  a compile, headless automation or log inspection. No PIE session and no human
+  looking at a screen. So the player-facing consequences of these changes — the
+  prices on the tablet, the renamed event, the new review wording, the fourteen
+  dialogue lines — are unseen.
+- **Nobody has listened to the ambience beds.** Format, loop-seam arithmetic, the
+  looping flag and path resolution are all verified; whether the night bed reads
+  as night, and whether the layer sits right against the Kenney one-shots, is not.
+- Slice 0.7 made footfall respond to the pricing policy for the first time. The
+  net price is unchanged, but `GunlukTalepCarpani` now sees a 0.8–1.25 multiplier
+  it never saw, and with elasticity around 1.4 the expensive policy now measurably
+  thins the queue. That is a balance change, and it has not been played.
+
 ## Dialogue
 
 - The bucket key carries one bit for "the order was correct", so the offline

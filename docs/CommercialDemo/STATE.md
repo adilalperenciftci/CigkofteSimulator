@@ -60,19 +60,60 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 **Stage 0 is complete.** All ten slices are done and every defect listed in
 `BASELINE.md` is closed.
 
+- **GameMode test harness.** `FCigTestShop` stands up a real shop in a throwaway
+  world, and the two defects that had no runtime test now have one. See below.
+
 ## Current task
 
-None in progress.
+**Verify the packaging fix.** Not done — see below.
 
 ## Next exact task
 
-**A GameMode test harness**, carried over from 0.1 and now the first item of
-Stage 1. Nothing can currently stand up `ACigkofteGameMode` with its systems in
-a test, so the sale parity test and a `CaptureSave`/`ApplySave` round-trip are
-both still covered by static rules and reading rather than by a test. Everything
-in Stage 1 wants it too.
+**1. Confirm the packaged build actually loads its data.** Run:
 
-Then Stage 1 proper: 1.1 mixture visual state driven from food state.
+```
+.\Scripts\PackageDemo.ps1 -Configuration Development
+```
+
+The smoke test must print `metin tablosu OK`, `denge verisi OK`, `ses varliklari OK`.
+**This has never passed.** The first packaged build had none of the three; the
+`../Config/*` staging fix in `Config/DefaultGame.ini` is believed correct but the
+run that would have proved it died on a file lock, not on the fix. Until that
+output is seen, treat the packaged demo as broken.
+
+If it still fails, the diagnosis path is the UAT log, not the console output:
+`%APPDATA%\Unreal Engine\AutomationTool\Logs\...\Log.txt`. That is where the
+"Unable to find directory ... Content/Config/Balance" line appeared — UAT warns
+and then reports overall success, so the console alone says nothing.
+
+**2. Then Stage 1.1** — mixture visual state driven from food state, with cached
+material instances.
+
+## The test harness, and what it closed
+
+`ACigkofteGameMode::CreateSystems` was split out of `InitGame`. The two halves
+were always different jobs: one builds the rules, the other builds the world
+those rules are played in — meshes, the car, the save file, the widgets. Only
+the second needs a map, so a test can now have the whole rule set without one.
+`FCigTestShop` (Tests/CigTestShop.h) does that in about forty lines, and
+deliberately does not call `InitGame`, which would load the player's real save.
+
+Four tests moved off "verified by reading":
+
+- `StaffSaleCountsLikeAPlayerSale` — the 0.1 defect directly. An apprentice's
+  sale must move `TotalServed`, the till and the day's tally.
+- `BothSourcesPriceTheSameWrap` — the same wrap is worth the same money whoever
+  hands it over, with the combo as the one documented difference.
+- `StaffSalesAdvanceABulkOrder` — the end-to-end version, and the one that cost
+  the player money: accept a contract, serve it entirely with staff, and it must
+  settle paid in full.
+- `SaveRoundTripKeepsTheShop` — `CaptureSave` then `ApplySave` over a wrecked
+  live state. Migration tests prove an old file reaches the current schema; they
+  say nothing about whether that schema can carry the shop.
+
+Verified the way the others were: the staff-sale defect was re-injected into
+`SatisiIsle`, and exactly the two tests aimed at it failed, then passed again on
+restore.
 
 ## What 0.1 changed
 

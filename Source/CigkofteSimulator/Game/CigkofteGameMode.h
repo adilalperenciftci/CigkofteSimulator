@@ -109,6 +109,15 @@ public:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void Tick(float DeltaSeconds) override;
 
+	// Builds every system in dependency order and initialises it.
+	//
+	// Split out of InitGame because these are two different jobs: this is the
+	// rules, and what follows it in InitGame is the world those rules are played
+	// in - meshes, actors, the save file, the widgets. Only the second half
+	// needs a map, so separating them is what lets a test stand the shop up
+	// without one (see Tests/CigTestShop.h).
+	void CreateSystems();
+
 	// --- Systems ---
 	// The event bus is built first so the others can subscribe to it during
 	// InitSystem (see Game/CigEventBus.h).

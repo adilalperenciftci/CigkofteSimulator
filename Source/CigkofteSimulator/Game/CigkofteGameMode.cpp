@@ -52,6 +52,36 @@ void ACigkofteGameMode::InitGame(const FString& MapName, const FString& Options,
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
 
+	CreateSystems();
+
+	WorldBuilder->BuildWorld();
+
+	// The player's car
+	PlayerCar = GetWorld()->SpawnActor<ACigCar>(FVector::ZeroVector, FRotator::ZeroRotator);
+	if (PlayerCar)
+	{
+		PlayerCar->SetParked(FVector(-1300.f, 500.f, 0.f), 90.f, FLinearColor(0.9f, 0.45f, 0.05f));
+	}
+
+	// Starting locks (level 1): later stations and districts are closed
+	WorldBuilder->RefreshUnlocks(Progression ? Progression->Level : 1, false);
+
+	// Load a save if there is one
+	if (UCigSaveSubsystem* SaveSys = GetGameInstance() ? GetGameInstance()->GetSubsystem<UCigSaveSubsystem>() : nullptr)
+	{
+		if (SaveSys->HasSave())
+		{
+			bLoadedFromSave = SaveSys->LoadInto(this);
+		}
+	}
+	ApplySettings();
+	RefreshTabletWidget();
+
+	UE_LOG(LogCig, Log, TEXT("Oyun kuruldu (%d sistem, kayıt: %s)"), AllSystems.Num(), bLoadedFromSave ? TEXT("yüklendi") : TEXT("yok"));
+}
+
+void ACigkofteGameMode::CreateSystems()
+{
 	// Build the systems in dependency order. The bus goes first: everything
 	// below subscribes to it during InitSystem.
 	CreateSystem(Bus);
@@ -84,31 +114,6 @@ void ACigkofteGameMode::InitGame(const FString& MapName, const FString& Options,
 	{
 		Sys->InitSystem(this);
 	}
-
-	WorldBuilder->BuildWorld();
-
-	// The player's car
-	PlayerCar = GetWorld()->SpawnActor<ACigCar>(FVector::ZeroVector, FRotator::ZeroRotator);
-	if (PlayerCar)
-	{
-		PlayerCar->SetParked(FVector(-1300.f, 500.f, 0.f), 90.f, FLinearColor(0.9f, 0.45f, 0.05f));
-	}
-
-	// Starting locks (level 1): later stations and districts are closed
-	WorldBuilder->RefreshUnlocks(Progression ? Progression->Level : 1, false);
-
-	// Load a save if there is one
-	if (UCigSaveSubsystem* SaveSys = GetGameInstance() ? GetGameInstance()->GetSubsystem<UCigSaveSubsystem>() : nullptr)
-	{
-		if (SaveSys->HasSave())
-		{
-			bLoadedFromSave = SaveSys->LoadInto(this);
-		}
-	}
-	ApplySettings();
-	RefreshTabletWidget();
-
-	UE_LOG(LogCig, Log, TEXT("Oyun kuruldu (%d sistem, kayıt: %s)"), AllSystems.Num(), bLoadedFromSave ? TEXT("yüklendi") : TEXT("yok"));
 }
 
 void ACigkofteGameMode::Tick(float DeltaSeconds)
