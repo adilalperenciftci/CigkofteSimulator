@@ -437,34 +437,57 @@ def check_balance_keys() -> None:
         print(f"  anahtarlar: {checked} CSV varsayılanlarla eşleşiyor")
 
 
-def check_single_sale_pipeline() -> None:
-    """The day's takings must be booked in exactly one place.
+# Calls that must have exactly one caller, because a second one is not a
+# compile error - it silently produces a second, divergent answer.
+#
+#   (pattern, files allowed to contain it, what goes wrong otherwise)
+#
+# The allowed list holds the one legitimate caller and, where the function is
+# defined in a .cpp rather than inline in a header, its definition site.
+SINGLE_CALLER_RULES = [
+    ("RegisterSale(", ("CigSaleSystem",),
+     "Gün hasılatı satış hattı dışından kaydediliyor (UCigSaleSystem üzerinden geç)"),
+    ("PolicyPriceMult(", ("CigPricingSystem", "CigEconomySystem"),
+     "Fiyat politikası çarpanı fiyatlandırma dışında uygulanıyor "
+     "(UCigPricingSystem::EtkinCarpan üzerinden geç)"),
+]
+
+
+def check_single_callers() -> None:
+    """Some calls are only correct when nothing else makes them.
 
     RegisterSale is what the day summary, the best-day record and every
     end-of-day comparison are built on. It used to be called from the counter,
     from the staff system and from deliveries, and each caller booked a slightly
     different set of consequences alongside it - which is how a staff sale ended
-    up invisible to bulk orders and achievements. Routing everything through
-    UCigSaleSystem fixed that, and this keeps a fourth caller from appearing the
-    next time someone needs to pay the player.
-    """
-    offenders = []
-    for path in sorted(SOURCE.rglob("*.cpp")):
-        rel = path.relative_to(ROOT).as_posix()
-        # The sale system is the one legitimate caller. Tests may name it in
-        # their comments.
-        if "CigSaleSystem" in path.name or path.parent.name == "Tests":
-            continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        for n, line in enumerate(text.splitlines(), 1):
-            if "RegisterSale(" in line:
-                offenders.append(f"{rel}:{n}")
+    up invisible to bulk orders and achievements.
 
-    if offenders:
-        fail("Gün hasılatı satış hattı dışından kaydediliyor "
-             f"(UCigSaleSystem üzerinden geç): {', '.join(offenders)}")
-    else:
-        print("  satış: gün hasılatı yalnızca satış hattından kaydediliyor")
+    PolicyPriceMult is the same shape of problem seen from the other side. The
+    price the customer pays is the per-product markup times the shop policy, and
+    while the sale path applied the policy itself, everything that judged the
+    price read the markup alone - so switching to the expensive policy raised
+    every bill by a quarter without demand, the reviews or the tablet noticing.
+    A second caller would either double-charge it or reopen that gap.
+    """
+    ok = True
+    for pattern, owners, message in SINGLE_CALLER_RULES:
+        offenders = []
+        for path in sorted(SOURCE.rglob("*.cpp")):
+            rel = path.relative_to(ROOT).as_posix()
+            # Tests are exempt too: they may name the pattern in a comment.
+            if any(o in path.name for o in owners) or path.parent.name == "Tests":
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for n, line in enumerate(text.splitlines(), 1):
+                if pattern in line:
+                    offenders.append(f"{rel}:{n}")
+
+        if offenders:
+            fail(f"{message}: {', '.join(offenders)}")
+            ok = False
+
+    if ok:
+        print(f"  tek çağıran: {len(SINGLE_CALLER_RULES)} kural tutuyor")
 
 
 def check_repo_files() -> None:
@@ -482,7 +505,7 @@ def main() -> int:
     check_dialogue()
     check_text()
     check_decoupling()
-    check_single_sale_pipeline()
+    check_single_callers()
     check_repo_files()
 
     if problems:

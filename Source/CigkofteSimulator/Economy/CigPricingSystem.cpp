@@ -1,5 +1,6 @@
 #include "Economy/CigPricingSystem.h"
 #include "Game/CigkofteGameMode.h"
+#include "Economy/CigEconomySystem.h"
 #include "Economy/CigRivalSystem.h"
 #include "Progression/CigProgressionSystem.h"
 #include "Core/CigBalance.h"
@@ -58,9 +59,45 @@ float UCigPricingSystem::Carpan(int32 Urun) const
 	return Carpanlar[FMath::Clamp(Urun, 0, CigUrunCount - 1)];
 }
 
+float UCigPricingSystem::PolitikaCarpani() const
+{
+	const UCigEconomySystem* Eco = GM ? GM->Economy.Get() : nullptr;
+	return Eco ? Eco->PolicyPriceMult() : 1.f;
+}
+
+float UCigPricingSystem::EtkinCarpan(int32 Urun) const
+{
+	return Carpan(Urun) * PolitikaCarpani();
+}
+
 int32 UCigPricingSystem::Fiyat(int32 Urun) const
 {
-	return FMath::RoundToInt(CigBalance::Pricing(Urun).TabanFiyat * Carpan(Urun));
+	return FMath::RoundToInt(CigBalance::Pricing(Urun).TabanFiyat * EtkinCarpan(Urun));
+}
+
+float UCigPricingSystem::SokakOrani(int32 Urun) const
+{
+	const float Rakip = RakipOrtalamaCarpani();
+	return EtkinCarpan(Urun) / (Rakip > KINDA_SMALL_NUMBER ? Rakip : 1.f);
+}
+
+float UCigPricingSystem::FiyatPuani(float Oran)
+{
+	// Level with the street is a little better than neutral: people forgive a
+	// fair price. The slope is set so the thresholds the written comments use
+	// land where the stars already agree with them - at PahaliEsigi the score is
+	// clearly poor, at UcuzEsigi clearly good - because a five-star price
+	// alongside a review calling the shop expensive reads as a bug.
+	constexpr float NotrPuan = 3.5f;
+	constexpr float Egim = 4.f;
+
+	return FMath::Clamp(NotrPuan - (Oran - 1.f) * Egim, 1.f, 5.f);
+}
+
+bool UCigPricingSystem::UygunFiyatli() const
+{
+	const float Oran = SokakOrani(CigUrunDurum);
+	return Oran <= 1.f && Oran > UcuzEsigi;
 }
 
 void UCigPricingSystem::FiyatDegistir(int32 Urun, float Delta)
@@ -102,7 +139,9 @@ float UCigPricingSystem::GunlukTalepCarpani() const
 	float Toplam = 0.f;
 	for (int32 i = 0; i < CigUrunCount; ++i)
 	{
-		Toplam += UrunAgirliklari[i] * TalepCarpani(Carpanlar[i], CigBalance::Pricing(i).Esneklik, Gelir);
+		// The effective markup, not the raw one: a shop on the expensive policy
+		// charges a quarter more and footfall has to feel that.
+		Toplam += UrunAgirliklari[i] * TalepCarpani(EtkinCarpan(i), CigBalance::Pricing(i).Esneklik, Gelir);
 	}
 
 	// The weights are authored to sum to 1, so the weighted mean needs no
@@ -136,12 +175,12 @@ float UCigPricingSystem::RakipOrtalamaCarpani() const
 
 bool UCigPricingSystem::PahaliGoruluyor() const
 {
-	return Carpanlar[CigUrunDurum] >= PahaliEsigi * RakipOrtalamaCarpani();
+	return SokakOrani(CigUrunDurum) >= PahaliEsigi;
 }
 
 bool UCigPricingSystem::SuphelUcuzGoruluyor() const
 {
-	return Carpanlar[CigUrunDurum] <= UcuzEsigi * RakipOrtalamaCarpani();
+	return SokakOrani(CigUrunDurum) <= UcuzEsigi;
 }
 
 void UCigPricingSystem::OnDayStart(int32 Day)

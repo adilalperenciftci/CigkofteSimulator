@@ -135,8 +135,11 @@ FCigSatisSonucu UCigSaleSystem::SatisiIsle(const FCigSatisTalebi& Talep)
 	float Fiyat = 0.f;
 	if (const UCigPricingSystem* Fiyatlar = GM->Pricing.Get())
 	{
+		// The pricing policy is already inside every Fiyat() the menu returns.
+		// Multiplying by it again here would have charged the expensive policy
+		// twice once perception started reading the effective price.
 		const FCigRecipe& R = UCigCookingSystem::Recipe(Talep.Wrap.Recipe);
-		Fiyat = MenuFiyati(*Fiyatlar, Talep.Wrap) * R.PriceMult * Eco->PolicyPriceMult();
+		Fiyat = MenuFiyati(*Fiyatlar, Talep.Wrap) * R.PriceMult;
 		Fiyat *= KaliteAccuracyCarpani(Talep.Quality, Talep.Accuracy);
 		if (GM->Events)
 		{
@@ -206,7 +209,10 @@ FCigSatisSonucu UCigSaleSystem::SatisiIsle(const FCigSatisTalebi& Talep)
 	{
 		Prog->AddRep(-3.f);
 	}
-	if (Eco->PricePolicy == 0)
+	// Good value earns a little goodwill. This used to be paid out for having the
+	// policy set to "cheap", which a shop could do while charging well above the
+	// street through its per-product markups.
+	if (const UCigPricingSystem* Fiyatlar = GM->Pricing.Get(); Fiyatlar && Fiyatlar->UygunFiyatli())
 	{
 		Prog->AddRep(0.5f);
 	}
@@ -222,7 +228,7 @@ FCigSatisSonucu UCigSaleSystem::SatisiIsle(const FCigSatisTalebi& Talep)
 	{
 		const float Hijyen = GM->Hygiene ? GM->Hygiene->OverallHygiene() : 100.f;
 		GM->Reviews->RecordServe(Talep.Quality, Talep.Accuracy, Talep.SabirKesri,
-			Eco->PricePolicy, Hijyen, Talep.Traits);
+			Hijyen, Talep.Traits);
 	}
 
 	return Sonuc;

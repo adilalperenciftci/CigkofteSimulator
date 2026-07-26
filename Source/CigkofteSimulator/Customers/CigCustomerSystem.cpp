@@ -303,8 +303,14 @@ void UCigCustomerSystem::SpawnCustomer(bool bForceVIP, bool bForceInfluencer)
 	{
 		if (Eco->HasUpgrade(ECigUpgrade::Klima))        { Patience *= 1.2f; }
 		if (Eco->HasUpgrade(ECigUpgrade::MuzikSistemi)) { Patience *= 1.08f; }
-		if (Eco->PricePolicy == 0)                      { Patience *= 1.15f; }
-		if (Eco->PricePolicy == 2)                      { Patience *= 0.85f; }
+	}
+	// People waiting for something they consider overpriced get impatient sooner,
+	// and give a bargain more rope. That is about the bill, not about which
+	// policy the shop happens to be set to.
+	if (const UCigPricingSystem* Fiyatlar = GM->Pricing.Get())
+	{
+		if (Fiyatlar->PahaliGoruluyor())     { Patience *= 0.85f; }
+		else if (Fiyatlar->UygunFiyatli())   { Patience *= 1.15f; }
 	}
 	if (GM->Events)
 	{

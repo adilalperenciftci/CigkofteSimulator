@@ -48,17 +48,22 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 - **0.4 Contracts split from large deliveries.** Two unrelated mechanics were
   both called "Toplu Sipariş" and both driven by one balance row. See below.
 
+- **0.7 One effective price, and perception reads it.** The price stars, the
+  goodwill bonus, patience and footfall all answered the cheap/normal/expensive
+  toggle instead of the bill. See below.
+
 ## Current task
 
 None in progress.
 
 ## Next exact task
 
-**0.7 — PriceScore from real per-product prices.** It still derives from the
-legacy global `PricePolicy`, which 0.1 left in place as the reputation input
-even though per-product pricing already exists.
+**0.8 — dialogue context uses the delivered wrap.** `RequestServeDialogue` is
+filled from the order that was asked for rather than the wrap that was handed
+over, so a customer can thank the player for something they did not get.
 
-Then in order: 0.8 dialogue context, 0.9 migration tests.
+Then: 0.9 migration tests, which also wants the GameMode test harness 0.1 left
+outstanding.
 
 ## What 0.1 changed
 
@@ -117,6 +122,35 @@ the game while the game keeps the built-in number. Renaming a key in one place
 and not the other is how that happens, which is what this slice risked.
 Verified in both directions by re-injecting each fault.
 
+## What 0.7 changed
+
+Two knobs set the price: the per-product markup and the shop-wide
+cheap/normal/expensive policy. The sale path multiplied by both, but everything
+that *judged* the price read only the markup. Switching the shop to "expensive"
+raised every bill by a quarter while demand, the reviews, the reputation bonus
+and the price shown on the tablet all carried on as if nothing had changed.
+
+`UCigPricingSystem::EtkinCarpan` is now the single effective markup, policy
+included, and `Fiyat()` returns it — so the tablet shows what is charged. The
+sale pipeline stopped applying the policy separately; the net price is
+unchanged. `SokakOrani` measures that against the rival average and everything
+downstream reads it:
+
+- `PriceScore` comes from `FiyatPuani(SokakOrani)` instead of a three-value
+  lookup on the policy setting. It could previously sit at 4.5 stars while the
+  same review text called the shop expensive.
+- The half-point goodwill bonus per sale now needs the shop to actually be
+  priced at or below the street, not merely set to "cheap".
+- Patience responds to whether the price reads as expensive or as good value.
+- Footfall sees the policy at all, which it did not before.
+- `FDayServeData::PricePolicy` was written every serve and never read; removed.
+
+`check_sources.py` now enforces two single-caller rules rather than one:
+`RegisterSale(` outside the sale system, and `PolicyPriceMult(` outside pricing.
+The second is what would silently reintroduce this defect — either by
+double-charging the policy or by reopening the gap between what is charged and
+what is judged. Verified by re-injecting the duplicate multiply.
+
 ## Last successful build
 
 ```
@@ -127,7 +161,7 @@ Result: static PASS, build PASS, tests PASS, data PASS, package SKIPPED.
 
 ## Last test result
 
-`Automation RunTests Cigkofte` — **59 passed, 0 failed**, exit code 0.
+`Automation RunTests Cigkofte` — **60 passed, 0 failed**, exit code 0.
 
 ## Blockers
 

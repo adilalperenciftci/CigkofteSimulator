@@ -33,8 +33,34 @@ public:
 	// The player's markup on a product, 1.0 = list price.
 	float Carpan(int32 Urun) const;
 
-	// Price actually charged, list price times the markup.
+	// The shop-wide cheap/normal/expensive policy, as a multiplier.
+	float PolitikaCarpani() const;
+
+	// What a customer is actually charged, as a multiple of list price.
+	//
+	// Two knobs move the price: the per-product markup and the shop-wide policy.
+	// Only the markup used to be visible to anything that judged the price, so
+	// switching the shop to "expensive" raised every bill by a quarter while
+	// demand, the reviews and the price shown on the tablet all carried on as if
+	// nothing had changed. Everything that looks at price goes through here.
+	float EtkinCarpan(int32 Urun) const;
+
+	// Price actually charged, list price times the effective markup.
 	int32 Fiyat(int32 Urun) const;
+
+	// The effective markup measured against what the street charges. 1.0 means
+	// priced level with the rivals.
+	float SokakOrani(int32 Urun) const;
+
+	// A one-to-five star opinion of the price, from that ratio. Pure, so the
+	// curve can be checked without a shop (see Tests/CigPricingTests.cpp).
+	static float FiyatPuani(float Oran);
+
+	// Priced at or below the street without being cheap enough to look wrong.
+	// This is what earns the small reputation bonus for being good value; it
+	// used to be handed out for the "cheap" policy setting alone, regardless of
+	// what the shop was really charging.
+	bool UygunFiyatli() const;
 
 	// Moves the markup by Delta, clamped to the product's own range. The tablet
 	// steps in units of CarpanAdimi.

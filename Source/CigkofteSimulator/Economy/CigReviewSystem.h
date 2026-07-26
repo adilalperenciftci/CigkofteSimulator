@@ -28,7 +28,12 @@ public:
 	virtual void OnDayEnd(int32 Day) override;
 
 	// Collects data while serving; it turns into reviews at end of day.
-	void RecordServe(float Quality, float Accuracy, float PatienceFrac, int32 PricePolicy, float Hygiene, ECigTrait Traits);
+	//
+	// The price is not passed in: it is read from the pricing system at the
+	// moment of the serve, the same effective price the customer was charged.
+	// It used to arrive as the cheap/normal/expensive policy setting, so the
+	// price stars answered a toggle rather than the bill.
+	void RecordServe(float Quality, float Accuracy, float PatienceFrac, float Hygiene, ECigTrait Traits);
 	void RecordAngryLeave(bool bInfluencer);
 	void RecordDelivery(float Score);
 
@@ -63,7 +68,6 @@ private:
 		float Accuracy;
 		float PatienceFrac;
 		float Hygiene;
-		int32 PricePolicy;
 		uint16 Traits;
 	};
 	TArray<FDayServeData> DayServes;
