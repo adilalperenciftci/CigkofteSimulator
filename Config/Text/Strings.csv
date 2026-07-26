@@ -174,7 +174,7 @@ hud.sideprice," (+{0} TL)"," (+{0} TL)"
 hud.wrappedhint,"Serviste E: teslim et | G: rafa kaldır","E at service: hand over | G: shelve"
 hud.nextvip,SIRADAKİ MÜŞTERİ — VIP!,NEXT CUSTOMER — VIP!
 hud.deliveryrow,"{0}{1} | {2} sn | {3} m | {4}","{0}{1} | {2}s | {3}m | {4}"
-hud.bulkprefix,[TOPLU],[BULK]
+hud.bulkprefix,[BÜYÜK],[LARGE]
 hud.entercar,[E] Arabaya bin,[E] Enter car
 hud.controls.pad,"Sol çubuk yürü | Y zıpla | A etkileşim | RT yoğur | X sar | R3 raf | LB/RB seç, B uygula | Select tablet | Start menü","Left stick move | Y jump | A interact | RT knead | X wrap | R3 shelve | LB/RB select, B apply | Select tablet | Start menu"
 hud.controls.keyboard,"WASD | Boşluk zıpla | E etkileşim | Sol Tık yoğur | 1-8 garnitür | 9 yan ürün | F sar | G raf | T tablet | Esc menü","WASD | Space jump | E interact | LMB knead | 1-8 toppings | 9 side | F wrap | G shelve | T tablet | Esc menu"
@@ -376,9 +376,9 @@ event.rakipkampanyasi.end,Rakip kampanyası bitti.,The rival campaign has ended.
 event.sokakfestivali.name,Sokak Festivali,Street Festival
 event.sokakfestivali.start,Sokak festivali! Mahalle kaynıyor.,Street festival! The neighbourhood is buzzing.
 event.sokakfestivali.end,Festival sona erdi.,The festival has ended.
-event.toplusiparis.name,Toplu Sipariş,Bulk Order
-event.toplusiparis.start,Şirketten toplu sipariş geldi! Büyük paket servis fırsatı.,A company bulk order came in! A big delivery opportunity.
-event.toplusiparis.end,Toplu sipariş süresi doldu.,The bulk order window closed.
+event.buyukteslimat.name,Büyük Teslimat,Large Delivery
+event.buyukteslimat.start,Kapıya büyük bir teslimat düştü! Tek seferde iki paket.,A large delivery just came in! Two packages in one run.
+event.buyukteslimat.end,Büyük teslimat süresi doldu.,The large delivery window closed.
 event.malzemekitligi.name,Malzeme Kıtlığı,Ingredient Shortage
 event.malzemekitligi.start,Toptancıda kıtlık! Bazı stoklar yarıya düştü.,Shortage at the wholesaler! Some stock halved.
 event.malzemekitligi.end,Kıtlık aşıldı.,The shortage is over.
@@ -408,10 +408,10 @@ msg.inspect.complaint,Rakip dükkân belediyeye şikâyette bulundu.,A rival has
 msg.inspect.bribed,Müfettişe {0} TL verdin. Bu sefer göz yumdu.,You slipped the inspector {0} TL. They looked away this time.
 msg.inspect.bribecaught,Rüşvet yakalandı! {0} TL ceza ve dükkân kapatıldı.,The bribe was caught! {0} TL fine and the shop is closed.
 msg.inspect.bribenomoney,Rüşvet için bile paran yok.,Not even enough money for a bribe.
-msg.event.bulk.offer,"Toplu sipariş teklifi: {1}. güne {0} dürüm, {2} TL. (Tabletten Görevler sekmesi)","Bulk order offer: {0} wraps by day {1}, {2} TL. (Tablet, Quests tab)"
-msg.event.bulk.accepted,"Toplu siparişi kabul ettin: {1}. güne kadar {0} dürüm.","Bulk order accepted: {0} wraps by day {1}."
-msg.event.bulk.declined,Toplu siparişi geri çevirdin.,You turned down the bulk order.
-msg.event.bulk.result,"Toplu sipariş: {0}/{1} dürüm teslim edildi. Kazanç {2} TL.","Bulk order: delivered {0}/{1} wraps. Earned {2} TL."
+msg.contract.offer,"Toplu sipariş teklifi: {1}. güne {0} dürüm, {2} TL. (Tabletten Görevler sekmesi)","Bulk order offer: {0} wraps by day {1}, {2} TL. (Tablet, Quests tab)"
+msg.contract.accepted,"Toplu siparişi kabul ettin: {1}. güne kadar {0} dürüm.","Bulk order accepted: {0} wraps by day {1}."
+msg.contract.declined,Toplu siparişi geri çevirdin.,You turned down the bulk order.
+msg.contract.result,"Toplu sipariş: {0}/{1} dürüm teslim edildi. Kazanç {2} TL.","Bulk order: delivered {0}/{1} wraps. Earned {2} TL."
 msg.staff.unpaid,"{0}'nin maaşını ödeyemedin ({1}. gün). Morali düşüyor.","Could not pay {0}'s wage (day {1}). Morale is dropping."
 msg.staff.transferoffer,"Rakip dükkân {0}'ye {1} TL teklif etmiş. Tabletten karşı teklif verebilirsin.","A rival offered {0} {1} TL. You can counter from the tablet."
 msg.staff.transferred,{0} rakip dükkâna geçti.,{0} left for a rival shop.
@@ -450,7 +450,7 @@ msg.rival.scandal,"Dedikodu: {0}'de müşteriler zehirlenme şüphesiyle şikaye
 msg.rival.growing,{0} büyüyor... Tezgah sayısını artırmışlar.,{0} is growing... They increased their counters.
 msg.rival.closed,{0} KAPANDI! Mahallede tek gerçek çiğköfteci kaldı gibi...,{0} CLOSED! Looks like you're the only real cigkofte shop left...
 msg.delivery.new,PAKET SERVİS: {0} — {1},DELIVERY ORDER: {0} — {1}
-msg.delivery.bulk,TOPLU SİPARİŞ: {0} — 2 paket birden götür! ({1} TL),BULK ORDER: {0} — deliver 2 packages! ({1} TL)
+msg.delivery.bulk,BÜYÜK TESLİMAT: {0} — 2 paket birden götür! ({1} TL),LARGE DELIVERY: {0} — deliver 2 packages! ({1} TL)
 msg.delivery.expired,Paket servis zaman aşımına uğradı ({0})! İtibar düştü.,Delivery order expired ({0})! Reputation dropped.
 msg.delivery.nopack,"Yanında paket yok! (Gerekli: {0} — Paketleme istasyonunda G ile rafa koy, raftakiler otomatik yanında)",No packaged wrap on you! (Need: {0} — shelf with G at packaging station)
 msg.delivery.done,Teslimat tamam! +{0} TL (puan %{1},Delivery complete! +{0} TL (score {1}%

@@ -17,7 +17,7 @@ are internally consistent. Stage 0 adds no player-facing feature by design.
 | 0.6 | Stable review IDs for the reply queue | — | done |
 | 0.10 | Build/test/package scripts, honest CI | — | done |
 | 0.1 | One authoritative sale pipeline | 0.2 | done |
-| 0.4 | Unified bulk-order contracts | 0.1 | todo |
+| 0.4 | Unified bulk-order contracts | 0.1 | done |
 | 0.7 | PriceScore from real per-product prices | 0.1 | todo |
 | 0.8 | Dialogue context uses the delivered wrap | 0.1 | todo |
 | 0.9 | Save migration tests | 0.1, 0.4 | todo |

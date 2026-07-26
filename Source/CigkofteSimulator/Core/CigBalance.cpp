@@ -373,6 +373,24 @@ namespace
 		};
 	}
 
+	TArray<FCigParamRow> DefaultContracts()
+	{
+		return {
+			MakeInspection(TEXT("MinGun"),           TEXT("Sözleşmenin görünmeye başladığı gün"),        3.f),
+			MakeInspection(TEXT("TeklifSansi"),      TEXT("Gün başına teklif olasılığı"),                0.12f),
+			MakeInspection(TEXT("IhbarGunu"),        TEXT("Teslime kaç gün kala teklif edilir"),         3.f),
+			MakeInspection(TEXT("AdetTabani"),       TEXT("İstenen dürümün taban sayısı"),               8.f),
+			MakeInspection(TEXT("SeviyeBasinaAdet"), TEXT("Her seviye için eklenen dürüm"),              2.f),
+			MakeInspection(TEXT("AdetSapmasi"),      TEXT("İstenen sayıya eklenen rastgele üst sınır"),  4.f),
+			MakeInspection(TEXT("UcretCarpani"),     TEXT("Dürüm başına sözleşme ücreti (TL)"),         55.f),
+			MakeInspection(TEXT("KilPayiEsigi"),     TEXT("Kısmi ödeme için gereken tamamlanma oranı"),   0.80f),
+			MakeInspection(TEXT("KilPayiOdulOrani"), TEXT("Kıl payı kaçıranın aldığı ödeme oranı"),       0.60f),
+			MakeInspection(TEXT("TamItibar"),        TEXT("Siparişi karşılamanın itibar kazancı"),       8.f),
+			MakeInspection(TEXT("KilPayiItibar"),    TEXT("Kıl payı kaçırmanın itibar kaybı"),          -3.f),
+			MakeInspection(TEXT("BasarisizItibar"),  TEXT("Açık ara kaçırmanın itibar kaybı"),         -12.f)
+		};
+	}
+
 	TArray<FCigParamRow> DefaultAudio()
 	{
 		return {
@@ -446,7 +464,7 @@ namespace
 			MakeEvent(TEXT("FenomenZiyareti"),   TEXT("Fenomen Ziyareti"),   4, 0.10f, 40.f, 1.1f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 4),
 			MakeEvent(TEXT("RakipKampanyasi"),   TEXT("Rakip Kampanyası"),   2, 0.12f, -1.f, 0.7f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 0),
 			MakeEvent(TEXT("SokakFestivali"),    TEXT("Sokak Festivali"),    4, 0.10f, -1.f, 1.9f, 0.85f, 1.15f, 1.3f, 1.0f, 12, 0),
-			MakeEvent(TEXT("TopluSiparis"),      TEXT("Toplu Sipariş"),      3, 0.12f, 60.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 5),
+			MakeEvent(TEXT("BuyukTeslimat"),     TEXT("Büyük Teslimat"),     3, 0.12f, 60.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.0f,  0, 5),
 			MakeEvent(TEXT("MalzemeKitligi"),    TEXT("Malzeme Kıtlığı"),    3, 0.08f, -1.f, 1.0f, 1.00f, 1.00f, 1.0f, 1.3f,  0, 6)
 		};
 	}
@@ -516,6 +534,7 @@ namespace
 		TArray<FCigParamRow> Inspection;
 		TArray<FCigParamRow> Social;
 		TArray<FCigParamRow> Audio;
+		TArray<FCigParamRow> Contracts;
 		TArray<FCigTutorialRow> Tutorial;
 		bool bLoaded = false;
 
@@ -533,6 +552,7 @@ namespace
 			Inspection = DefaultInspection();
 			Social = DefaultSocial();
 			Audio = DefaultAudio();
+			Contracts = DefaultContracts();
 			Tutorial = DefaultTutorial();
 
 			ForEachCsvRow(TEXT("Skills.csv"), [this](const FCigCsvRow& Row)
@@ -639,6 +659,15 @@ namespace
 			ForEachCsvRow(TEXT("Audio.csv"), [this](const FCigCsvRow& Row)
 			{
 				if (FCigParamRow* R = FindByKey(Audio, Row))
+				{
+					Row.Str(TEXT("Label"), R->Label);
+					Row.Flt(TEXT("Deger"), R->Deger);
+				}
+			});
+
+			ForEachCsvRow(TEXT("Contracts.csv"), [this](const FCigCsvRow& Row)
+			{
+				if (FCigParamRow* R = FindByKey(Contracts, Row))
 				{
 					Row.Str(TEXT("Label"), R->Label);
 					Row.Flt(TEXT("Deger"), R->Deger);
@@ -767,6 +796,7 @@ namespace CigBalance
 	float Inspection(const TCHAR* Key, float Fallback) { return ParamAra(Tables().Inspection, Key, Fallback); }
 	float Social(const TCHAR* Key, float Fallback)     { return ParamAra(Tables().Social, Key, Fallback); }
 	float Audio(const TCHAR* Key, float Fallback)      { return ParamAra(Tables().Audio, Key, Fallback); }
+	float Contract(const TCHAR* Key, float Fallback)   { return ParamAra(Tables().Contracts, Key, Fallback); }
 	const FCigTutorialRow& Tutorial(int32 Index)       { return At(Tables().Tutorial, Index); }
 	int32 TutorialCount() { return Tables().Tutorial.Num(); }
 	int32 MahalleCount() { return Tables().Mahalle.Num(); }

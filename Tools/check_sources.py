@@ -85,6 +85,7 @@ CSV_SCHEMA = {
     "Tutorial.csv": (["Key", "Label", "MetinAnahtari", "VurguIstasyon"], 8),
     "Audio.csv": (["Key", "Label", "Deger"], 6),
     "Social.csv": (["Key", "Label", "Deger"], 18),
+    "Contracts.csv": (["Key", "Label", "Deger"], 12),
     "Events.csv": (
         ["Key", "Label", "MinGun", "Sans", "Sure", "SpawnCarpani", "SabirCarpani",
          "FiyatCarpani", "TeslimatCarpani", "StokCarpani", "TakvimPeriyodu",
@@ -364,6 +365,78 @@ def check_decoupling() -> None:
         print("  kuplaj: yayıncılar görev sistemini doğrudan çağırmıyor")
 
 
+# Key-based balance CSVs and the CigBalance.cpp function holding their defaults.
+# Index-based tables (Stock, Pricing, Mahalle) are matched by position instead,
+# which the row-count check already covers.
+CSV_DEFAULTS = {
+    "Skills.csv": "DefaultSkills",
+    "Upgrades.csv": "DefaultUpgrades",
+    "Traits.csv": "DefaultTraits",
+    "Achievements.csv": "DefaultAchievements",
+    "Inspection.csv": "DefaultInspection",
+    "Social.csv": "DefaultSocial",
+    "Contracts.csv": "DefaultContracts",
+    "Audio.csv": "DefaultAudio",
+    "Tutorial.csv": "DefaultTutorial",
+    "Events.csv": "DefaultEvents",
+    "Staff.csv": "DefaultStaff",
+}
+
+DEFAULT_FN_RE = re.compile(
+    r"TArray<\w+>\s+(Default\w+)\(\)\s*\{(.*?)\n\t\}", re.DOTALL)
+FIRST_TEXT_RE = re.compile(r"Make\w+\(\s*TEXT\(\"([^\"]+)\"\)")
+
+
+def check_balance_keys() -> None:
+    """A CSV row whose Key is not in the C++ defaults does nothing at all.
+
+    CigBalance loads the defaults first and then lets the CSV overwrite rows it
+    can find by key. A key that matches nothing is not an error to the loader -
+    it simply never applies, so the file looks like it is tuning the game while
+    the game keeps using the built-in number. Renaming a key in one place and
+    not the other is the easy way to cause that, which is exactly what splitting
+    the bulk order into a contract and a large delivery risked.
+    """
+    src = ROOT / "Source" / "CigkofteSimulator" / "Core" / "CigBalance.cpp"
+    if not src.exists():
+        fail("CigBalance.cpp yok — varsayılan anahtarlar doğrulanamıyor.")
+        return
+
+    text = src.read_text(encoding="utf-8", errors="replace")
+    defaults = {m.group(1): set(FIRST_TEXT_RE.findall(m.group(2)))
+                for m in DEFAULT_FN_RE.finditer(text)}
+
+    checked = 0
+    before = len(problems)
+    for name, fn in CSV_DEFAULTS.items():
+        known = defaults.get(fn)
+        if not known:
+            fail(f"CigBalance.cpp içinde {fn}() bulunamadı veya boş — "
+                 f"{name} anahtarları doğrulanamıyor.")
+            continue
+
+        path = BALANCE / name
+        if not path.exists():
+            continue
+        _, rows = read_csv(path)
+
+        rel = path.relative_to(ROOT).as_posix()
+        for n, row in enumerate(rows, start=2):
+            key = (row.get("Key") or "").strip()
+            if key and key not in known:
+                fail(f"{rel}:{n}: '{key}' {fn}() içinde yok — bu satır hiçbir "
+                     f"zaman uygulanmaz, oyun varsayılanı kullanır.")
+
+        missing = known - {(r.get("Key") or "").strip() for r in rows}
+        if missing:
+            fail(f"{rel}: {fn}() içindeki şu anahtarlar CSV'de yok: "
+                 f"{', '.join(sorted(missing))}")
+        checked += 1
+
+    if len(problems) == before:
+        print(f"  anahtarlar: {checked} CSV varsayılanlarla eşleşiyor")
+
+
 def check_single_sale_pipeline() -> None:
     """The day's takings must be booked in exactly one place.
 
@@ -405,6 +478,7 @@ def main() -> int:
     print("Cigkofte kaynak kontrolu")
     check_sources()
     check_balance()
+    check_balance_keys()
     check_dialogue()
     check_text()
     check_decoupling()

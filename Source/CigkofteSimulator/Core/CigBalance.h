@@ -36,6 +36,12 @@ namespace CigBalance
 	float Social(const TCHAR* Key, float Fallback);
 	float Audio(const TCHAR* Key, float Fallback);
 
+	// The multi-day bulk-order contract. It has its own table because it used to
+	// borrow the Events row named TopluSiparis, which also drove an unrelated
+	// large delivery - so retuning how often a wedding calls also retuned how
+	// often a big delivery appeared, and neither could be adjusted alone.
+	float Contract(const TCHAR* Key, float Fallback);
+
 	// Indexed by ECigTutorialStep.
 	const FCigTutorialRow& Tutorial(int32 Index);
 	int32 TutorialCount();

@@ -45,17 +45,20 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 - **0.1 One authoritative sale pipeline.** `UCigSaleSystem::SatisiIsle` now prices
   and books every counter sale. See below for what changed and what it fixed.
 
+- **0.4 Contracts split from large deliveries.** Two unrelated mechanics were
+  both called "Toplu Sipariş" and both driven by one balance row. See below.
+
 ## Current task
 
 None in progress.
 
 ## Next exact task
 
-**0.4 — unified bulk-order contracts.** Now unblocked: 0.1 made `TotalServed` a
-reliable measure of what the kitchen put out, which is what
-`UCigEventSystem::TopluSiparis` counts against.
+**0.7 — PriceScore from real per-product prices.** It still derives from the
+legacy global `PricePolicy`, which 0.1 left in place as the reputation input
+even though per-product pricing already exists.
 
-Then in order: 0.7 price score, 0.8 dialogue context, 0.9 migration tests.
+Then in order: 0.8 dialogue context, 0.9 migration tests.
 
 ## What 0.1 changed
 
@@ -91,6 +94,29 @@ a dozen systems attached, and there is no harness for that yet. The static rule
 plus the fact that both paths now call one function is what holds it. A test
 that stands up a GameMode belongs with 0.9.
 
+## What 0.4 changed
+
+The player could be shown "Toplu Sipariş" twice on one day for two unrelated
+things: a three-day contract for N wraps, and a one-off delivery of two packages
+to a door. Both read `MinGun` and `Sans` from the same `Events.csv` row and each
+rolled it separately, so the pair appeared together more often than either was
+tuned for and neither could be adjusted without moving the other.
+
+The contract keeps the name and now has its own `Contracts.csv` with all twelve
+numbers that were hardcoded in `CigEventSystem.cpp` — notice period, size, fee
+per wrap, the near-miss threshold and the three reputation outcomes. The
+delivery event is now `BuyukTeslimat` / "Büyük Teslimat" with its own text keys,
+and the contract's messages moved from `msg.event.bulk.*` to `msg.contract.*`.
+
+No save change: `FCigTopluSiparis` has the same fields.
+
+`check_sources.py` gained a check that every key-based balance CSV's keys match
+the defaults in `CigBalance.cpp`. A key that matches nothing is not an error to
+the loader — the row simply never applies, so the file looks like it is tuning
+the game while the game keeps the built-in number. Renaming a key in one place
+and not the other is how that happens, which is what this slice risked.
+Verified in both directions by re-injecting each fault.
+
 ## Last successful build
 
 ```
@@ -101,7 +127,7 @@ Result: static PASS, build PASS, tests PASS, data PASS, package SKIPPED.
 
 ## Last test result
 
-`Automation RunTests Cigkofte` — **57 passed, 0 failed**, exit code 0.
+`Automation RunTests Cigkofte` — **59 passed, 0 failed**, exit code 0.
 
 ## Blockers
 
