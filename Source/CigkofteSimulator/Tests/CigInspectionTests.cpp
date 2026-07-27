@@ -70,4 +70,30 @@ bool FCigInspectionWeightTest::RunTest(const FString& /*Parameters*/)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigInspectionRiskTest,
+	"Cigkofte.Inspection.ComplaintRaisesOddsWithoutGuaranteeing",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigInspectionRiskTest::RunTest(const FString& /*Parameters*/)
+{
+	const float Sakin = UCigInspectionSystem::DenetimSansi(0.30f, 1.00f, 0.65f);
+	const float Sikayetli = UCigInspectionSystem::DenetimSansi(0.30f, 1.25f, 0.65f);
+
+	TestTrue(TEXT("Şikâyet denetim olasılığını artırmalı"), Sikayetli > Sakin);
+
+	// The warning at day start is only worth showing if the visit it warns about
+	// can still fail to happen.
+	TestTrue(TEXT("Şikâyet denetimi garantilememeli"), Sikayetli < 1.f);
+	TestTrue(TEXT("Olasılık tavanı aşmamalı"),
+		UCigInspectionSystem::DenetimSansi(0.9f, 5.f, 0.65f) <= 0.65f);
+
+	// Corrupt balance data must not produce a negative or impossible probability.
+	TestEqual(TEXT("Negatif taban sıfıra kırpılmalı"),
+		UCigInspectionSystem::DenetimSansi(-1.f, 1.f, 0.65f), 0.f, 0.001f);
+	TestEqual(TEXT("Negatif çarpan sıfıra kırpılmalı"),
+		UCigInspectionSystem::DenetimSansi(0.3f, -2.f, 0.65f), 0.f, 0.001f);
+
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

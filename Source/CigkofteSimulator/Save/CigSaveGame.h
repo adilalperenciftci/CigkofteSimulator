@@ -54,6 +54,9 @@ struct FCigSaveReview
 	UPROPERTY() FString Text;
 	UPROPERTY() int32 Stars = 3;
 	UPROPERTY() int32 Day = 1;
+
+	// Version 12. Zero means a pre-v12 save; migration assigns one.
+	UPROPERTY() int32 Id = 0;
 };
 
 // Game settings (changed from the settings screen).
@@ -207,6 +210,11 @@ public:
 	// Only the follower count persists. The daily post allowance, the campaign
 	// and the viral roll all belong to a single day and are rebuilt each morning.
 	UPROPERTY() int32 Takipci = 0;
+
+	// Version 12: the pending reply is held by review ID, and the counter has to
+	// persist so a reloaded shop cannot reissue an ID that is still in the list.
+	UPROPERTY() int32 NextReviewId = 1;
+	UPROPERTY() int32 YanitlanacakYorumId = 0;
 
 	// --- Cat ---
 	UPROPERTY() FString CatName = TEXT("Pamuk");

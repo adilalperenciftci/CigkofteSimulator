@@ -79,4 +79,28 @@ bool FCigStaffPaceTest::RunTest(const FString& /*Parameters*/)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigStaffPackageSpiceTest,
+	"Cigkofte.Staff.PackageKeepsDoughSpice",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigStaffPackageSpiceTest::RunTest(const FString& /*Parameters*/)
+{
+	// Regression: the caller used to read the spice after UseServings had already
+	// emptied the batch, so the last package of every batch came out medium.
+	// PaketHazirla now takes the spice the caller captured first.
+	for (int32 i = 0; i <= (int32)ECigSpice::CokAci; ++i)
+	{
+		const ECigSpice Acilik = (ECigSpice)i;
+		const FCigPackagedWrap P = UCigStaffSystem::PaketHazirla(Acilik, 80.f, false);
+		TestEqual(FString::Printf(TEXT("Acilik %d korunmali"), i), (int32)P.Build.Spice, i);
+	}
+
+	const FCigPackagedWrap Uzman = UCigStaffSystem::PaketHazirla(ECigSpice::CokAci, 80.f, true);
+	const FCigPackagedWrap Acemi = UCigStaffSystem::PaketHazirla(ECigSpice::CokAci, 80.f, false);
+	TestTrue(TEXT("Paket uzmani kaliteden kaybetmemeli"), Uzman.Build.DoughQuality > Acemi.Build.DoughQuality);
+	TestTrue(TEXT("Paket sarili ve paketlenmis olmali"), Uzman.Build.bWrapped && Uzman.Build.bPacked);
+
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

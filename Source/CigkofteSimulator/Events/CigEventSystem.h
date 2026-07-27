@@ -13,11 +13,17 @@ struct FCigActiveEvent
 	float TimeLeft = 0.f; // <0 ise gün boyu
 };
 
-// A bulk order that lands days before it is due.
+// A bulk-order contract that lands days before it is due.
 //
 // The offer is the whole point: a wedding worth a week's takings is only worth
 // taking if the shop can actually turn out that many wraps on the day, and
 // accepting one it cannot is meant to hurt.
+//
+// Not to be confused with the large delivery the BuyukTeslimat event drops at a
+// door. That is one fat delivery run; this is a multi-day commitment. They used
+// to share a name, a set of text keys and a balance row, so the player saw
+// "Toplu Sipariş" twice for two unrelated things and neither could be tuned
+// without moving the other.
 struct FCigTopluSiparis
 {
 	bool bTeklifVar = false;
@@ -36,6 +42,14 @@ struct FCigTopluSonuc
 {
 	float OdulOrani = 0.f;
 	float ItibarFarki = 0.f;
+};
+
+// The terms of an offer, before the player has seen it.
+struct FCigTopluTeklif
+{
+	int32 IstenenAdet = 0;
+	int32 Odul = 0;
+	int32 IhbarGunu = 0;
 };
 
 // Random daily events; the other systems read their multipliers from here.
@@ -67,9 +81,11 @@ public:
 	static constexpr int32 EventHeat = 3;      // Sıcak Hava
 	static constexpr int32 EventPowerOut = 6;  // Elektrik Kesintisi
 
-	// The bulk order draws its notice period and odds from this row.
-	static constexpr int32 EventTopluSiparis = 12;
 	static constexpr int32 EventTedarikGecikmesi = 5;
+
+	// One large delivery dropped at a door. Distinct from the contract below,
+	// which is why it is no longer called TopluSiparis.
+	static constexpr int32 EventBuyukTeslimat = 12;
 
 	float SpawnMult() const;
 	float PatienceMult() const;
@@ -85,6 +101,19 @@ public:
 	// has not failed the way one that delivered 3 has.
 	static FCigTopluSonuc TopluSiparisSonucu(int32 Yapilan, int32 Istenen);
 
+	// The terms a contract is offered on. Pure apart from the balance table, so
+	// the shape of the offer can be checked without waiting for one to appear.
+	// Sapma is the roll the caller already made, kept out so the result stays
+	// reproducible in a test.
+	static FCigTopluTeklif TeklifUret(int32 Seviye, int32 Sapma);
+
+	// Retires every active event through EndEvent and returns how many were
+	// retired. Day-long events carry TimeLeft < 0 and are never picked up by
+	// UpdateSystem, so this is the only thing that ends them; emptying the array
+	// instead would skip their end message. Also used by the debug commands to
+	// clear the board.
+	int32 TumOlaylariBitir();
+
 	void TopluSiparisiKabulEt();
 	void TopluSiparisiReddet();
 
@@ -94,6 +123,7 @@ public:
 private:
 	void StartEvent(int32 DefIndex);
 	void EndEvent(int32 ActiveIndex);
+
 	void ApplySpecialStart(int32 OzelTur);
 
 	void TopluSiparisTeklifEt(int32 Day);

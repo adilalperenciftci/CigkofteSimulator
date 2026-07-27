@@ -73,7 +73,7 @@ void UCigSocialSystem::OnDayEnd(int32 Day)
 	{
 		TakipciDegistir(FMath::RoundToInt(CigBalance::Social(TEXT("GormezdenTakipci"), -8.f)));
 	}
-	YanitlanacakYorum = -1;
+	YanitlanacakYorumId = 0;
 	bViralGun = false;
 }
 
@@ -155,11 +155,8 @@ void UCigSocialSystem::KampanyaDuyurusuPaylas()
 bool UCigSocialSystem::YanitBekleyenVar() const
 {
 	const UCigReviewSystem* Rev = GM ? GM->Reviews.Get() : nullptr;
-	if (!Rev || !Rev->Reviews.IsValidIndex(YanitlanacakYorum))
-	{
-		return false;
-	}
-	return Rev->Reviews[YanitlanacakYorum].Stars <= KotuYorumEsigi;
+	const FCigReview* Yorum = Rev ? Rev->YorumBul(YanitlanacakYorumId) : nullptr;
+	return Yorum && Yorum->Stars <= KotuYorumEsigi;
 }
 
 void UCigSocialSystem::YorumaYanitVer(ECigYanit Yanit)
@@ -203,7 +200,7 @@ void UCigSocialSystem::YorumaYanitVer(ECigYanit Yanit)
 	}
 
 	// Answered either way, so the end-of-day silence penalty does not also land.
-	YanitlanacakYorum = -1;
+	YanitlanacakYorumId = 0;
 	GM->AddMessage(CigText::Format(MesajAnahtari, Takipci), FLinearColor(0.7f, 0.85f, 1.f));
 }
 

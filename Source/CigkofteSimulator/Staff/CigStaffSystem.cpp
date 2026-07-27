@@ -6,6 +6,7 @@
 #include "Customers/CigkofteCustomer.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Economy/CigEconomySystem.h"
+#include "Economy/CigSaleSystem.h"
 #include "Inventory/CigInventorySystem.h"
 #include "Hygiene/CigHygieneSystem.h"
 #include "Orders/CigOrderSystem.h"
@@ -82,6 +83,23 @@ float UCigStaffSystem::HataOlasiligi(float Titizlik, int32 Seviye, float Enerji)
 	const float YorgunlukCarpani = Enerji >= 50.f ? 1.f : FMath::Lerp(1.8f, 1.f, Enerji / 50.f);
 
 	return FMath::Clamp(TabanHata / T * SeviyeCarpani * YorgunlukCarpani, 0.f, 0.5f);
+}
+
+FCigPackagedWrap UCigStaffSystem::PaketHazirla(ECigSpice Spice, float Kalite, bool bUzman)
+{
+	// A packaging specialist loses nothing to hurry; anyone else gives up a tenth
+	// of the batch quality.
+	constexpr float AcemiKaybi = 0.9f;
+
+	FCigPackagedWrap P;
+	P.Build.bActive = true;
+	P.Build.bWrapped = true;
+	P.Build.bPacked = true;
+	P.Build.Portions = 1;
+	P.Build.Spice = Spice;
+	P.Build.DoughQuality = Kalite * (bUzman ? 1.f : AcemiKaybi);
+	P.Temp = 100.f;
+	return P;
 }
 
 float UCigStaffSystem::IsAraligi(float Hiz, int32 Seviye)
@@ -404,21 +422,36 @@ void UCigStaffSystem::DoWork()
 						ToppingCount++;
 					}
 				}
-				if (ToppingCount <= 2 && Cook->Dough.Servings >= 1)
+				if (ToppingCount <= 2 && Cook->Dough.Servings >= 1 && GM->Sales)
 				{
+					const ECigSpice Acilik = Cook->Dough.Spice;
 					const float Q = Cook->UseServings(1);
 					const float BaseAcc = 55.f + Apprentice.Level * 5.f + (Apprentice.Spec == ECigStaffSpec::ServisUzmani ? 15.f : 0.f);
-					const int32 Price = FMath::RoundToInt(55.f * FMath::Clamp(Q / 100.f, 0.3f, 1.f) * (BaseAcc / 100.f));
-					if (GM->Economy)
-					{
-						GM->Economy->Earn(Price);
-					}
-					if (GM->Days)
-					{
-						GM->Days->RegisterSale(Price);
-					}
+
+					// The apprentice builds a plain wrap to the customer's order.
+					// Describing it rather than naming a price is the point: the
+					// same wrap the player would hand over is now priced by the
+					// same list, so raising prices raises what staff bring in
+					// instead of leaving them stuck on an old hardcoded 55.
+					FCigSatisTalebi Talep;
+					Talep.Kaynak = ECigSatisKaynagi::Personel;
+					Talep.Wrap.bActive = true;
+					Talep.Wrap.bWrapped = true;
+					Talep.Wrap.bPacked = C->Spec.bPacked;
+					Talep.Wrap.Portions = 1;
+					Talep.Wrap.DoughQuality = Q;
+					Talep.Wrap.Spice = Acilik;
+					Talep.Wrap.ToppingMask = C->Spec.ToppingMask;
+					Talep.Accuracy = BaseAcc;
+					Talep.Quality = Q;
+					Talep.Traits = C->Traits;
+					Talep.bSadik = C->LoyalId >= 0;
+					Talep.SabirKesri = C->MaxPatience > 0.f ? C->Patience / C->MaxPatience : 1.f;
+
+					const FCigSatisSonucu Sonuc = GM->Sales->SatisiIsle(Talep);
+
 					Cust->RemoveCustomer(C, false);
-					GM->AddMessage(CigText::Format(TEXT("msg.staff.served"), *Apprentice.Name, Price), FLinearColor(0.7f, 0.95f, 0.8f));
+					GM->AddMessage(CigText::Format(TEXT("msg.staff.served"), *Apprentice.Name, Sonuc.Toplam), FLinearColor(0.7f, 0.95f, 0.8f));
 					bWorked = true;
 				}
 			}
@@ -430,16 +463,9 @@ void UCigStaffSystem::DoWork()
 		if (Orders && Cook && Cook->Dough.IsValid() && Orders->Shelf.Num() < UCigOrderSystem::MaxShelf && GM->Inventory && GM->Inventory->HasStock(CigStockLavas))
 		{
 			GM->Inventory->Consume(CigStockLavas);
+			const ECigSpice Acilik = Cook->Dough.Spice;
 			const float Q = Cook->UseServings(1);
-			FCigPackagedWrap P;
-			P.Build.bActive = true;
-			P.Build.bWrapped = true;
-			P.Build.bPacked = true;
-			P.Build.Portions = 1;
-			P.Build.DoughQuality = Q * (Apprentice.Spec == ECigStaffSpec::PaketUzmani ? 1.f : 0.9f);
-			P.Build.Spice = Cook->Dough.IsValid() ? Cook->Dough.Spice : ECigSpice::Orta;
-			P.Temp = 100.f;
-			Orders->Shelf.Add(P);
+			Orders->Shelf.Add(PaketHazirla(Acilik, Q, Apprentice.Spec == ECigStaffSpec::PaketUzmani));
 			GM->AddMessage(CigText::Format(TEXT("msg.staff.shelved"), *Apprentice.Name, Orders->Shelf.Num(), UCigOrderSystem::MaxShelf), FLinearColor(0.7f, 0.95f, 0.8f));
 			bWorked = true;
 		}

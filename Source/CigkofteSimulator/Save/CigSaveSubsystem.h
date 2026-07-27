@@ -26,7 +26,8 @@ public:
 	// Version 9: the pending bulk order entered the save.
 	// Version 10: the licence, inspection record and bribe count entered the save.
 	// Version 11: the follower count entered the save.
-	static constexpr int32 CurrentVersion = 11;
+	// Version 12: reviews gained stable IDs and the pending reply is held by ID.
+	static constexpr int32 CurrentVersion = 12;
 
 	bool HasSave() const;
 	bool SaveNow(ACigkofteGameMode* GM);
@@ -36,12 +37,18 @@ public:
 	// So settings can be read at startup, before the world is built.
 	UCigSaveGame* PeekSave();
 
+	// Migrates old saves to the current schema. It reads SaveVersion and runs
+	// the step conversions in order (v1->v2->...), then sets the version to current.
+	//
+	// Public because it is the whole of the schema contract and needs to be
+	// checked directly. It takes a save and nothing else - no world, no game
+	// mode - so the one thing that decides whether a year-old file still opens
+	// can be tested without standing up a shop (see Tests/CigSaveTests.cpp).
+	static void MigrateSave(UCigSaveGame& Save);
+
 private:
 	UPROPERTY() TObjectPtr<UCigSaveGame> Cached;
 
-	// Migrates old saves to the current schema. It reads SaveVersion and runs
-	// the step conversions in order (v1->v2->...), then sets the version to current.
-	static void MigrateSave(UCigSaveGame& Save);
 	static void MigrateV1ToV2(UCigSaveGame& Save);
 	static void MigrateV2ToV3(UCigSaveGame& Save);
 	static void MigrateV3ToV4(UCigSaveGame& Save);
@@ -52,4 +59,5 @@ private:
 	static void MigrateV8ToV9(UCigSaveGame& Save);
 	static void MigrateV9ToV10(UCigSaveGame& Save);
 	static void MigrateV10ToV11(UCigSaveGame& Save);
+	static void MigrateV11ToV12(UCigSaveGame& Save);
 };

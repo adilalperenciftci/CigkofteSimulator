@@ -40,20 +40,27 @@ float UCigReviewSystem::ComputeAtmosphere() const
 	return FMath::Clamp(A, 0.f, 5.f);
 }
 
-void UCigReviewSystem::RecordServe(float Quality, float Accuracy, float PatienceFrac, int32 PricePolicy, float Hygiene, ECigTrait Traits)
+void UCigReviewSystem::RecordServe(float Quality, float Accuracy, float PatienceFrac, float Hygiene, ECigTrait Traits)
 {
 	FDayServeData D;
 	D.Quality = Quality;
 	D.Accuracy = Accuracy;
 	D.PatienceFrac = PatienceFrac;
 	D.Hygiene = Hygiene;
-	D.PricePolicy = PricePolicy;
 	D.Traits = (uint16)Traits;
 	DayServes.Add(D);
 
+	// What the customer was actually charged, against what the street charges.
+	// The written comments below already judge the price this way, so the stars
+	// had to stop disagreeing with them.
+	const UCigPricingSystem* Fiyatlar = GM ? GM->Pricing.Get() : nullptr;
+	const float Fiyat = Fiyatlar
+		? UCigPricingSystem::FiyatPuani(Fiyatlar->SokakOrani(CigUrunDurum))
+		: 3.5f;
+
 	BlendCategory(FoodScore, Quality / 20.f);
 	BlendCategory(ServiceScore, (Accuracy / 100.f) * 2.5f + PatienceFrac * 2.5f);
-	BlendCategory(PriceScore, PricePolicy == 0 ? 4.5f : (PricePolicy == 1 ? 3.5f : 2.2f), 0.1f);
+	BlendCategory(PriceScore, Fiyat, 0.1f);
 	BlendCategory(HygieneScore, Hygiene / 20.f, 0.1f);
 	AtmosphereScore = ComputeAtmosphere();
 }
@@ -84,9 +91,15 @@ float UCigReviewSystem::SpawnRateMult() const
 	return 1.f + (ShopScore() - 3.f) * 0.15f;
 }
 
+const FCigReview* UCigReviewSystem::YorumBul(int32 Id) const
+{
+	return Id > 0 ? Reviews.FindByPredicate([Id](const FCigReview& R) { return R.Id == Id; }) : nullptr;
+}
+
 void UCigReviewSystem::PushReview(const FString& Author, const FString& Text, int32 Stars, int32 Day)
 {
 	FCigReview R;
+	R.Id = NextReviewId++;
 	R.Author = Author;
 	R.Text = Text;
 	R.Stars = FMath::Clamp(Stars, 1, 5);
@@ -190,7 +203,7 @@ void UCigReviewSystem::OnDayEnd(int32 Day)
 		// lands at index 0 because PushReview inserts at the front.
 		if (Stars <= 2 && GM->Social)
 		{
-			GM->Social->YanitlanacakYorum = 0;
+			GM->Social->YanitlanacakYorumId = Reviews[0].Id;
 		}
 	}
 

@@ -92,4 +92,40 @@ bool FCigPricingClampTest::RunTest(const FString& /*Parameters*/)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPriceScoreTest,
+	"Cigkofte.Pricing.PriceStarsFollowTheStreet",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigPriceScoreTest::RunTest(const FString& /*Parameters*/)
+{
+	// The price stars used to come from the cheap/normal/expensive toggle, so a
+	// shop could charge double through its per-product markups and still be
+	// rated on price as if nothing had changed. They follow the real ratio now.
+	const float Ucuz = UCigPricingSystem::FiyatPuani(0.75f);
+	const float Esit = UCigPricingSystem::FiyatPuani(1.00f);
+	const float Pahali = UCigPricingSystem::FiyatPuani(1.25f);
+
+	TestTrue(TEXT("Ucuzlukta puan artmalı"), Ucuz > Esit);
+	TestTrue(TEXT("Pahalılıkta puan düşmeli"), Pahali < Esit);
+
+	// Sokak seviyesinde fiyat, nötrün biraz üstünde olmalı: adil fiyat cezalandırılmaz.
+	TestTrue(TEXT("Sokakla aynı fiyat nötrün altına düşmemeli"), Esit >= 3.f);
+
+	// The thresholds the written comments use have to agree with the stars, or a
+	// review calling the shop expensive lands next to a high price rating.
+	TestTrue(TEXT("Pahalı eşiğinde puan belirgin biçimde kötü olmalı"), Pahali <= 2.5f);
+	TestTrue(TEXT("Ucuz eşiğinde puan belirgin biçimde iyi olmalı"), Ucuz >= 4.5f);
+
+	// A five-category score averages these, so the range has to stay inside it
+	// however silly the pricing gets.
+	for (const float Oran : { 0.f, 0.01f, 0.5f, 1.f, 3.f, 100.f })
+	{
+		const float Puan = UCigPricingSystem::FiyatPuani(Oran);
+		TestTrue(FString::Printf(TEXT("Oran %.2f için puan 1-5 aralığında kalmalı"), Oran),
+			Puan >= 1.f && Puan <= 5.f);
+	}
+
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

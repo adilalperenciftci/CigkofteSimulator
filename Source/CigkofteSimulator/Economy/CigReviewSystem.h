@@ -8,6 +8,10 @@
 // A single online review.
 struct FCigReview
 {
+	// Identifies the review for as long as it exists. Reviews are inserted at the
+	// front, so an index cannot be held across a day.
+	int32 Id = 0;
+
 	FString Author;
 	FString Text;
 	int32 Stars = 3;
@@ -24,7 +28,12 @@ public:
 	virtual void OnDayEnd(int32 Day) override;
 
 	// Collects data while serving; it turns into reviews at end of day.
-	void RecordServe(float Quality, float Accuracy, float PatienceFrac, int32 PricePolicy, float Hygiene, ECigTrait Traits);
+	//
+	// The price is not passed in: it is read from the pricing system at the
+	// moment of the serve, the same effective price the customer was charged.
+	// It used to arrive as the cheap/normal/expensive policy setting, so the
+	// price stars answered a toggle rather than the bill.
+	void RecordServe(float Quality, float Accuracy, float PatienceFrac, float Hygiene, ECigTrait Traits);
 	void RecordAngryLeave(bool bInfluencer);
 	void RecordDelivery(float Score);
 
@@ -41,6 +50,17 @@ public:
 
 	TArray<FCigReview> Reviews; // newest first, at most 12
 
+	// Next value handed out by PushReview. Persisted so IDs stay unique across
+	// a save.
+	int32 NextReviewId = 1;
+
+	// Null when the review has been trimmed off the end of the list.
+	const FCigReview* YorumBul(int32 Id) const;
+
+	// The only way a review enters the list; it assigns the ID and enforces the
+	// twelve-entry cap.
+	void PushReview(const FString& Author, const FString& Text, int32 Stars, int32 Day);
+
 private:
 	struct FDayServeData
 	{
@@ -48,7 +68,6 @@ private:
 		float Accuracy;
 		float PatienceFrac;
 		float Hygiene;
-		int32 PricePolicy;
 		uint16 Traits;
 	};
 	TArray<FDayServeData> DayServes;
@@ -56,6 +75,5 @@ private:
 	int32 DayInfluencerAngry = 0;
 
 	void BlendCategory(float& Cat, float Sample, float Weight = 0.15f);
-	void PushReview(const FString& Author, const FString& Text, int32 Stars, int32 Day);
 	float ComputeAtmosphere() const;
 };

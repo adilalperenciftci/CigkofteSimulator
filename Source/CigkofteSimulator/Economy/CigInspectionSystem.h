@@ -57,6 +57,15 @@ public:
 	// this when deciding whether the inspector turns up at all.
 	float DenetimRiskCarpani() const;
 
+	// Probability that an inspector arrives today. Pure so the complaint
+	// multiplier can be checked without a shop (see Tests/CigInspectionTests.cpp).
+	// Capped below certainty: a complaint raises the odds, it does not summon an
+	// inspector, and a guaranteed visit would make the warning pointless.
+	static float DenetimSansi(float TabanSans, float RiskCarpani, float Tavan);
+
+	// Today's odds with the current complaint state applied.
+	float BugunkuDenetimSansi() const;
+
 	int32 RuhsatBitisGunu = 0;
 	int32 BasarisizDenetim = 0;
 	int32 RusvetSayisi = 0;

@@ -1,4 +1,4 @@
-﻿Key,Variant,TR,EN
+Key,Variant,TR,EN
 m0_t14_v0_r0_a1_h0_p0,0,"Eline sağlık usta, tam kıvamında olmuş.","Perfect as always, chef."
 m0_t14_v0_r0_a1_h0_p0,1,"Vallahi mahallenin en iyisi, helal olsun.","Best in the neighbourhood, hands down."
 m0_t14_v0_r0_a1_h0_p0,2,"İşte bunu arıyordum, üstü kalsın.","Exactly what I wanted — keep the change."
@@ -25,3 +25,16 @@ m0_t3_v0_r0_a1_h0_p0,0,"Üstü kalsın, afiyetle yedim.","Keep the change, that 
 m4_t14_v0_r0_a1_h0_p1,0,"Bir saat bekledim, bu da mı olsun.","I waited forever, and then this?"
 m3_t0_v0_r0_a1_h0_p1,0,"Çok beklettin, tadı kaçtı.","Took you ages. Kind of ruined it."
 m0_t13_v0_r0_a1_h0_p0,0,"Not aldım, bu dükkân iyi puan alacak.","Noted. This place is getting a good score."
+m1_t14_v0_r0_a0_h0_p0,0,"Sipariş tam tutmadı ama yine de güzeldi.","Not quite what I ordered, but it was good anyway."
+m1_t14_v0_r0_a0_h0_p0,1,"İstediğim bu değildi, neyse, yenir.","Not what I asked for. It'll do, I suppose."
+m2_t14_v0_r0_a0_h0_p0,0,"Ben bunu istememiştim ki usta.","This isn't what I ordered, chef."
+m2_t14_v0_r0_a0_h0_p0,1,"Siparişi bir daha dinlesen iyi olur.","You might want to listen to the order again."
+m2_t14_v0_r0_a0_h0_p0,2,"Karıştırdın galiba, ben başka söylemiştim.","I think you mixed it up — I asked for something else."
+m3_t14_v0_r0_a0_h0_p0,0,"Söylediğimin hiçbiri yok bunun içinde.","None of what I asked for is in this."
+m3_t14_v0_r0_a0_h0_p0,1,"Yanlış geldi, bir daha bakar mısın?","This is wrong. Can you check it again?"
+m3_t14_v0_r0_a0_h0_p0,2,"İki dakika önce söyledim, yine olmadı.","I told you two minutes ago, and it's still wrong."
+m4_t14_v0_r0_a0_h0_p0,0,"Ne istediysem tersini yapmışsın!","You've done the exact opposite of what I asked!"
+m4_t14_v0_r0_a0_h0_p0,1,"Yanlış sipariş, üstüne bir de bu hâlde.","Wrong order, and in this state on top of it."
+m3_t10_v0_r1_a0_h0_p0,0,"Yıllardır aynı şeyi söylüyorum usta, yine karıştı.","I've ordered the same thing for years, chef, and it's still wrong."
+m2_t9_v0_r0_a0_h0_p0,0,"Acısını söylemiştim ama, bu o değil.","I told you how hot I wanted it. This isn't it."
+m3_t4_v0_r0_a0_h1_p0,0,"Hem yanlış hem de şu tezgâhın hâli ortada.","Wrong order, and look at the state of that counter."

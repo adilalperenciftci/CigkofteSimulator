@@ -10,6 +10,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "Events/CigEventSystem.h"
+#include "Core/CigBalance.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -73,6 +74,60 @@ bool FCigBulkOrderEdgeTest::RunTest(const FString& /*Parameters*/)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigContractOfferTest,
+	"Cigkofte.Events.ContractOfferScalesWithTheShop",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigContractOfferTest::RunTest(const FString& /*Parameters*/)
+{
+	const FCigTopluTeklif Yeni = UCigEventSystem::TeklifUret(1, 0);
+	const FCigTopluTeklif Buyuk = UCigEventSystem::TeklifUret(6, 0);
+
+	TestTrue(TEXT("Büyüyen dükkâna daha büyük sipariş gelmeli"), Buyuk.IstenenAdet > Yeni.IstenenAdet);
+	TestTrue(TEXT("Daha büyük sipariş daha çok ödemeli"), Buyuk.Odul > Yeni.Odul);
+	TestTrue(TEXT("Teklif hazırlanmak için gün bırakmalı"), Yeni.IhbarGunu >= 1);
+
+	// The random spread may only add work, never remove it, or a lucky roll
+	// would quietly make a contract easier than the level it was offered at.
+	TestTrue(TEXT("Sapma siparişi küçültmemeli"),
+		UCigEventSystem::TeklifUret(1, 4).IstenenAdet >= Yeni.IstenenAdet);
+
+	// A contract for nothing would settle in full the moment it was accepted.
+	TestTrue(TEXT("Sıfır seviyede bile sipariş boş olmamalı"),
+		UCigEventSystem::TeklifUret(0, 0).IstenenAdet >= 1);
+	TestTrue(TEXT("Bozuk seviye negatif sipariş üretmemeli"),
+		UCigEventSystem::TeklifUret(-5, -5).IstenenAdet >= 1);
+	TestTrue(TEXT("Ödeme sipariş adediyle orantılı olmalı"), Yeni.Odul > Yeni.IstenenAdet);
+
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigContractSeparationTest,
+	"Cigkofte.Events.ContractAndLargeDeliveryAreSeparate",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigContractSeparationTest::RunTest(const FString& /*Parameters*/)
+{
+	// The multi-day contract used to read its notice period and its odds from
+	// the events row that also spawns the large delivery, so one number decided
+	// how often a wedding called and how often a fat delivery turned up, and the
+	// player saw the same name for both. They are separate tables now.
+	const FCigEventRow& Teslimat = CigBalance::Event(UCigEventSystem::EventBuyukTeslimat);
+	TestEqual(TEXT("Olay satırı büyük teslimat olmalı"), Teslimat.Key, FString(TEXT("BuyukTeslimat")));
+
+	// The contract table has to actually answer, or every lookup would silently
+	// fall back to its hardcoded default and the CSV would do nothing.
+	const float Sentinel = -999.f;
+	for (const TCHAR* Key : { TEXT("MinGun"), TEXT("TeklifSansi"), TEXT("IhbarGunu"),
+		TEXT("AdetTabani"), TEXT("UcretCarpani"), TEXT("KilPayiEsigi") })
+	{
+		TestNotEqual(FString::Printf(TEXT("Contracts tablosunda %s bulunmalı"), Key),
+			CigBalance::Contract(Key, Sentinel), Sentinel);
+	}
+
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigEventTextTest,
 	"Cigkofte.Events.EveryEventHasWording",
 	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
@@ -95,6 +150,43 @@ bool FCigEventTextTest::RunTest(const FString& /*Parameters*/)
 		TestFalse(FString::Printf(TEXT("Olay %d bitiş metni ham anahtar olmamalı"), i), Bit.StartsWith(TEXT("event.")));
 	}
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigEventTeardownTest,
+	"Cigkofte.Events.DayLongEventsEndCleanly",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigEventTeardownTest::RunTest(const FString& /*Parameters*/)
+{
+	// A day-long event carries TimeLeft < 0, so UpdateSystem never retires it and
+	// the day used to end by emptying the array - which dropped it without ever
+	// running EndEvent. The retired count is the observable that separates the
+	// two: emptying the array would also leave Active at zero.
+	UCigEventSystem* Sys = NewObject<UCigEventSystem>();
+	Sys->AddToRoot();
+
+	FCigActiveEvent Zamanli;
+	Zamanli.DefIndex = UCigEventSystem::EventRain;
+	Zamanli.TimeLeft = 30.f;
+	Sys->Active.Add(Zamanli);
+
+	FCigActiveEvent GunBoyu;
+	GunBoyu.DefIndex = 0;
+	GunBoyu.TimeLeft = -1.f;
+	Sys->Active.Add(GunBoyu);
+
+	TestNotEqual(TEXT("Olaylar aktifken çarpan nötr olmamalı"), Sys->SpawnMult(), 1.f);
+
+	TestEqual(TEXT("İki olay da EndEvent üzerinden kapanmalı"), Sys->TumOlaylariBitir(), 2);
+	TestEqual(TEXT("Boş listede kapatılacak olay kalmamalı"), Sys->TumOlaylariBitir(), 0);
+
+	TestEqual(TEXT("Gün sonunda hiçbir olay aktif kalmamalı"), Sys->Active.Num(), 0);
+	TestEqual(TEXT("Çarpanlar nötre dönmeli"), Sys->SpawnMult(), 1.f, 0.001f);
+	TestEqual(TEXT("Sabır çarpanı nötre dönmeli"), Sys->PatienceMult(), 1.f, 0.001f);
+	TestFalse(TEXT("Buzdolabı arızası kalmamalı"), Sys->IsFridgeBroken());
+
+	Sys->RemoveFromRoot();
 	return true;
 }
 

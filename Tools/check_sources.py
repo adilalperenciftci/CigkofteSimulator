@@ -8,6 +8,7 @@ the compiler cannot catch, or would catch too late:
   * does every header have `#pragma once`,
   * do the balance CSVs have the expected columns and row counts,
   * do the CSV row keys line up exactly with the C++ enums,
+  * is every asset the code loads by path listed in DirectoriesToAlwaysCook,
   * are the licence and credits files still in place.
 
 Runs locally too:  python Tools/check_sources.py
@@ -81,10 +82,11 @@ CSV_SCHEMA = {
     "Mahalle.csv": (["Index", "Label", "GelirCarpani"], 7),
     "Staff.csv": (
         ["Key", "Label", "Hiz", "Titizlik", "GulerYuz", "MaasBeklentisi"], 6),
-    "Inspection.csv": (["Key", "Label", "Deger"], 13),
+    "Inspection.csv": (["Key", "Label", "Deger"], 15),
     "Tutorial.csv": (["Key", "Label", "MetinAnahtari", "VurguIstasyon"], 8),
     "Audio.csv": (["Key", "Label", "Deger"], 6),
     "Social.csv": (["Key", "Label", "Deger"], 18),
+    "Contracts.csv": (["Key", "Label", "Deger"], 12),
     "Events.csv": (
         ["Key", "Label", "MinGun", "Sans", "Sure", "SpawnCarpani", "SabirCarpani",
          "FiyatCarpani", "TeslimatCarpani", "StokCarpani", "TakvimPeriyodu",
@@ -220,7 +222,19 @@ def check_dialogue() -> None:
     if bad_keys > 5:
         fail(f"{rel}: toplam {bad_keys} bozuk anahtar var (ilk 5'i yukarıda).")
 
-    print(f"  diyalog: {len(rows)} replik, {len({k for k, _ in seen})} kova doğrulandı")
+    # The a-flag says whether the customer got the order they asked for. The
+    # table used to be written entirely against a1, because the runtime copied
+    # the delivered order from the requested one and could never produce a0 -
+    # so every line for a wrong order was missing and nobody noticed. A table
+    # covering only one side of a flag means half the runtime states fall back
+    # to canned lines.
+    buckets = {k for k, _ in seen}
+    for flag, ne_olur in (("_a1_", "doğru siparişe"), ("_a0_", "yanlış siparişe")):
+        if not any(flag in b for b in buckets):
+            fail(f"{rel}: {ne_olur} ait hiç replik yok ({flag} kovası boş) — "
+                 f"o durumdaki her müşteri hazır cümleye düşer.")
+
+    print(f"  diyalog: {len(rows)} replik, {len(buckets)} kova doğrulandı")
 
 
 def check_text() -> None:
@@ -269,6 +283,14 @@ def check_text() -> None:
 
 SLOT_RE = re.compile(r"\{(\d+)\}")
 TEXT_CALL_RE = re.compile(r'CigText::(Get|Format)\s*\(\s*TEXT\("([^"]+)"\)')
+
+# A key held in a variable or a table instead of written at the call site. The
+# regex above only sees CigText::Get(TEXT("...")), so the mood line pools in
+# CigOfflineDialogueProvider - arrays of keys, indexed at random - were invisible
+# to it. A dotted lowercase literal is a key by convention here, and the cost of
+# being wrong is one false positive rather than a customer saying
+# "dlg.mood.angry.1" out loud.
+TEXT_KEY_LITERAL_RE = re.compile(r'TEXT\("((?:[a-z][a-z0-9]*\.){2,}[a-z0-9]+)"\)')
 
 
 def slot_set(template: str) -> set[int]:
@@ -331,6 +353,23 @@ def check_text_usage(keys: set[str], slots: dict[str, set[int]]) -> None:
                          f"{got} argüman verilmiş.")
                     bad += 1
 
+    # Keys that never appear inside a CigText:: call. Checked separately because
+    # the loop above can only see what is written at the call site.
+    for path in sorted(SOURCE.rglob("*.cpp")):
+        if path.parent.name == "Tests":
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        rel = path.relative_to(ROOT).as_posix()
+        called = {m.group(2) for m in TEXT_CALL_RE.finditer(text)}
+        for m in TEXT_KEY_LITERAL_RE.finditer(text):
+            key = m.group(1)
+            if key in called or key in keys:
+                continue
+            line = text.count("\n", 0, m.start()) + 1
+            fail(f"{rel}:{line}: '{key}' metin anahtarı gibi duruyor ama "
+                 f"Strings.csv'de yok — ekranda anahtar adı görünür.")
+            bad += 1
+
     if bad == 0:
         print("  metin kullanımı: anahtarlar ve argüman sayıları tutuyor")
 
@@ -364,6 +403,303 @@ def check_decoupling() -> None:
         print("  kuplaj: yayıncılar görev sistemini doğrudan çağırmıyor")
 
 
+# Key-based balance CSVs and the CigBalance.cpp function holding their defaults.
+# Index-based tables (Stock, Pricing, Mahalle) are matched by position instead,
+# which the row-count check already covers.
+CSV_DEFAULTS = {
+    "Skills.csv": "DefaultSkills",
+    "Upgrades.csv": "DefaultUpgrades",
+    "Traits.csv": "DefaultTraits",
+    "Achievements.csv": "DefaultAchievements",
+    "Inspection.csv": "DefaultInspection",
+    "Social.csv": "DefaultSocial",
+    "Contracts.csv": "DefaultContracts",
+    "Audio.csv": "DefaultAudio",
+    "Tutorial.csv": "DefaultTutorial",
+    "Events.csv": "DefaultEvents",
+    "Staff.csv": "DefaultStaff",
+}
+
+DEFAULT_FN_RE = re.compile(
+    r"TArray<\w+>\s+(Default\w+)\(\)\s*\{(.*?)\n\t\}", re.DOTALL)
+FIRST_TEXT_RE = re.compile(r"Make\w+\(\s*TEXT\(\"([^\"]+)\"\)")
+
+
+def check_balance_keys() -> None:
+    """A CSV row whose Key is not in the C++ defaults does nothing at all.
+
+    CigBalance loads the defaults first and then lets the CSV overwrite rows it
+    can find by key. A key that matches nothing is not an error to the loader -
+    it simply never applies, so the file looks like it is tuning the game while
+    the game keeps using the built-in number. Renaming a key in one place and
+    not the other is the easy way to cause that, which is exactly what splitting
+    the bulk order into a contract and a large delivery risked.
+    """
+    src = ROOT / "Source" / "CigkofteSimulator" / "Core" / "CigBalance.cpp"
+    if not src.exists():
+        fail("CigBalance.cpp yok — varsayılan anahtarlar doğrulanamıyor.")
+        return
+
+    text = src.read_text(encoding="utf-8", errors="replace")
+    defaults = {m.group(1): set(FIRST_TEXT_RE.findall(m.group(2)))
+                for m in DEFAULT_FN_RE.finditer(text)}
+
+    checked = 0
+    before = len(problems)
+    for name, fn in CSV_DEFAULTS.items():
+        known = defaults.get(fn)
+        if not known:
+            fail(f"CigBalance.cpp içinde {fn}() bulunamadı veya boş — "
+                 f"{name} anahtarları doğrulanamıyor.")
+            continue
+
+        path = BALANCE / name
+        if not path.exists():
+            continue
+        _, rows = read_csv(path)
+
+        rel = path.relative_to(ROOT).as_posix()
+        for n, row in enumerate(rows, start=2):
+            key = (row.get("Key") or "").strip()
+            if key and key not in known:
+                fail(f"{rel}:{n}: '{key}' {fn}() içinde yok — bu satır hiçbir "
+                     f"zaman uygulanmaz, oyun varsayılanı kullanır.")
+
+        missing = known - {(r.get("Key") or "").strip() for r in rows}
+        if missing:
+            fail(f"{rel}: {fn}() içindeki şu anahtarlar CSV'de yok: "
+                 f"{', '.join(sorted(missing))}")
+        checked += 1
+
+    if len(problems) == before:
+        print(f"  anahtarlar: {checked} CSV varsayılanlarla eşleşiyor")
+
+
+# Calls that must have exactly one caller, because a second one is not a
+# compile error - it silently produces a second, divergent answer.
+#
+#   (pattern, files allowed to contain it, what goes wrong otherwise)
+#
+# The allowed list holds the one legitimate caller and, where the function is
+# defined in a .cpp rather than inline in a header, its definition site.
+SINGLE_CALLER_RULES = [
+    ("RegisterSale(", ("CigSaleSystem",),
+     "Gün hasılatı satış hattı dışından kaydediliyor (UCigSaleSystem üzerinden geç)"),
+    ("PolicyPriceMult(", ("CigPricingSystem", "CigEconomySystem"),
+     "Fiyat politikası çarpanı fiyatlandırma dışında uygulanıyor "
+     "(UCigPricingSystem::EtkinCarpan üzerinden geç)"),
+]
+
+
+def check_single_callers() -> None:
+    """Some calls are only correct when nothing else makes them.
+
+    RegisterSale is what the day summary, the best-day record and every
+    end-of-day comparison are built on. It used to be called from the counter,
+    from the staff system and from deliveries, and each caller booked a slightly
+    different set of consequences alongside it - which is how a staff sale ended
+    up invisible to bulk orders and achievements.
+
+    PolicyPriceMult is the same shape of problem seen from the other side. The
+    price the customer pays is the per-product markup times the shop policy, and
+    while the sale path applied the policy itself, everything that judged the
+    price read the markup alone - so switching to the expensive policy raised
+    every bill by a quarter without demand, the reviews or the tablet noticing.
+    A second caller would either double-charge it or reopen that gap.
+    """
+    ok = True
+    for pattern, owners, message in SINGLE_CALLER_RULES:
+        offenders = []
+        for path in sorted(SOURCE.rglob("*.cpp")):
+            rel = path.relative_to(ROOT).as_posix()
+            # Tests are exempt too: they may name the pattern in a comment.
+            if any(o in path.name for o in owners) or path.parent.name == "Tests":
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for n, line in enumerate(text.splitlines(), 1):
+                if pattern in line:
+                    offenders.append(f"{rel}:{n}")
+
+        if offenders:
+            fail(f"{message}: {', '.join(offenders)}")
+            ok = False
+
+    if ok:
+        print(f"  tek çağıran: {len(SINGLE_CALLER_RULES)} kural tutuyor")
+
+
+# How CigMeshLibrary turns a call-site argument into a content folder. Each
+# prefix must still appear in CigMeshLibrary.cpp; rename one there without
+# touching this and the check would quietly stop covering that pack, which is
+# the same class of silence it exists to catch.
+MESH_LOADERS = {
+    "Park": "CityPark/Meshes",
+    "Bazaar": "Scene_Bazaar_Vol1/Assets/MS/3D",
+    "Load": "LowPoly",
+    "LoadAt": "",  # the caller passes the whole folder
+}
+
+# CigMesh::Park(TEXT("Props"), ...) and the PreferPark(...) wrappers alike.
+MESH_CALL_RE = re.compile(
+    r'(?:CigMesh::|Prefer)(Park|Bazaar|LoadAt|Load)\s*\(\s*TEXT\("([^"]+)"')
+# The inline wrappers inside namespace CigMesh call them without the prefix.
+MESH_INLINE_RE = re.compile(r'\b(LoadAt|Load)\s*\(\s*TEXT\("([^"]+)"')
+# A literal package path: /Game/Audio/S_Knead.S_Knead
+GAME_PATH_RE = re.compile(r'TEXT\("(/Game/[^"]*)"')
+ANY_TEXT_RE = re.compile(r'TEXT\("([^"]+)"\)')
+COOK_DIR_RE = re.compile(r'^\s*\+DirectoriesToAlwaysCook=\(Path="([^"]+)"\)', re.M)
+
+
+def pack_subfolders(base: Path) -> list[str]:
+    """Folder names under a pack root, one and two levels down.
+
+    Two levels because the CityPark trees live at Meshes/Flora/Trees; nothing
+    in the project reaches deeper, and walking a 6 GB Megascans tree in full
+    would cost more than it finds.
+    """
+    out: list[str] = []
+    for first in base.iterdir() if base.is_dir() else []:
+        if not first.is_dir():
+            continue
+        out.append(first.name)
+        for second in first.iterdir():
+            if second.is_dir():
+                out.append(f"{first.name}/{second.name}")
+    return out
+
+
+def requested_asset_folders() -> dict[str, str]:
+    """Every /Game folder the runtime can ask for, mapped to where it is asked.
+
+    Both loaders build their paths with FString::Printf and hand the result to
+    LoadObject, so nothing in the reference graph points at these assets and the
+    cooker has no way to know they are wanted.
+
+    Folder names are found two ways. Parsing the call sites is precise but only
+    sees an argument written at the call: BuildBazaar keeps its produce in a
+    static FBazaarGood[] table and passes G.Folder, and an earlier version of
+    this check reported all clear while six stalls' worth of goods stayed
+    uncooked. So the source is also searched for any string that happens to name
+    a real subfolder of a pack the loaders use. That does not care how the
+    string reaches the loader, and its failure direction is one folder cooked
+    for nothing rather than a prop missing from the shipped game.
+    """
+    folders: dict[str, str] = {}
+    literals: dict[str, str] = {}
+
+    for path in sorted(list(SOURCE.rglob("*.cpp")) + list(SOURCE.rglob("*.h"))):
+        if path.parent.name == "Tests":
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        rel = path.relative_to(ROOT).as_posix()
+
+        def where(pos: int) -> str:
+            return f"{rel}:{text.count(chr(10), 0, pos) + 1}"
+
+        for m in GAME_PATH_RE.finditer(text):
+            # Cut at the first format specifier: /Game/LowPoly/%s/%s.%s is only
+            # informative as far as /Game/LowPoly.
+            literal = m.group(1).split("%")[0]
+            folder = literal.rsplit("/", 1)[0]
+            if folder and folder != "/Game":
+                folders.setdefault(folder, where(m.start()))
+
+        matches = list(MESH_CALL_RE.finditer(text))
+        if path.name == "CigMeshLibrary.h":
+            matches += MESH_INLINE_RE.finditer(text)
+        for m in matches:
+            prefix = MESH_LOADERS[m.group(1)]
+            arg = m.group(2)
+            folder = f"/Game/{prefix}/{arg}" if prefix else f"/Game/{arg}"
+            folders.setdefault(folder, where(m.start()))
+
+        for m in ANY_TEXT_RE.finditer(text):
+            literals.setdefault(m.group(1), where(m.start()))
+
+    for prefix in sorted({p for p in MESH_LOADERS.values() if p}):
+        base = ROOT / "Content" / prefix
+        for sub in pack_subfolders(base):
+            if sub in literals:
+                folders.setdefault(f"/Game/{prefix}/{sub}", literals[sub])
+
+    return folders
+
+
+def check_cooked_assets() -> None:
+    """Assets loaded by path must be named in DirectoriesToAlwaysCook.
+
+    This is the quietest failure the project has: LoadObject returns nullptr,
+    the caller falls back to a primitive or to silence, and the packaged game
+    starts, logs no error and passes its smoke test. The first packaged build
+    shipped with no audio whatsoever; the fix named /Game/Audio and /Game/LowPoly
+    and missed the three mesh packs, so the next one shipped a shop rendered as
+    grey boxes. Neither was visible without launching the build and looking.
+
+    Two separate claims, and only the first one travels. That the code and the
+    cook list agree is true of a checkout on any machine. That a folder exists on
+    disk is only answerable where the packs are installed, and twelve of them are
+    deliberately not in the repository - they carry uassets over GitHub's 100 MB
+    limit (see .gitignore). The first version of this check asserted both
+    unconditionally, passed locally and failed CI on all fourteen directories.
+    Existence is now asserted per pack, only where the pack root is present.
+    """
+    ini = ROOT / "Config" / "DefaultGame.ini"
+    if not ini.exists():
+        fail("Config/DefaultGame.ini yok — cook listesi doğrulanamıyor.")
+        return
+
+    lib = SOURCE / "CigkofteSimulator" / "World" / "CigMeshLibrary.cpp"
+    lib_text = lib.read_text(encoding="utf-8", errors="replace") if lib.exists() else ""
+    for name, prefix in MESH_LOADERS.items():
+        if prefix and prefix not in lib_text:
+            fail(f"CigMeshLibrary.cpp içinde '{prefix}' yok — CigMesh::{name} "
+                 f"başka bir klasöre bakıyor, bu betiğin eşlemesi eskimiş.")
+
+    cook_dirs = COOK_DIR_RE.findall(ini.read_text(encoding="utf-8-sig"))
+    if not cook_dirs:
+        fail("DefaultGame.ini içinde hiç DirectoriesToAlwaysCook yok — "
+             "yol ile yüklenen hiçbir varlık paketlenmez.")
+        return
+
+    content = ROOT / "Content"
+
+    def pack_installed(game_path: str) -> bool:
+        """Is the pack this /Game path belongs to checked out here at all."""
+        rel = game_path[len("/Game/"):]
+        return (content / rel.split("/", 1)[0]).is_dir()
+
+    eksik_paket: set[str] = set()
+    for d in cook_dirs:
+        if not d.startswith("/Game/"):
+            fail(f"DefaultGame.ini: '{d}' /Game/ ile başlamıyor.")
+        elif not pack_installed(d):
+            eksik_paket.add(d[len("/Game/"):].split("/", 1)[0])
+        elif not (content / d[len("/Game/"):]).is_dir():
+            fail(f"DefaultGame.ini: '{d}' diye bir klasör yok — bu satır "
+                 f"hiçbir şey cook etmez.")
+
+    folders = requested_asset_folders()
+    for folder, where in sorted(folders.items()):
+        # This half needs no assets on disk: it reads the code and the ini.
+        if not any(folder == d or folder.startswith(d + "/") for d in cook_dirs):
+            fail(f"{where}: '{folder}' cook listesinde değil — paketlenmiş "
+                 f"oyunda bu varlıklar bulunamaz, oyun sessizce yedeğe düşer.")
+        rel_dir = folder[len("/Game/"):]
+        if not pack_installed(folder):
+            eksik_paket.add(rel_dir.split("/", 1)[0])
+        elif not (content / rel_dir).is_dir():
+            fail(f"{where}: '{folder}' diye bir klasör yok — bu çağrı hiçbir "
+                 f"zaman varlık bulamaz.")
+
+    kapsam = f"  cook: {len(folders)} varlık klasörü {len(cook_dirs)} kuralla karşılandı"
+    if eksik_paket:
+        # Named rather than counted: on a machine that is supposed to have the
+        # packs, this line is how you find out one of them is missing.
+        kapsam += (f"; {len(eksik_paket)} paket bu kopyada yok, "
+                   f"varlık kontrolü atlandı ({', '.join(sorted(eksik_paket))})")
+    print(kapsam)
+
+
 def check_repo_files() -> None:
     for name in ("LICENSE", "CREDITS.md", "README.md", ".gitattributes"):
         if not (ROOT / name).exists():
@@ -375,9 +711,12 @@ def main() -> int:
     print("Cigkofte kaynak kontrolu")
     check_sources()
     check_balance()
+    check_balance_keys()
     check_dialogue()
     check_text()
     check_decoupling()
+    check_single_callers()
+    check_cooked_assets()
     check_repo_files()
 
     if problems:

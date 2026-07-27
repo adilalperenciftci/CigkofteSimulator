@@ -14,6 +14,7 @@
 #include "Events/CigEventSystem.h"
 #include "Economy/CigPricingSystem.h"
 #include "Economy/CigReviewSystem.h"
+#include "Economy/CigSaleSystem.h"
 #include "Economy/CigRivalSystem.h"
 #include "Economy/CigInspectionSystem.h"
 #include "Economy/CigSocialSystem.h"
@@ -302,8 +303,14 @@ void UCigCustomerSystem::SpawnCustomer(bool bForceVIP, bool bForceInfluencer)
 	{
 		if (Eco->HasUpgrade(ECigUpgrade::Klima))        { Patience *= 1.2f; }
 		if (Eco->HasUpgrade(ECigUpgrade::MuzikSistemi)) { Patience *= 1.08f; }
-		if (Eco->PricePolicy == 0)                      { Patience *= 1.15f; }
-		if (Eco->PricePolicy == 2)                      { Patience *= 0.85f; }
+	}
+	// People waiting for something they consider overpriced get impatient sooner,
+	// and give a bargain more rope. That is about the bill, not about which
+	// policy the shop happens to be set to.
+	if (const UCigPricingSystem* Fiyatlar = GM->Pricing.Get())
+	{
+		if (Fiyatlar->PahaliGoruluyor())     { Patience *= 0.85f; }
+		else if (Fiyatlar->UygunFiyatli())   { Patience *= 1.15f; }
 	}
 	if (GM->Events)
 	{
@@ -440,141 +447,43 @@ void UCigCustomerSystem::ServeFront()
 	// Quality: dough quality plus the hygiene effect
 	const float Hygiene = Hyg ? Hyg->OverallHygiene() : 100.f;
 	const bool bDirty = Hygiene < 50.f;
-	float Quality = Wrap.DoughQuality * (bDirty ? 0.7f : 1.f);
+	const float Quality = Wrap.DoughQuality * (bDirty ? 0.7f : 1.f);
 
-	// --- Price ---
-	// List prices and the player's markup both come from the pricing system; the
-	// recipe and policy multipliers still stack on top of whatever is charged.
-	const FCigRecipe& R = UCigCookingSystem::Recipe(Wrap.Recipe);
-	const UCigPricingSystem* Fiyatlar = GM->Pricing.Get();
-	const int32 UrunIndex = Wrap.Portions >= 2 ? CigUrunCiftPorsiyon : CigUrunDurum;
-	const int32 BasePrice = Fiyatlar->Fiyat(UrunIndex);
-	float Price = BasePrice * R.PriceMult * Eco->PolicyPriceMult();
-	Price *= FMath::Clamp(Quality / 100.f, 0.3f, 1.2f);
-	Price *= FMath::Lerp(0.35f, 1.f, Score.Accuracy / 100.f);
-	if (GM->Events)
+	UCigSaleSystem* Satis = GM->Sales.Get();
+	if (!Satis)
 	{
-		Price *= GM->Events->PriceMult();
+		return;
 	}
 
-	// Charge for toppings and ayran
-	int32 ToppingCount = 0;
-	for (int32 i = 0; i < (int32)ECigTopping::COUNT; ++i)
+	// Pricing, the combo, the tip and every counter this sale moves belong to the
+	// sale pipeline. What stays here is the part that is about this customer
+	// rather than about the sale.
+	FCigSatisTalebi Talep;
+	Talep.Kaynak = ECigSatisKaynagi::Oyuncu;
+	Talep.Wrap = Wrap;
+	Talep.Accuracy = Score.Accuracy;
+	Talep.Quality = Quality;
+	Talep.Traits = C->Traits;
+	Talep.bVIP = C->bVIP;
+	Talep.bSadik = C->LoyalId >= 0;
+	Talep.SabirKesri = C->MaxPatience > 0.f ? C->Patience / C->MaxPatience : 1.f;
+
+	const FCigSatisSonucu Sonuc = Satis->SatisiIsle(Talep);
+	const int32 FinalPrice = Sonuc.Toplam;
+	const int32 Tip = Sonuc.Bahsis;
+
+	if (Sonuc.Kombo >= 2)
 	{
-		if (Wrap.HasTopping((ECigTopping)i))
-		{
-			ToppingCount++;
-		}
-	}
-	Price += ToppingCount * Fiyatlar->Fiyat(CigUrunGarnitur);
-	if (Wrap.bAyran)
-	{
-		Price += Fiyatlar->Fiyat(CigUrunAyran);
-	}
-	// A menu side is added at full price (the accuracy multiplier does not apply)
-	if (Wrap.Side != ECigSide::Yok)
-	{
-		Price += (float)Fiyatlar->Fiyat(CigSideUrunIndex(Wrap.Side));
+		GM->SpawnFloatText(FVector(-680.f, 0.f, 300.f), CigText::Format(TEXT("float.combo"), Sonuc.Kombo), FColor(255, 160, 40), 36.f);
 	}
 
-	// --- Combo ---
-	const bool bPerfect = Score.Accuracy >= 85.f && Quality >= 80.f;
-	if (bPerfect)
-	{
-		Combo++;
-		if (Combo >= 2)
-		{
-			const float ComboMult = 1.f + 0.1f * FMath::Min(Combo - 1, 5);
-			Price *= ComboMult;
-			GM->SpawnFloatText(FVector(-680.f, 0.f, 300.f), CigText::Format(TEXT("float.combo"), Combo), FColor(255, 160, 40), 36.f);
-		}
-		Prog->TotalPerfectOrders++;
-	}
-	else
-	{
-		Combo = 0;
-	}
-
-	// --- Tip ---
-	float TipChance = 0.15f + (Score.Accuracy - 60.f) / 200.f;
-	float TipMult = 0.12f;
-	// Trait effects are read from Config/Balance/Traits.csv.
-	TipChance += CigBalance::TraitTipChanceDelta((uint16)C->Traits);
-	if (const float Override = CigBalance::TraitTipMultOverride((uint16)C->Traits); Override > 0.f)
-	{
-		TipMult = Override;
-	}
-	if (C->LoyalId >= 0) { TipChance += 0.2f; }
-	if (GM->Skills)
-	{
-		TipMult *= GM->Skills->TipRepMult(); // the Guleryuzlu skill
-	}
-	int32 Tip = 0;
-	if (Quality >= 60.f && Rng().Chance(TipChance))
-	{
-		Tip = FMath::RoundToInt(Price * TipMult * Rng().FRandRange(0.6f, 1.4f));
-	}
-
-	// Every shop handed over leaves a permanent income bonus behind
-	if (GM->Skills)
-	{
-		Price *= GM->Skills->PrestigeEarnMult();
-	}
-
-	int32 FinalPrice = FMath::RoundToInt(Price);
-	if (C->bVIP)
-	{
-		FinalPrice *= 3;
-	}
-	FinalPrice += Tip;
-
-	// --- Apply ---
-	Eco->Earn(FinalPrice);
-	if (GM->Days)
-	{
-		GM->Days->RegisterSale(FinalPrice);
-		if (GM->Days->DayEarnings > Prog->BestDayEarnings)
-		{
-			Prog->BestDayEarnings = GM->Days->DayEarnings;
-		}
-	}
-	Prog->TotalServed++;
-	if (Hyg)
-	{
-		Hyg->OnServeMade(!Wrap.bPacked);
-	}
-
-	// --- Reputation ---
+	// A squeamish customer is reacting to the counter rather than to the wrap, so
+	// this stays with the customer instead of moving into the pipeline.
 	const bool bInfluencer = EnumHasAnyFlags(C->Traits, ECigTrait::Influencer);
-	const float RepScale = bInfluencer ? 3.f : (C->bVIP ? 2.f : 1.f);
-	if (Score.Accuracy >= 85.f && Quality >= 70.f)
-	{
-		Prog->AddRep(3.f * RepScale * (GM->Skills ? GM->Skills->TipRepMult() : 1.f));
-	}
-	else if (Score.Accuracy < 50.f)
-	{
-		Prog->AddRep(-3.f * RepScale);
-	}
-	if (Quality < 40.f)
-	{
-		Prog->AddRep(-3.f);
-	}
 	if (bDirty && EnumHasAnyFlags(C->Traits, ECigTrait::HygieneSensitive))
 	{
 		Prog->AddRep(-4.f);
 		GM->AddMessage(CigText::Get(TEXT("msg.customer.hygienecomplaint")), FLinearColor(1.f, 0.5f, 0.3f));
-	}
-	if (Eco->PricePolicy == 0)
-	{
-		Prog->AddRep(0.5f);
-	}
-
-	// --- XP, quests and reviews ---
-	Prog->AddXP(10 + FMath::RoundToInt(Quality / 10.f) + (C->bVIP ? 10 : 0) + (Score.Accuracy >= 90.f ? 5 : 0));
-	Bus().Served.Broadcast(Score.Accuracy, Quality, Wrap.Portions);
-	if (GM->Reviews)
-	{
-		GM->Reviews->RecordServe(Quality, Score.Accuracy, C->Patience / C->MaxPatience, Eco->PricePolicy, Hygiene, C->Traits);
 	}
 
 	// --- Loyalty ---
@@ -613,7 +522,7 @@ void UCigCustomerSystem::ServeFront()
 
 	// Ask the AI (or the offline fallback) for the line the customer will say.
 	// Asynchronous: the game does not wait; the reply lands in the message feed.
-	RequestServeDialogue(C, Score.Accuracy, Quality, FinalPrice, Tip > 0);
+	RequestServeDialogue(C, Wrap, Score.Accuracy, Quality, FinalPrice, Tip > 0);
 
 	// The wrap has been handed over.
 	Orders->Wrap = FCigWrapBuild();
@@ -680,7 +589,8 @@ void UCigCustomerSystem::FinishCustomerVisit(ACigkofteCustomer* C)
 	}
 }
 
-void UCigCustomerSystem::RequestServeDialogue(ACigkofteCustomer* C, float Accuracy, float Quality, int32 FinalPrice, bool bTipped)
+void UCigCustomerSystem::RequestServeDialogue(ACigkofteCustomer* C, const FCigWrapBuild& Teslim,
+	float Accuracy, float Quality, int32 FinalPrice, bool bTipped)
 {
 	if (!C || !GM || !GM->GetGameInstance()) { return; }
 
@@ -695,9 +605,13 @@ void UCigCustomerSystem::RequestServeDialogue(ACigkofteCustomer* C, float Accura
 	Ctx.Quality = Quality;
 	Ctx.Hygiene = (GM->Hygiene) ? GM->Hygiene->OverallHygiene() : 100.f;
 	Ctx.PatienceFrac = C->MaxPatience > 0.f ? FMath::Clamp(C->Patience / C->MaxPatience, 0.f, 1.f) : 1.f;
-	Ctx.ServedSpice = C->Spec.Spice;
+	// The order on one side, the food on the other. Copying the delivered side
+	// from the requested side made every service look correct, which silenced
+	// every line written for a wrong order.
+	Ctx.RequestedSpice = C->Spec.Spice;
+	Ctx.ServedSpice = Teslim.Spice;
 	Ctx.bWantedAyran = C->Spec.bWantsAyran;
-	Ctx.bGotAyran = C->Spec.bWantsAyran; // we do not assume the ayran on the delivered wrap here
+	Ctx.bGotAyran = Teslim.bAyran;
 	Ctx.FinalPrice = FinalPrice;
 	Ctx.bTipped = bTipped;
 	if (C->LoyalId >= 0)
@@ -733,15 +647,11 @@ void UCigCustomerSystem::OnDayStart(int32 Day)
 {
 	CustomerTimer = 3.f;
 
-	// The inspector may turn up every couple of days
-	if (Day >= 2 && (Day % 2 == 0 || Rng().Chance(0.3f)))
-	{
-		InspectorTimer = Rng().FRandRange(30.f, 120.f);
-	}
-	else
-	{
-		InspectorTimer = -1.f;
-	}
+	// One roll, and never a certainty: the complaint warning at day start only
+	// means something if the visit it warns about might still not happen.
+	const UCigInspectionSystem* Denetim = GM ? GM->Inspection.Get() : nullptr;
+	const float Sans = Denetim ? Denetim->BugunkuDenetimSansi() : 0.f;
+	InspectorTimer = (Day >= 2 && Rng().Chance(Sans)) ? Rng().FRandRange(30.f, 120.f) : -1.f;
 }
 
 void UCigCustomerSystem::OnDayEnd(int32 Day)

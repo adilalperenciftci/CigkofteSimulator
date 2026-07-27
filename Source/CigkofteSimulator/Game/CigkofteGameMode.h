@@ -13,6 +13,7 @@ class UCigOrderSystem;
 class UCigCustomerSystem;
 class UCigEconomySystem;
 class UCigPricingSystem;
+class UCigSaleSystem;
 class UCigInspectionSystem;
 class UCigSocialSystem;
 class UCigInventorySystem;
@@ -108,6 +109,15 @@ public:
 	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void Tick(float DeltaSeconds) override;
 
+	// Builds every system in dependency order and initialises it.
+	//
+	// Split out of InitGame because these are two different jobs: this is the
+	// rules, and what follows it in InitGame is the world those rules are played
+	// in - meshes, actors, the save file, the widgets. Only the second half
+	// needs a map, so separating them is what lets a test stand the shop up
+	// without one (see Tests/CigTestShop.h).
+	void CreateSystems();
+
 	// --- Systems ---
 	// The event bus is built first so the others can subscribe to it during
 	// InitSystem (see Game/CigEventBus.h).
@@ -119,6 +129,7 @@ public:
 	UPROPERTY() TObjectPtr<UCigCustomerSystem> Customers;
 	UPROPERTY() TObjectPtr<UCigEconomySystem> Economy;
 	UPROPERTY() TObjectPtr<UCigPricingSystem> Pricing;
+	UPROPERTY() TObjectPtr<UCigSaleSystem> Sales;
 	UPROPERTY() TObjectPtr<UCigInspectionSystem> Inspection;
 	UPROPERTY() TObjectPtr<UCigSocialSystem> Social;
 	UPROPERTY() TObjectPtr<UCigInventorySystem> Inventory;
@@ -222,6 +233,16 @@ public:
 	void BroadcastDayEnd(int32 Day);
 
 	// --- Saving ---
+	// Blocks every write to the save slot for this GameMode.
+	//
+	// A test shop is a real GameMode on a real game instance, so the save
+	// subsystem it reaches is the player's, and opening a day writes to it:
+	// BroadcastDayStart and BroadcastDayEnd both call RequestSave. FCigTestShop
+	// was careful never to *read* the player's save and had no defence at all
+	// against writing one - a headless run of the suite replaced a day-3 file
+	// with the test world's day 1. Set by FCigTestShop; nothing in the game
+	// turns it on.
+	bool bSaveDisabled = false;
 	void RequestSave();
 	void RequestLoad();
 	void CaptureSave(UCigSaveGame& Save) const;

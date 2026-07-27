@@ -57,9 +57,11 @@ public:
 	bool bKampanyaAktif = false;
 	bool bViralGun = false;
 
-	// Index into the review list that the next reply will answer. -1 when there
-	// is nothing waiting.
-	int32 YanitlanacakYorum = -1;
+	// The review awaiting a reply. Held by ID rather than index because reviews
+	// are inserted at the front: a second poor review on the same day would
+	// otherwise silently redirect the reply to a different one. 0 = nothing
+	// waiting.
+	int32 YanitlanacakYorumId = 0;
 
 private:
 	void TakipciDegistir(int32 Delta);

@@ -1,0 +1,13 @@
+Key,Label,Deger
+MinGun,Sözleşmenin görünmeye başladığı gün,3
+TeklifSansi,Gün başına teklif olasılığı,0.12
+IhbarGunu,Teslime kaç gün kala teklif edilir,3
+AdetTabani,İstenen dürümün taban sayısı,8
+SeviyeBasinaAdet,Her seviye için eklenen dürüm,2
+AdetSapmasi,İstenen sayıya eklenen rastgele üst sınır,4
+UcretCarpani,Dürüm başına sözleşme ücreti (TL),55
+KilPayiEsigi,Kısmi ödeme için gereken tamamlanma oranı,0.80
+KilPayiOdulOrani,Kıl payı kaçıranın aldığı ödeme oranı,0.60
+TamItibar,Siparişi karşılamanın itibar kazancı,8
+KilPayiItibar,Kıl payı kaçırmanın itibar kaybı,-3
+BasarisizItibar,Açık ara kaçırmanın itibar kaybı,-12

@@ -8,6 +8,7 @@
 #include "Customers/CigCustomerSystem.h"
 #include "Economy/CigEconomySystem.h"
 #include "Economy/CigPricingSystem.h"
+#include "Economy/CigSaleSystem.h"
 #include "Economy/CigInspectionSystem.h"
 #include "Economy/CigSocialSystem.h"
 #include "Economy/CigRivalSystem.h"
@@ -51,36 +52,7 @@ void ACigkofteGameMode::InitGame(const FString& MapName, const FString& Options,
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
 
-	// Build the systems in dependency order. The bus goes first: everything
-	// below subscribes to it during InitSystem.
-	CreateSystem(Bus);
-	CreateSystem(WorldBuilder);
-	CreateSystem(Days);
-	CreateSystem(Inventory);
-	CreateSystem(Hygiene);
-	CreateSystem(Progression);
-	CreateSystem(Economy);
-	CreateSystem(Cooking);
-	CreateSystem(Orders);
-	CreateSystem(Events);
-	CreateSystem(Reviews);
-	CreateSystem(Rivals);
-	// After Rivals: pricing reads their prices to answer with its own.
-	CreateSystem(Pricing);
-	CreateSystem(Inspection);
-	CreateSystem(Social);
-	CreateSystem(Quests);
-	CreateSystem(Customers);
-	CreateSystem(Delivery);
-	CreateSystem(Staff);
-	CreateSystem(CatSys);
-	CreateSystem(Skills);
-	CreateSystem(Achievements);
-
-	for (UCigSystem* Sys : AllSystems)
-	{
-		Sys->InitSystem(this);
-	}
+	CreateSystems();
 
 	WorldBuilder->BuildWorld();
 
@@ -106,6 +78,42 @@ void ACigkofteGameMode::InitGame(const FString& MapName, const FString& Options,
 	RefreshTabletWidget();
 
 	UE_LOG(LogCig, Log, TEXT("Oyun kuruldu (%d sistem, kayıt: %s)"), AllSystems.Num(), bLoadedFromSave ? TEXT("yüklendi") : TEXT("yok"));
+}
+
+void ACigkofteGameMode::CreateSystems()
+{
+	// Build the systems in dependency order. The bus goes first: everything
+	// below subscribes to it during InitSystem.
+	CreateSystem(Bus);
+	CreateSystem(WorldBuilder);
+	CreateSystem(Days);
+	CreateSystem(Inventory);
+	CreateSystem(Hygiene);
+	CreateSystem(Progression);
+	CreateSystem(Economy);
+	CreateSystem(Cooking);
+	CreateSystem(Orders);
+	CreateSystem(Events);
+	CreateSystem(Reviews);
+	CreateSystem(Rivals);
+	// After Rivals: pricing reads their prices to answer with its own.
+	CreateSystem(Pricing);
+	// After Pricing: every sale is priced off the list it publishes.
+	CreateSystem(Sales);
+	CreateSystem(Inspection);
+	CreateSystem(Social);
+	CreateSystem(Quests);
+	CreateSystem(Customers);
+	CreateSystem(Delivery);
+	CreateSystem(Staff);
+	CreateSystem(CatSys);
+	CreateSystem(Skills);
+	CreateSystem(Achievements);
+
+	for (UCigSystem* Sys : AllSystems)
+	{
+		Sys->InitSystem(this);
+	}
 }
 
 void ACigkofteGameMode::Tick(float DeltaSeconds)
@@ -519,6 +527,10 @@ void ACigkofteGameMode::RestartGame()
 
 void ACigkofteGameMode::RequestSave()
 {
+	if (bSaveDisabled)
+	{
+		return;
+	}
 	if (UCigSaveSubsystem* SaveSys = GetGameInstance() ? GetGameInstance()->GetSubsystem<UCigSaveSubsystem>() : nullptr)
 	{
 		SaveSys->SaveNow(this);

@@ -12,6 +12,8 @@
 #include "Misc/AutomationTest.h"
 #include "AI/CigDialogueContext.h"
 #include "AI/CigDialogueTable.h"
+#include "AI/CigOfflineDialogueProvider.h"
+#include "Core/CigText.h"
 #include "Core/CigkofteTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -68,6 +70,52 @@ bool FCigDialogueContextKeyMatchesGeneratorTest::RunTest(const FString& /*Parame
 
 	TestEqual(TEXT("Bağlam anahtarı üreteç anahtarıyla aynı olmalı"), Ctx.CacheKey(), Expected);
 	TestEqual(TEXT("Titiz müşterinin özellik indeksi 4 olmalı"), TraitIdx, 4);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigDialogueWrongOrderTest,
+	"Cigkofte.Dialogue.WrongOrderReachesItsOwnBucket",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigDialogueWrongOrderTest::RunTest(const FString& /*Parameters*/)
+{
+	// Regression. The caller filled the delivered side of the context from the
+	// requested side, so the a-flag was pinned to 1 and the 1200 buckets written
+	// for a wrong order could never be addressed. What proves the fix is not
+	// that a correct order still keys to a1, but that a wrong one keys to a0.
+	FCigDialogueContext Dogru;
+	Dogru.Accuracy = 95.f;
+	Dogru.Quality = 90.f;
+	Dogru.RequestedSpice = ECigSpice::CokAci;
+	Dogru.ServedSpice = ECigSpice::CokAci;
+	Dogru.bWantedAyran = true;
+	Dogru.bGotAyran = true;
+
+	TestTrue(TEXT("Doğru sipariş eşleşmiş sayılmalı"), Dogru.OrderMatched());
+	TestTrue(TEXT("Doğru siparişin anahtarı a1 olmalı"), Dogru.CacheKey().Contains(TEXT("_a1_")));
+
+	// Missing ayran.
+	FCigDialogueContext AyranYok = Dogru;
+	AyranYok.bGotAyran = false;
+	TestFalse(TEXT("Eksik ayran eşleşme sayılmamalı"), AyranYok.OrderMatched());
+	TestTrue(TEXT("Eksik ayran a0 kovasına düşmeli"), AyranYok.CacheKey().Contains(TEXT("_a0_")));
+
+	// Ayran nobody asked for is also a mistake, in the other direction.
+	FCigDialogueContext FazlaAyran = Dogru;
+	FazlaAyran.bWantedAyran = false;
+	TestFalse(TEXT("İstenmeyen ayran da hata sayılmalı"), FazlaAyran.OrderMatched());
+
+	// Wrong spice, which the context could not express at all before.
+	FCigDialogueContext YanlisAci = Dogru;
+	YanlisAci.ServedSpice = ECigSpice::AzAci;
+	TestFalse(TEXT("Yanlış acılık eşleşme sayılmamalı"), YanlisAci.OrderMatched());
+	TestTrue(TEXT("Yanlış acılık a0 kovasına düşmeli"), YanlisAci.CacheKey().Contains(TEXT("_a0_")));
+
+	// The prompt has to be able to name the mistake, not just score it.
+	TestTrue(TEXT("Doğru siparişte hata metni boş olmalı"), Dogru.MistakeSummary().IsEmpty());
+	TestFalse(TEXT("Eksik ayran hata metninde geçmeli"), AyranYok.MistakeSummary().IsEmpty());
+	TestFalse(TEXT("Yanlış acılık hata metninde geçmeli"), YanlisAci.MistakeSummary().IsEmpty());
+
 	return true;
 }
 
@@ -139,6 +187,97 @@ bool FCigDialogueTableLoadsTest::RunTest(const FString& /*Parameters*/)
 	// A missing bucket returns empty quietly (the game falls back to canned lines).
 	TestEqual(TEXT("Bilinmeyen kova boş dönmeli"),
 		CigDialogue::LinesFor(TEXT("m9_t99_v0_r0_a0_h0_p0")).Num(), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigDialogueFollowsGameLanguageTest,
+	"Cigkofte.Dialogue.CustomersSpeakTheGamesLanguage",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigDialogueFollowsGameLanguageTest::RunTest(const FString& /*Parameters*/)
+{
+	// The provider used to ask UE's culture which language to answer in, while
+	// every other string in the game asks CigText. On an English Windows the
+	// menus were Turkish and the customers replied in English, in the same
+	// breath. Both now read one setting.
+	//
+	// There are two paths out of PickLine and both were reading the wrong
+	// setting, so both are checked here.
+	const int32 Onceki = CigText::GetLanguage();
+
+	// --- Path 1: the generated table -------------------------------------
+	// A low-hygiene angry customer is a bucket the seed table covers, so this
+	// exercises the bilingual row lookup.
+	FCigDialogueContext Tabloda;
+	Tabloda.Traits = (uint16)ECigTrait::HygieneSensitive;
+	Tabloda.Hygiene = 10.f;
+	Tabloda.Accuracy = 30.f;
+	Tabloda.Quality = 30.f;
+
+	const TArray<FCigDialogueRow>& TabloSatirlari = CigDialogue::LinesFor(Tabloda.CacheKey());
+	if (TabloSatirlari.Num() == 0)
+	{
+		AddError(FString::Printf(TEXT("'%s' kovası tabloda yok; test yanlış yolu ölçüyor."),
+			*Tabloda.CacheKey()));
+		return false;
+	}
+
+	CigText::SetLanguage(0);
+	const FString TabloTr = FCigOfflineDialogueProvider::PickLine(Tabloda);
+	CigText::SetLanguage(1);
+	const FString TabloEn = FCigOfflineDialogueProvider::PickLine(Tabloda);
+	CigText::SetLanguage(Onceki);
+
+	bool bTrSutunundan = false;
+	bool bEnSutunundan = false;
+	for (const FCigDialogueRow& R : TabloSatirlari)
+	{
+		bTrSutunundan |= (R.TR == TabloTr);
+		bEnSutunundan |= (R.EN == TabloEn);
+	}
+	TestTrue(TEXT("Türkçe oyunda tablo repliği TR sütunundan gelmeli"), bTrSutunundan);
+	TestTrue(TEXT("İngilizce oyunda tablo repliği EN sütunundan gelmeli"), bEnSutunundan);
+
+	// --- Path 2: the canned mood pool -------------------------------------
+	// No VIP bucket was ever generated, so a VIP falls through to the pool -
+	// the lines that used to live in TEXT() in Turkish only.
+	FCigDialogueContext Havuzda;
+	Havuzda.bVIP = true;
+	Havuzda.Accuracy = 20.f;
+	Havuzda.Quality = 20.f;   // angry, no dominant trait
+	if (CigDialogue::LinesFor(Havuzda.CacheKey()).Num() != 0)
+	{
+		AddError(FString::Printf(TEXT("'%s' artık tabloda; yedek havuz yolu ölçülemiyor."),
+			*Havuzda.CacheKey()));
+		return false;
+	}
+
+	static const TCHAR* AngryKeys[] = {
+		TEXT("dlg.mood.angry.0"), TEXT("dlg.mood.angry.1"), TEXT("dlg.mood.angry.2")
+	};
+
+	CigText::SetLanguage(0);
+	const FString HavuzTr = FCigOfflineDialogueProvider::PickLine(Havuzda);
+	TArray<FString> BeklenenTr;
+	for (const TCHAR* K : AngryKeys) { BeklenenTr.Add(CigText::Get(K)); }
+
+	CigText::SetLanguage(1);
+	const FString HavuzEn = FCigOfflineDialogueProvider::PickLine(Havuzda);
+	TArray<FString> BeklenenEn;
+	for (const TCHAR* K : AngryKeys) { BeklenenEn.Add(CigText::Get(K)); }
+
+	CigText::SetLanguage(Onceki);
+
+	TestTrue(TEXT("Türkçe oyunda yedek replik TR havuzundan gelmeli"),
+		BeklenenTr.Contains(HavuzTr));
+	TestTrue(TEXT("İngilizce oyunda yedek replik EN havuzundan gelmeli"),
+		BeklenenEn.Contains(HavuzEn));
+	// The two pools must not be the same text, or the English column is a copy
+	// of the Turkish one and nothing above would notice.
+	TestFalse(TEXT("İki dilin havuzları aynı olmamalı"), BeklenenEn.Contains(BeklenenTr[0]));
+
+	TestEqual(TEXT("Test dilin ayarını geri bırakmalı"), CigText::GetLanguage(), Onceki);
+
 	return true;
 }
 

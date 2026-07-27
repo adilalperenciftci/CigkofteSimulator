@@ -58,8 +58,6 @@ public:
 	TArray<FCigLoyalCustomer> Loyals;
 	int32 NextLoyalId = 1;
 
-	int32 Combo = 0;
-
 	// --- Inspector ---
 	UPROPERTY() TObjectPtr<ACigkofteCustomer> Inspector;
 	float InspectorTimer = -1.f;
@@ -94,5 +92,9 @@ private:
 	// Sub-steps split out of ServeFront (one responsibility each).
 	void UpdateLoyaltyAfterServe(ACigkofteCustomer* C, class UCigEconomySystem* Eco, float Accuracy, int32 Tip);
 	void FinishCustomerVisit(ACigkofteCustomer* C);
-	void RequestServeDialogue(ACigkofteCustomer* C, float Accuracy, float Quality, int32 FinalPrice, bool bTipped);
+	// Teslim is the wrap that was actually handed over, not the order that was
+	// asked for. The two are the same only when the player got it right, and the
+	// customer's line is about the difference.
+	void RequestServeDialogue(ACigkofteCustomer* C, const struct FCigWrapBuild& Teslim,
+		float Accuracy, float Quality, int32 FinalPrice, bool bTipped);
 };

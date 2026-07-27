@@ -8,6 +8,7 @@
 #include "Core/CigBalance.h"
 #include "Core/CigText.h"
 #include "Economy/CigEconomySystem.h"
+#include "Economy/CigSaleSystem.h"
 #include "Progression/CigProgressionSystem.h"
 
 namespace
@@ -39,7 +40,9 @@ bool UCigEventSystem::IsEventActive(int32 DefIndex) const
 
 void UCigEventSystem::OnDayStart(int32 Day)
 {
-	Active.Empty();
+	// Normally a no-op: the previous day retired everything. Anything that did
+	// survive still leaves through the same door rather than disappearing.
+	TumOlaylariBitir();
 
 	// Calendar days come first and outside the two-event budget: match day is
 	// something the player planned around, so a pair of unlucky dice rolls must
@@ -74,8 +77,18 @@ void UCigEventSystem::OnDayStart(int32 Day)
 
 void UCigEventSystem::OnDayEnd(int32 Day)
 {
-	Active.Empty();
+	TumOlaylariBitir();
 	TopluSiparisiSonuclandir(Day);
+}
+
+int32 UCigEventSystem::TumOlaylariBitir()
+{
+	const int32 Bitirilen = Active.Num();
+	for (int32 i = Active.Num() - 1; i >= 0; --i)
+	{
+		EndEvent(i);
+	}
+	return Bitirilen;
 }
 
 FCigTopluSonuc UCigEventSystem::TopluSiparisSonucu(int32 Yapilan, int32 Istenen)
@@ -83,7 +96,7 @@ FCigTopluSonuc UCigEventSystem::TopluSiparisSonucu(int32 Yapilan, int32 Istenen)
 	// Delivering short of the order is not one failure but two different ones:
 	// nearly making it costs goodwill, missing it badly costs the reputation the
 	// shop was trading on when it took the job.
-	constexpr float KilPayiEsigi = 0.8f;
+	const float KilPayiEsigi = CigBalance::Contract(TEXT("KilPayiEsigi"), 0.80f);
 
 	FCigTopluSonuc S;
 	if (Istenen <= 0)
@@ -95,19 +108,38 @@ FCigTopluSonuc UCigEventSystem::TopluSiparisSonucu(int32 Yapilan, int32 Istenen)
 	if (Oran >= 1.f)
 	{
 		S.OdulOrani = 1.f;
-		S.ItibarFarki = 8.f;
+		S.ItibarFarki = CigBalance::Contract(TEXT("TamItibar"), 8.f);
 	}
 	else if (Oran >= KilPayiEsigi)
 	{
-		S.OdulOrani = 0.6f;
-		S.ItibarFarki = -3.f;
+		S.OdulOrani = CigBalance::Contract(TEXT("KilPayiOdulOrani"), 0.60f);
+		S.ItibarFarki = CigBalance::Contract(TEXT("KilPayiItibar"), -3.f);
 	}
 	else
 	{
 		S.OdulOrani = 0.f;
-		S.ItibarFarki = -12.f;
+		S.ItibarFarki = CigBalance::Contract(TEXT("BasarisizItibar"), -12.f);
 	}
 	return S;
+}
+
+FCigTopluTeklif UCigEventSystem::TeklifUret(int32 Seviye, int32 Sapma)
+{
+	FCigTopluTeklif T;
+
+	// Notice is what makes this a decision rather than a surprise: enough time to
+	// stock up, not enough to coast.
+	T.IhbarGunu = FMath::Max(1, FMath::RoundToInt(CigBalance::Contract(TEXT("IhbarGunu"), 3.f)));
+
+	const int32 Taban = FMath::RoundToInt(CigBalance::Contract(TEXT("AdetTabani"), 8.f));
+	const int32 SeviyeBasina = FMath::RoundToInt(CigBalance::Contract(TEXT("SeviyeBasinaAdet"), 2.f));
+
+	// A contract for zero wraps would pay out in full the moment it was accepted,
+	// so the floor is not decoration.
+	T.IstenenAdet = FMath::Max(1, Taban + FMath::Max(0, Seviye) * SeviyeBasina + FMath::Max(0, Sapma));
+	T.Odul = FMath::RoundToInt(T.IstenenAdet * CigBalance::Contract(TEXT("UcretCarpani"), 55.f));
+
+	return T;
 }
 
 void UCigEventSystem::TopluSiparisTeklifEt(int32 Day)
@@ -118,25 +150,26 @@ void UCigEventSystem::TopluSiparisTeklifEt(int32 Day)
 		return;
 	}
 
-	const FCigEventRow& Row = CigBalance::Event(EventTopluSiparis);
-	if (Day < Row.MinGun || !Rng().Chance(Row.Sans))
+	// Its own odds, not the BuyukTeslimat event's. Sharing that row meant one
+	// number decided both how often a wedding called and how often a large
+	// delivery turned up, and rolling it twice a day made the pair appear
+	// together far more often than either was tuned for.
+	if (Day < FMath::RoundToInt(CigBalance::Contract(TEXT("MinGun"), 3.f))
+		|| !Rng().Chance(CigBalance::Contract(TEXT("TeklifSansi"), 0.12f)))
 	{
 		return;
 	}
 
-	// Three days' notice is what makes this a decision rather than a surprise:
-	// enough time to stock up, not enough to coast.
-	constexpr int32 IhbarGunu = 3;
-	constexpr int32 AdetTabani = 8;
-	constexpr int32 UcretCarpani = 55;
+	const int32 SapmaTavani = FMath::Max(0, FMath::RoundToInt(CigBalance::Contract(TEXT("AdetSapmasi"), 4.f)));
+	const FCigTopluTeklif Teklif = TeklifUret(Prog->Level, Rng().RandRange(0, SapmaTavani));
 
 	TopluSiparis = FCigTopluSiparis();
 	TopluSiparis.bTeklifVar = true;
-	TopluSiparis.TeslimGunu = Day + IhbarGunu;
-	TopluSiparis.IstenenAdet = AdetTabani + Prog->Level * 2 + Rng().RandRange(0, 4);
-	TopluSiparis.Odul = TopluSiparis.IstenenAdet * UcretCarpani;
+	TopluSiparis.TeslimGunu = Day + Teklif.IhbarGunu;
+	TopluSiparis.IstenenAdet = Teklif.IstenenAdet;
+	TopluSiparis.Odul = Teklif.Odul;
 
-	GM->AddMessage(CigText::Format(TEXT("msg.event.bulk.offer"),
+	GM->AddMessage(CigText::Format(TEXT("msg.contract.offer"),
 		TopluSiparis.IstenenAdet, TopluSiparis.TeslimGunu, TopluSiparis.Odul),
 		FLinearColor(1.f, 0.85f, 0.5f));
 }
@@ -153,7 +186,7 @@ void UCigEventSystem::TopluSiparisiKabulEt()
 	TopluSiparis.bKabulEdildi = true;
 	TopluSiparis.BaslangicServis = Prog->TotalServed;
 
-	GM->AddMessage(CigText::Format(TEXT("msg.event.bulk.accepted"),
+	GM->AddMessage(CigText::Format(TEXT("msg.contract.accepted"),
 		TopluSiparis.IstenenAdet, TopluSiparis.TeslimGunu), FLinearColor(0.5f, 1.f, 0.5f));
 }
 
@@ -165,7 +198,7 @@ void UCigEventSystem::TopluSiparisiReddet()
 	}
 
 	TopluSiparis = FCigTopluSiparis();
-	GM->AddMessage(CigText::Get(TEXT("msg.event.bulk.declined")), FLinearColor(0.8f, 0.8f, 0.8f));
+	GM->AddMessage(CigText::Get(TEXT("msg.contract.declined")), FLinearColor(0.8f, 0.8f, 0.8f));
 }
 
 void UCigEventSystem::TopluSiparisiSonuclandir(int32 Day)
@@ -192,13 +225,15 @@ void UCigEventSystem::TopluSiparisiSonuclandir(int32 Day)
 	const FCigTopluSonuc Sonuc = TopluSiparisSonucu(Yapilan, TopluSiparis.IstenenAdet);
 	const int32 Kazanc = FMath::RoundToInt(TopluSiparis.Odul * Sonuc.OdulOrani);
 
-	if (Kazanc > 0 && GM->Economy)
+	// A contract payout is takings like any other, so it counts towards the day
+	// and towards the best-day record instead of appearing only in the balance.
+	if (Kazanc > 0 && GM->Sales)
 	{
-		GM->Economy->Earn(Kazanc);
+		GM->Sales->GeliriKaydet(Kazanc);
 	}
 	Prog->AddRep(Sonuc.ItibarFarki);
 
-	GM->AddMessage(CigText::Format(TEXT("msg.event.bulk.result"),
+	GM->AddMessage(CigText::Format(TEXT("msg.contract.result"),
 		Yapilan, TopluSiparis.IstenenAdet, Kazanc),
 		Sonuc.ItibarFarki >= 0.f ? FLinearColor(0.5f, 1.f, 0.5f) : FLinearColor(1.f, 0.4f, 0.3f));
 
