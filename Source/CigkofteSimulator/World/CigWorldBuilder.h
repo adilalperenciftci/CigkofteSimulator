@@ -110,6 +110,11 @@ public:
 	UPROPERTY() TObjectPtr<ADirectionalLight> Sun;
 	UPROPERTY() TObjectPtr<ASkyLight> SkyLightActor;
 	UPROPERTY() TArray<TObjectPtr<APointLight>> ShopLights;      // bright in the evening, out during a cut
+	// Warm key over the counter. The four shop lights are spread evenly around
+	// the room, which lights it but says nothing about where to look; this one
+	// puts the brightest thing in the frame on the food and the hands making it.
+	// Goes out with the others in a power cut.
+	UPROPERTY() TObjectPtr<APointLight> CounterLight;
 	UPROPERTY() TArray<TObjectPtr<AStaticMeshActor>> StreetBulbs; // street lamp globes
 	UPROPERTY() TObjectPtr<AStaticMeshActor> GroundActor;         // goes wet in the rain
 	UPROPERTY() TObjectPtr<AActor> HouseSign;

@@ -499,6 +499,36 @@ void UCigWorldBuilder::SpawnLights()
 		}
 	}
 
+	// The key light, over the counter the player works at. SpawnLights runs last
+	// in BuildWorld, so the stations exist and it can sit where the work
+	// actually happens rather than at a guessed coordinate.
+	{
+		const ACigkofteStation* Yogurma = FindStation(ECigStation::Yogurma);
+		const ACigkofteStation* Servis = FindStation(ECigStation::Servis);
+		FVector Where(300.f, 0.f, 330.f);
+		if (Yogurma && Servis)
+		{
+			const FVector Mid = (Yogurma->GetActorLocation() + Servis->GetActorLocation()) * 0.5f;
+			Where = FVector(Mid.X, Mid.Y, 330.f);
+		}
+
+		CounterLight = World->SpawnActor<APointLight>(Where, FRotator::ZeroRotator);
+		if (CounterLight)
+		{
+			CounterLight->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+			if (UPointLightComponent* PC = Cast<UPointLightComponent>(CounterLight->GetLightComponent()))
+			{
+				// Warmer and tighter than the room lights: roughly 3000K against
+				// their 4500K, and a radius that falls off before the walls so
+				// the counter reads as the lit place rather than the room being
+				// uniformly brighter.
+				PC->SetLightColor(FLinearColor(1.f, 0.78f, 0.52f));
+				PC->SetAttenuationRadius(1250.f);
+				PC->SetIntensity(9000.f);
+			}
+		}
+	}
+
 	AActor* AtmoHolder = World->SpawnActor<AActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 	if (AtmoHolder)
 	{
@@ -1398,6 +1428,15 @@ void UCigWorldBuilder::UpdateSun(float T)
 		{
 			L->GetLightComponent()->SetIntensity(ShopIntensity);
 		}
+	}
+
+	// The counter keeps its lead over the room at every hour, and goes out with
+	// everything else in a cut - a shop lit only over the counter during a power
+	// failure would read as the one light that still works, which is a different
+	// scene from the one the event is describing.
+	if (CounterLight)
+	{
+		CounterLight->GetLightComponent()->SetIntensity(bPowerOut ? 0.f : ShopIntensity * 1.6f);
 	}
 
 	// --- Street lamps: come on towards dusk ---
