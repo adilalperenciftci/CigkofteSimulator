@@ -694,3 +694,22 @@ bal.achievement.tumdukkan.name,Tam Donanım,Fully Equipped
 bal.achievement.tumdukkan.desc,Bütün dükkân geliştirmelerini al,Buy all shop upgrades
 bal.achievement.devretme.name,Devretme,Handover
 bal.achievement.devretme.desc,Dükkânı devredip yeniden başla,Prestige and restart the shop
+dlg.mood.delighted.0,"Eline sağlık, tam kıvamında olmuş!","Perfect texture, chef. Nicely done!"
+dlg.mood.delighted.1,"Vallahi mahallenin en iyisi, helal olsun.","Best in the neighbourhood, hands down."
+dlg.mood.delighted.2,"İşte bunu arıyordum, üstü kalsın.","Exactly what I wanted. Keep the change."
+dlg.mood.delighted.3,"Bu acı, bu kıvam... on numara!","That heat, that texture... ten out of ten!"
+dlg.mood.satisfied.0,"Güzeldi, teşekkürler.","That was good, thanks."
+dlg.mood.satisfied.1,"İdare eder, yine bekleriz.","Does the job. See you again."
+dlg.mood.satisfied.2,"Fena değil, sağ ol usta.","Not bad at all, cheers chef."
+dlg.mood.mixed.0,"Eh işte, biraz daha özenseydin.","It's alright. Could have used more care."
+dlg.mood.mixed.1,Olmuş ama harika değil.,It works but it's nothing special.
+dlg.mood.mixed.2,"Ortalama, bir dahakine daha iyi olsun.","Average. Do better next time."
+dlg.mood.unhappy.0,Bu sefer pek olmamış ya.,This one really did not come together.
+dlg.mood.unhappy.1,Beklediğim gibi değildi açıkçası.,Honestly not what I was expecting.
+dlg.mood.unhappy.2,"Hmm, keyfim kaçtı biraz.","Hmm. That put a dent in my day."
+dlg.mood.angry.0,Bu ne böyle?! Param geri!,What is this?! I want my money back!
+dlg.mood.angry.1,Bir daha ayak basmam buraya!,I am never setting foot in here again!
+dlg.mood.angry.2,"Rezalet, hiç beğenmedim.","Awful. I did not like it one bit."
+dlg.regular.repeatmistake,Yine mi? Geçen sefer de böyle olmuştu...,Again? It went the same way last time...
+dlg.trait.hygiene,"Şu tezgahın hali ne böyle, iğrenç!",Look at the state of that counter. Disgusting!
+dlg.trait.price,Bu fiyata bu mu? Pahalı geldi.,This is what that price buys? Too expensive.

@@ -284,6 +284,14 @@ def check_text() -> None:
 SLOT_RE = re.compile(r"\{(\d+)\}")
 TEXT_CALL_RE = re.compile(r'CigText::(Get|Format)\s*\(\s*TEXT\("([^"]+)"\)')
 
+# A key held in a variable or a table instead of written at the call site. The
+# regex above only sees CigText::Get(TEXT("...")), so the mood line pools in
+# CigOfflineDialogueProvider - arrays of keys, indexed at random - were invisible
+# to it. A dotted lowercase literal is a key by convention here, and the cost of
+# being wrong is one false positive rather than a customer saying
+# "dlg.mood.angry.1" out loud.
+TEXT_KEY_LITERAL_RE = re.compile(r'TEXT\("((?:[a-z][a-z0-9]*\.){2,}[a-z0-9]+)"\)')
+
 
 def slot_set(template: str) -> set[int]:
     return {int(m) for m in SLOT_RE.findall(template)}
@@ -344,6 +352,23 @@ def check_text_usage(keys: set[str], slots: dict[str, set[int]]) -> None:
                     fail(f"{rel}:{line}: '{key}' {need} yer tutucu bekliyor, "
                          f"{got} argüman verilmiş.")
                     bad += 1
+
+    # Keys that never appear inside a CigText:: call. Checked separately because
+    # the loop above can only see what is written at the call site.
+    for path in sorted(SOURCE.rglob("*.cpp")):
+        if path.parent.name == "Tests":
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        rel = path.relative_to(ROOT).as_posix()
+        called = {m.group(2) for m in TEXT_CALL_RE.finditer(text)}
+        for m in TEXT_KEY_LITERAL_RE.finditer(text):
+            key = m.group(1)
+            if key in called or key in keys:
+                continue
+            line = text.count("\n", 0, m.start()) + 1
+            fail(f"{rel}:{line}: '{key}' metin anahtarı gibi duruyor ama "
+                 f"Strings.csv'de yok — ekranda anahtar adı görünür.")
+            bad += 1
 
     if bad == 0:
         print("  metin kullanımı: anahtarlar ve argüman sayıları tutuyor")

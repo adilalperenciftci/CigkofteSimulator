@@ -45,7 +45,7 @@ these come before 1.1.
 | # | Severity | Defect | State |
 |---|---|---|---|
 | M1.1 | **Blocker** | Automation tests overwrote the player's save file | **fixed** |
-| M1.2 | High | Dialogue language ignores the game's own language setting | open |
+| M1.2 | High | Dialogue language ignored the game's own language setting | **fixed** |
 | M1.3 | Low | Sold-out stations and the recipe board are unreadable primitives | open |
 
 **M1.1 — the suite ate a save.** `FCigTestShop` never loads the player's save and
@@ -58,15 +58,28 @@ confirmed by hashing the file before and after. Fixed with
 broadcast, and held by `Cigkofte.DayFlow.TestShopNeverWritesThePlayersSave` —
 verified by clearing the flag and watching that test fail, then restoring it.
 
-**M1.2 — two different answers to "what language is this game in".** The UI reads
-`FCigRuntimeSettings::Language` through `CigText`. The dialogue system reads UE's
-culture instead (`CigOfflineDialogueProvider.cpp:11-15`,
-`FInternationalization::GetCurrentCulture`). On a machine whose culture is English
-the shop speaks Turkish and the customers answer in English — observed in one run
-as `Müşteri: 'Keep the change, that was lovely.'` between Turkish HUD messages.
-The line table is bilingual and already carries both columns, so the fix is to ask
-the same source the rest of the game asks. Belongs with Stage 9's localization
-work but is a one-line defect, not a feature.
+**M1.2 — two different answers to "what language is this game in".** The UI read
+`FCigRuntimeSettings::Language` through `CigText` while the dialogue provider
+asked UE's culture (`FInternationalization::GetCurrentCulture`). On a machine
+whose culture is English the shop spoke Turkish and the customers answered in
+English — observed in one run as `Müşteri: 'Keep the change, that was lovely.'`
+between Turkish HUD messages.
+
+Fixing the source of truth turned out to be half of it. The canned mood lines and
+the three trait-specific retorts were written straight into `TEXT()` in Turkish
+only, against this project's own rule that player-facing text lives in
+`Config/Text/Strings.csv`. So an English game would still have answered in
+Turkish wherever the generated table has no bucket — which is 2379 of 2400 of
+them. Nineteen keys moved to the table with both columns filled.
+
+Held by `Cigkofte.Dialogue.CustomersSpeakTheGamesLanguage`, which covers both
+paths out of `PickLine`: a bucket the seed table has, and a VIP bucket it does
+not, which falls through to the pool. Verified by restoring the culture lookup
+and watching the test fail. `check_sources.py` also gained a rule for keys held
+in a table rather than written at the call site — the mood pools are arrays of
+keys indexed at random, which the existing `CigText::Get(TEXT("..."))` scan could
+not see. Verified by deleting one key from the CSV and getting the exact line
+reported.
 
 **M1.3 — the shop reads as grey boxes in the editor.** Stations, counters and
 props render as primitives with floating labels. This is what Stage 1 and Stage 8

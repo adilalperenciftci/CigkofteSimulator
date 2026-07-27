@@ -74,12 +74,11 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 
 ## Next exact task
 
-**M1.2** — the dialogue system reads UE's culture instead of the game's own
-language setting, so a Turkish shop can answer in English. One-line defect, see
-`PLAN.md`.
-
-Then **Stage 1.1** — mixture visual state driven from food state, with cached
+**Stage 1.1** — mixture visual state driven from food state, with cached
 material instances.
+
+M1.1 and M1.2 are closed; M1.3 (the shop renders as primitives) is what Stage 1
+and Stage 8 exist to replace rather than a bug to fix first. See `PLAN.md`.
 
 ## What the packaging run proved
 
