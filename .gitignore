@@ -20,7 +20,49 @@ Thumbs.db
 .DS_Store
 
 # Local tooling scratch
-.claude/
+*.bak
+Logs/*.log
+
+# Asset üretim çalışma çıktıları; lisans kayıtları ve klasör iskeleti takip edilir.
+AssetWork/Blender/*
+!AssetWork/Blender/.gitkeep
+AssetWork/Exports/*
+!AssetWork/Exports/.gitkeep
+Tools/Blender/
+Tools/ComfyUI/
+Tools/FFmpeg/
+AssetWork/Downloads/*
+!AssetWork/Downloads/.gitkeep
+AssetWork/Quarantine/*
+!AssetWork/Quarantine/.gitkeep
+AssetWork/Reviewed/*
+!AssetWork/Reviewed/.gitkeep
+AssetWork/Renders/*
+!AssetWork/Renders/.gitkeep
+AssetWork/Generated/Concepts/*
+!AssetWork/Generated/Concepts/.gitkeep
+AssetWork/Generated/UI/*
+!AssetWork/Generated/UI/.gitkeep
+AssetWork/Generated/Textures/*
+!AssetWork/Generated/Textures/.gitkeep
+AssetWork/Generated/PBR/*
+!AssetWork/Generated/PBR/.gitkeep
+AssetWork/Audio/Music/*
+!AssetWork/Audio/Music/.gitkeep
+AssetWork/Audio/SFX/*
+!AssetWork/Audio/SFX/.gitkeep
+AssetWork/Audio/Voice/tr/*
+!AssetWork/Audio/Voice/tr/.gitkeep
+AssetWork/Audio/Voice/en/*
+!AssetWork/Audio/Voice/en/.gitkeep
+AssetWork/Audio/Subtitles/*
+!AssetWork/Audio/Subtitles/.gitkeep
+AssetWork/Audio/Licenses/*
+!AssetWork/Audio/Licenses/.gitkeep
+Logs/Insights/
+Logs/Packaging/
+Logs/Crashes/
+Releases/
 
 # Heavy third-party asset packs (from the EG_OYUN_CIGKOFTE_1 project).
 # They run to hundreds of MB and include individual uassets over GitHub's
