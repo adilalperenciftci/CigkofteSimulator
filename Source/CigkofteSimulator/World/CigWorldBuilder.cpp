@@ -529,6 +529,21 @@ void UCigWorldBuilder::SpawnLights()
 		}
 	}
 
+	// Just inside the doorway. The front wall is two brick pieces at
+	// (-700, ±900) with the entrance between them, so this sits in the gap and
+	// throws cool light back into a room lit by warm bulbs.
+	DoorLight = World->SpawnActor<APointLight>(FVector(-620.f, 0.f, 260.f), FRotator::ZeroRotator);
+	if (DoorLight)
+	{
+		DoorLight->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+		if (UPointLightComponent* PC = Cast<UPointLightComponent>(DoorLight->GetLightComponent()))
+		{
+			PC->SetLightColor(FLinearColor(0.62f, 0.74f, 0.95f)); // roughly 6000K
+			PC->SetAttenuationRadius(1500.f);
+			PC->SetIntensity(5000.f);
+		}
+	}
+
 	AActor* AtmoHolder = World->SpawnActor<AActor>(FVector::ZeroVector, FRotator::ZeroRotator);
 	if (AtmoHolder)
 	{
@@ -1437,6 +1452,20 @@ void UCigWorldBuilder::UpdateSun(float T)
 	if (CounterLight)
 	{
 		CounterLight->GetLightComponent()->SetIntensity(bPowerOut ? 0.f : ShopIntensity * 1.6f);
+	}
+
+	// --- Doorway daylight: follows the sun, ignores the power cut ---
+	// It is strongest at midday and nearly gone by dusk, which is also when the
+	// shop bulbs come up - so the room shifts from cool-and-warm to warm-only
+	// over the day instead of holding one look. A cut does not touch it.
+	if (DoorLight)
+	{
+		float DoorIntensity = FMath::Lerp(5000.f, 250.f, Evening);
+		if (Weather == 1)
+		{
+			DoorIntensity *= 0.5f; // rain: less light through the door
+		}
+		DoorLight->GetLightComponent()->SetIntensity(DoorIntensity);
 	}
 
 	// --- Street lamps: come on towards dusk ---

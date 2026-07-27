@@ -115,6 +115,11 @@ public:
 	// puts the brightest thing in the frame on the food and the hands making it.
 	// Goes out with the others in a power cut.
 	UPROPERTY() TObjectPtr<APointLight> CounterLight;
+	// Daylight coming in at the doorway. Cool, and the only cool light in the
+	// shop - it is what makes the interior read as warm by comparison rather
+	// than just as orange. Fades out as the day does, and is unaffected by a
+	// power cut, being the sun.
+	UPROPERTY() TObjectPtr<APointLight> DoorLight;
 	UPROPERTY() TArray<TObjectPtr<AStaticMeshActor>> StreetBulbs; // street lamp globes
 	UPROPERTY() TObjectPtr<AStaticMeshActor> GroundActor;         // goes wet in the rain
 	UPROPERTY() TObjectPtr<AActor> HouseSign;
