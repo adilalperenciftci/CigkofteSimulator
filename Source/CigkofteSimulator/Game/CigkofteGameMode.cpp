@@ -527,6 +527,10 @@ void ACigkofteGameMode::RestartGame()
 
 void ACigkofteGameMode::RequestSave()
 {
+	if (bSaveDisabled)
+	{
+		return;
+	}
 	if (UCigSaveSubsystem* SaveSys = GetGameInstance() ? GetGameInstance()->GetSubsystem<UCigSaveSubsystem>() : nullptr)
 	{
 		SaveSys->SaveNow(this);

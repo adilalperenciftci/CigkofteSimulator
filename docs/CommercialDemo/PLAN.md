@@ -33,6 +33,53 @@ together — the sale parity test from 0.1, a save round-trip through
 `CaptureSave`/`ApplySave` — is covered by static rules and reading rather than by
 a test. That harness is the first item of Stage 1.
 
+## M1 — first playable session, and what it found
+
+Stage 0 was closed without anyone having played the game. M1 did: a PIE session
+driven with real key events, and an end-to-end automation test that walks the
+preparation chain through the live systems. See `QA.md` for the evidence.
+
+Everything below was observed, not predicted. Nothing here is speculative, and
+these come before 1.1.
+
+| # | Severity | Defect | State |
+|---|---|---|---|
+| M1.1 | **Blocker** | Automation tests overwrote the player's save file | **fixed** |
+| M1.2 | High | Dialogue language ignores the game's own language setting | open |
+| M1.3 | Low | Sold-out stations and the recipe board are unreadable primitives | open |
+
+**M1.1 — the suite ate a save.** `FCigTestShop` never loads the player's save and
+that was mistaken for safety. It does not need to load one: a test shop is a real
+GameMode on a real game instance, so `RequestSave` reaches the same slot the
+player's game does, and `BroadcastDayStart` calls it. A headless run of the suite
+replaced a real day-3 file (8691 bytes) with the test world's day 1 (5772),
+confirmed by hashing the file before and after. Fixed with
+`ACigkofteGameMode::bSaveDisabled`, set by `FCigTestShop` before anything can
+broadcast, and held by `Cigkofte.DayFlow.TestShopNeverWritesThePlayersSave` —
+verified by clearing the flag and watching that test fail, then restoring it.
+
+**M1.2 — two different answers to "what language is this game in".** The UI reads
+`FCigRuntimeSettings::Language` through `CigText`. The dialogue system reads UE's
+culture instead (`CigOfflineDialogueProvider.cpp:11-15`,
+`FInternationalization::GetCurrentCulture`). On a machine whose culture is English
+the shop speaks Turkish and the customers answer in English — observed in one run
+as `Müşteri: 'Keep the change, that was lovely.'` between Turkish HUD messages.
+The line table is bilingual and already carries both columns, so the fix is to ask
+the same source the rest of the game asks. Belongs with Stage 9's localization
+work but is a one-line defect, not a feature.
+
+**M1.3 — the shop reads as grey boxes in the editor.** Stations, counters and
+props render as primitives with floating labels. This is what Stage 1 and Stage 8
+exist to replace and is not a regression — `0.11` proved the packaged build cooks
+the mesh packs — so it is recorded as the baseline the tactile work starts from
+rather than as a bug to fix first.
+
+Not a game defect, recorded so it is not rediscovered: `CaptureEditorImage`
+crashes the editor while PIE is running (D3D12/Slate, no game code in the call
+stack), and `PressKey` has no held-key form, so walking to a station cannot be
+driven over MCP. Use `SlateInspectorToolset.Screenshot` and cover the hands-on
+chain with automation until an input hook exists.
+
 ## Stage 1 — tactile food preparation
 
 The single most important stage for the sales pitch. Depends on Stage 0.1 only

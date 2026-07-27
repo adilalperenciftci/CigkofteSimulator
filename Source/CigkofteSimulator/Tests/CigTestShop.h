@@ -65,6 +65,14 @@ struct FCigTestShop
 
 		// Deliberately not InitGame: that would build the world, spawn the car
 		// and load the player's real save file, which a test must never touch.
+		//
+		// Not reading it was never enough. The save subsystem lives on the game
+		// instance, so this shop reaches the player's slot, and opening or
+		// closing a day writes to it through BroadcastDayStart/BroadcastDayEnd.
+		// A headless suite run replaced a real day-3 file with this world's
+		// day 1. Set before anything can broadcast.
+		GM->bSaveDisabled = true;
+
 		GM->CreateSystems();
 
 		if (!GM->Sales || !GM->Pricing || !GM->Progression || !GM->Economy)

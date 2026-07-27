@@ -233,6 +233,16 @@ public:
 	void BroadcastDayEnd(int32 Day);
 
 	// --- Saving ---
+	// Blocks every write to the save slot for this GameMode.
+	//
+	// A test shop is a real GameMode on a real game instance, so the save
+	// subsystem it reaches is the player's, and opening a day writes to it:
+	// BroadcastDayStart and BroadcastDayEnd both call RequestSave. FCigTestShop
+	// was careful never to *read* the player's save and had no defence at all
+	// against writing one - a headless run of the suite replaced a day-3 file
+	// with the test world's day 1. Set by FCigTestShop; nothing in the game
+	// turns it on.
+	bool bSaveDisabled = false;
 	void RequestSave();
 	void RequestLoad();
 	void CaptureSave(UCigSaveGame& Save) const;
