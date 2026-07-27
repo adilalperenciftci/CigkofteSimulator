@@ -74,12 +74,12 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 
 ## Next exact task
 
-**Stage 1.1** — mixture visual state driven from food state, with cached
-material instances.
+**M1.2** — the dialogue system reads UE's culture instead of the game's own
+language setting, so a Turkish shop can answer in English. One-line defect, see
+`PLAN.md`.
 
-Before starting it, read "Foreign changes in the working tree" at the bottom.
-Something rewrote `Scripts/BuildEditor.ps1` and `.gitignore` while the packaging
-runs were going, and the rewrite dropped a check this project had a bug in.
+Then **Stage 1.1** — mixture visual state driven from food state, with cached
+material instances.
 
 ## What the packaging run proved
 
@@ -364,11 +364,12 @@ Result: BUILD SUCCESSFUL, 1836.7 MB, all six smoke checks green, 19 of 19 cook
 directories producing assets, and a staged log with no `LogCig` warning of any
 kind in it — down from 47.
 
-Run with `ModelContextProtocol` and `AllToolsets` disabled. They had been enabled
-in the working tree for an editor MCP session, and their modules are
-Runtime/Default, so leaving them on would have cooked an MCP server into the
-demo. If a packaging run ever comes out unexpectedly large or slow, check the
-plugin list in `CigkofteSimulator.uproject` against the committed one first.
+Run against the committed plugin list. A locally enabled editor plugin whose
+modules are `Runtime`/`Default` gets compiled into the packaged game, so if a
+packaging run ever comes out unexpectedly large or slow, diff the plugin list in
+`CigkofteSimulator.uproject` against the committed one first — and constrain
+anything editor-only with `"TargetAllowList": ["Editor"]` rather than toggling it
+by hand before each build.
 
 ## Last test result
 
@@ -386,26 +387,17 @@ Test groups added on this branch: `Cigkofte.Sale`, `Cigkofte.Reviews`,
 - Steam App ID and Steamworks credentials are required for Stage 10 and must never
   be committed. Not needed until then.
 
-## Foreign changes in the working tree
+## Build script: what counts as success
 
-Between 02:08 and 02:29 on 2026-07-27, while the packaging runs were going, some
-other tooling wrote to this repository. It was not part of 0.11 and none of it
-has been reviewed. Untracked: `.claude/`, `AGENTS.md`, `CLAUDE.md`,
-`CODEX_UNREAL_FULL_SETUP_PROMPT.txt`, `RUN_CODEX_FULL_SETUP.ps1`,
-`START_GAME_DEVELOPMENT.bat`, `Start-Claude-Unreal.ps1`,
-`Scripts/Ensure-UnrealMcp.ps1`, `Config/DefaultEditorPerProjectUserSettings.ini`.
-Modified: `.gitignore`, `Scripts/BuildEditor.ps1`, `CigkofteSimulator.uproject`
-(reindented, same four plugins).
+`Scripts/BuildEditor.ps1` treats the build's exit code as the sole success
+criterion and the log text as a second opinion. That split is deliberate and has
+been got wrong twice here. An early version made the text the criterion with a
+bare `-notmatch` against an array that is always truthy, so every build was
+reported as failed; a later rewrite went the other way and dropped the text check
+altogether, which cannot tell a clean build from a toolchain that crashed before
+it could report anything.
 
-**`Scripts/BuildEditor.ps1` needs a decision before it is committed.** The rewrite
-checks the build exit code and nothing else. The version it replaced checked the
-exit code *and* that `Result: Succeeded` appeared in the output, with a comment
-saying why: a crashed toolchain can produce neither, and this project has already
-had a bug in that exact check — a bare `-notmatch` against an array that is always
-truthy, so every build was reported as failed. The comment recording that went
-with the rewrite. The `build PASS` above came from the new script, but the raw
-output did contain `Result: Succeeded`, so the build itself is not in doubt.
-
-`.gitignore` also stopped ignoring `.claude/` as a whole and started ignoring
-`*.bak`, which hides the `.gitignore.bak` and `Scripts/BuildEditor.ps1.bak`
-copies that same tooling left behind.
+`Test-BuildLog` now fails a build only when the exit code is 0 *and* the log says
+`Result: Failed` or `BUILD FAILED`, and warns without failing when the success
+stamp is simply absent — UBT does not always print one, particularly on a
+`-clean` pass or an up-to-date target.

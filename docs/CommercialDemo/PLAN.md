@@ -74,11 +74,12 @@ exist to replace and is not a regression — `0.11` proved the packaged build co
 the mesh packs — so it is recorded as the baseline the tactile work starts from
 rather than as a bug to fix first.
 
-Not a game defect, recorded so it is not rediscovered: `CaptureEditorImage`
-crashes the editor while PIE is running (D3D12/Slate, no game code in the call
-stack), and `PressKey` has no held-key form, so walking to a station cannot be
-driven over MCP. Use `SlateInspectorToolset.Screenshot` and cover the hands-on
-chain with automation until an input hook exists.
+Not a game defect, recorded so it is not rediscovered: capturing the whole editor
+window while PIE is running crashes the editor (D3D12/Slate, no game code in the
+call stack) — capture the single window instead. And injected key events are
+discrete presses, so walking to a station, which needs a key held across frames,
+cannot be scripted from outside the game. Cover the hands-on chain with
+automation until there is an in-game input hook.
 
 ## Stage 1 — tactile food preparation
 

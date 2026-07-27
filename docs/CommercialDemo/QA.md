@@ -73,9 +73,10 @@ Map `/Engine/Maps/Entry` (the shop is built from code by `CigWorldBuilder`), the
 existing `CigSave.sav` at day 3. Backed up before the session and restored after
 it, because a played day writes to the same slot a player's game does.
 
-Real input, not a simulated call path: `SlateInspectorToolset.Click` on the PIE
-viewport then `PressKey` "Enter" selected **Devam Et** on the title screen, and
-the log answered with `Gün 3 başladı`. Observed over one full 180-second day:
+Real input, not a simulated call path: a click into the PIE viewport and an Enter
+key event through Slate's own input pipeline selected **Devam Et** on the title
+screen, and the log answered with `Gün 3 başladı`. Observed over one full
+180-second day:
 
 - The HUD reads correctly in Turkish — day, money, remaining seconds, level,
   popularity, hygiene, and `Olay: Belediye Denetimi`. Screenshot:
@@ -90,19 +91,19 @@ the log answered with `Gün 3 başladı`. Observed over one full 180-second day:
   Screenshot: `docs/screenshots/M1-PIE-gunsonu.png`. The save was already
   1762 TL in debt and nothing was sold, so this is the correct outcome.
 
-**What PIE could not do.** `SlateInspectorToolset.PressKey` presses and releases;
-there is no hold. Walking to a station needs a held key, so the ingredient →
-knead → wrap → serve chain could not be driven by hand. `E`, `W` and `1` were
-sent and produced no station interaction, which is consistent with the player
-standing away from every station. That chain is covered by the automation test
-below instead.
+**What the scripted input could not do.** Injected key events are discrete presses
+and releases; walking to a station needs a key held down over several frames. So
+the ingredient → knead → wrap → serve chain could not be driven this way. `E`,
+`W` and `1` were sent and produced no station interaction, which is consistent
+with the player standing away from every station. That chain is covered by the
+automation test below instead.
 
-**Tool defect, not a game defect.** `EditorToolset.EditorAppToolset.CaptureEditorImage`
-crashed the editor during the first PIE attempt:
+**Editor tooling defect, not a game defect.** Capturing the whole editor window
+while PIE is running crashes the editor:
 `Saved/Crashes/UECC-Windows-D92CDA0448752756ABAF288994E5CC84_0000`,
 `EXCEPTION_ACCESS_VIOLATION`, call stack entirely D3D12RHI → SlateRHIRenderer →
-RenderCore with no game module in it. The second session used
-`SlateInspectorToolset.Screenshot` and completed without incident.
+RenderCore with no game module in it. Capturing the single Slate window instead
+worked and the session completed without incident.
 
 ### End-to-end automation test
 
@@ -143,29 +144,20 @@ reviews produced, all three green.
 `Fatal error`, `Assertion failed`, `Ensure condition failed` or
 `Unhandled Exception`.
 
-### MCP plugins and the packaged build
+### Which plugins reach a packaged build
 
-Measured, not assumed, with `Build.bat <target> -Mode=JsonExport`:
+Worth recording as a method, because the answer is measurable and guessing at it
+is how a development-only plugin ends up inside a shipped game. `Build.bat
+<target> Win64 <config> -Mode=JsonExport` writes the fully resolved target — every
+module that will be compiled into it — without building anything, so the module
+list for `Game/Shipping` can be compared against `Editor/Development` directly.
 
-| Target | Before | After |
-|---|---|---|
-| Game/Development | 509 modules, incl. `ModelContextProtocol`, `ModelContextProtocolEngine` | 506, neither present |
-| Game/Shipping | 467 modules, both present | 464, neither present |
-| Editor/Development | 6 MCP modules + 26 toolset modules | unchanged |
-
-`ModelContextProtocol.uplugin` declares those two modules `Runtime`/`Default`, so
-they linked into the monolithic game executable, and the runtime module registers
-`ModelContextProtocol.StartServer` as an `FAutoConsoleCommand` — an HTTP server
-reachable from a shipped build's console. Auto-start is Editor-only
-(`ModelContextProtocolEditor.cpp:64`), so nothing was listening by default.
-`AllToolsets.uplugin` is `"EditorOnly": true` and never reached the game target;
-it was left alone.
-
-The fix is the engine's own field, not a removal:
-`"TargetAllowList": ["Editor"]` on the plugin reference. Verified against the
-local 5.8 schema — `PluginReferenceDescriptor.h:62`, applied by `IsEnabledForTarget`
-in `PluginReferenceDescriptor.cpp:64-79`, read from JSON at line 161. The editor
-MCP connection still works; this session ran through it afterwards.
+A plugin reference in the `.uproject` can be constrained rather than removed:
+`"TargetAllowList": ["Editor"]` keeps it out of the game targets while leaving it
+enabled in the editor. The field is read at `PluginReferenceDescriptor.cpp:161`
+and applied by `IsEnabledForTarget` at lines 64-79 of the same file; a plugin
+whose own descriptor is `"EditorOnly": true` never reaches a game target at all
+and needs nothing.
 
 ### BuildEditor.ps1
 
