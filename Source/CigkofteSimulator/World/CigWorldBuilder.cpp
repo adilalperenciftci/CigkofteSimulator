@@ -33,11 +33,18 @@ void UCigWorldBuilder::OnInit()
 	ConeMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"));
 	BaseMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 
-	// A food shop's walls are tiled, and that one surface does more for the
-	// room than any prop in it. Null without the pack, which leaves the painted
-	// boxes exactly as they were.
+	// A food shop's walls are tiled, and that one surface does more for the room
+	// than any prop in it. Null without the pack, which leaves the painted boxes
+	// exactly as they were.
+	//
+	// Red rather than the white this started with. Seen from the counter the
+	// white instance renders as a flat cool grey, and a cool grey interior is
+	// the one thing docs/Art/VISUAL_STYLE_GUIDE.md rules out by name - the shop
+	// is supposed to read warm, with the daylight from the street as the only
+	// cool thing in frame. Red tile is also what a Turkish lokanta actually has
+	// on its walls.
 	WallTileMaterial = LoadObject<UMaterialInterface>(nullptr,
-		TEXT("/Game/ModularBuildingSet/materials/Bricks_Tiles/tile_trim_clean/tile_trim_clean_color_white.tile_trim_clean_color_white"));
+		TEXT("/Game/ModularBuildingSet/materials/Bricks_Tiles/tile_trim_clean/tile_trim_clean_color_red.tile_trim_clean_color_red"));
 	BrickMaterial = LoadObject<UMaterialInterface>(nullptr,
 		TEXT("/Game/ModularBuildingSet/materials/Bricks_Tiles/brick_wall_orange.brick_wall_orange"));
 
