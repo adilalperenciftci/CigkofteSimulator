@@ -2,9 +2,12 @@
 #include "Core/CigText.h"
 #include "Orders/CigOrderSystem.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/SkeletalMesh.h"
+#include "Animation/AnimSequence.h"
 #include "Engine/World.h"
 
 ACigkofteCustomer::ACigkofteCustomer()
@@ -23,6 +26,12 @@ ACigkofteCustomer::ACigkofteCustomer()
 		C->SetCollisionEnabled(bQuery ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
 		return C;
 	};
+
+	SkelBody = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkelBody"));
+	SkelBody->SetupAttachment(RootComponent);
+	SkelBody->SetMobility(EComponentMobility::Movable);
+	SkelBody->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SkelBody->SetVisibility(false);
 
 	Body = MakePart(TEXT("Body"), true);
 	Body->SetRelativeLocation(FVector(0.f, 0.f, 80.f));
@@ -159,6 +168,11 @@ void ACigkofteCustomer::InitVisuals(int32 Seed)
 	const bool bGlasses = Rand.FRand() < 0.25f;
 	GlassL->SetVisibility(bGlasses);
 	GlassR->SetVisibility(bGlasses);
+
+	// Last, because it reads HeightScale and hides everything set above when it
+	// succeeds. Without the character pack it does nothing and the primitive
+	// customer - hat, bag, glasses and all - is what walks in.
+	TrySetupSkeletalBody(VisualSeed);
 }
 
 void ACigkofteCustomer::ApplyOrderVisuals()
@@ -335,8 +349,77 @@ FString ACigkofteCustomer::OrderString() const
 	return S;
 }
 
+void ACigkofteCustomer::TrySetupSkeletalBody(int32 Seed)
+{
+	// Two bodies from the UE5 mannequin set, chosen by seed so a regular walks
+	// in looking like themselves. These are placeholders in the art sense - see
+	// docs/Art/FAB_ASSET_PLAN.md, they are sci-fi mannequins next to Kenney
+	// furniture - but a person shaped like a person beats a cylinder with a
+	// sphere on it, and the skeleton is the one every animation pack targets.
+	const bool bSecond = (Seed % 2) != 0;
+	USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, bSecond
+		? TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn.SKM_Quinn")
+		: TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny.SKM_Manny"));
+	if (!Mesh || !SkelBody)
+	{
+		return; // no pack: the primitives stay
+	}
+
+	SkelBody->SetSkeletalMesh(Mesh);
+	SkelBody->SetVisibility(true);
+	// Feet on the ground, facing the way the actor faces. The mannequin models
+	// point down -Y, hence the yaw.
+	SkelBody->SetRelativeLocation(FVector::ZeroVector);
+	SkelBody->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+	SkelBody->SetRelativeScale3D(FVector(HeightScale));
+
+	AnimIdle = LoadObject<UAnimSequence>(nullptr, bSecond
+		? TEXT("/Game/Characters/Mannequins/Animations/Quinn/MF_Idle.MF_Idle")
+		: TEXT("/Game/Characters/Mannequins/Animations/Manny/MM_Idle.MM_Idle"));
+	// In place on purpose: the actor is moved by VInterpConstantTo in Tick, so a
+	// root-motion walk would fight it and slide.
+	AnimWalk = LoadObject<UAnimSequence>(nullptr, bSecond
+		? TEXT("/Game/Characters/Mannequins/Animations/Quinn/MF_Walk_Fwd.MF_Walk_Fwd")
+		: TEXT("/Game/Characters/Mannequins/Animations/Manny/MM_Walk_InPlace.MM_Walk_InPlace"));
+
+	// The primitives were the whole customer; they are now the fallback.
+	for (UStaticMeshComponent* Part : { Body.Get(), Head.Get(), LeftArm.Get(), RightArm.Get(),
+		Hat.Get(), Bag.Get(), GlassL.Get(), GlassR.Get() })
+	{
+		if (Part)
+		{
+			Part->SetVisibility(false);
+		}
+	}
+
+	bSkeletal = true;
+	UpdateSkeletalAnim(false);
+}
+
+void ACigkofteCustomer::UpdateSkeletalAnim(bool bWalking)
+{
+	if (!bSkeletal || !SkelBody)
+	{
+		return;
+	}
+	UAnimSequence* Want = (bWalking && AnimWalk) ? AnimWalk : AnimIdle;
+	if (!Want || Want == AnimPlaying)
+	{
+		return; // restarting the same sequence every frame would freeze frame 0
+	}
+	SkelBody->PlayAnimation(Want, true);
+	AnimPlaying = Want;
+}
+
 void ACigkofteCustomer::ApplyWalkAnim(bool bWalking, float DeltaSeconds)
 {
+	// A real body animates itself; the primitive bob below is for the fallback.
+	if (bSkeletal)
+	{
+		UpdateSkeletalAnim(bWalking && !bSeated);
+		return;
+	}
+
 	// Seated pose: the body lowers and the arms swing as if eating.
 	if (bSeated)
 	{

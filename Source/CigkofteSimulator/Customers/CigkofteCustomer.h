@@ -67,6 +67,12 @@ public:
 	bool bSeatMode = false;  // heading to a table / seated
 	bool bSeated = false;    // reached the table and sat down
 
+	// A real body, when the character pack is installed. The primitives below
+	// stay as the fallback and are hidden when this takes over - the same rule
+	// the cat and the stations follow, and it matters because Content/Characters
+	// is not in the repository.
+	UPROPERTY() TObjectPtr<class USkeletalMeshComponent> SkelBody;
+
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Body;
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Head;
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> LeftArm;
@@ -94,4 +100,16 @@ private:
 
 	void PickWanderTarget();
 	void ApplyWalkAnim(bool bWalking, float DeltaSeconds);
+
+	// True once a skeletal body is standing in for the primitives.
+	bool bSkeletal = false;
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimIdle;
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimWalk;
+	// Which one is playing, so the same sequence is not restarted every frame.
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimPlaying;
+
+	// Swaps the primitives for a mannequin, or leaves them alone without the
+	// pack. Seed picks the body so a regular looks the same on every visit.
+	void TrySetupSkeletalBody(int32 Seed);
+	void UpdateSkeletalAnim(bool bWalking);
 };
