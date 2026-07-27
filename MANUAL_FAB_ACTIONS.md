@@ -14,7 +14,40 @@ with straight legs and the staff have no preparation animations at all.
 
 ---
 
-## 1. Game Animation Sample — Epic Games
+## 1. MC Sample Animation Pack — MoCap Central  ← do this one
+
+- **Fab URL:** https://www.fab.com/listings/fba58a40-dc18-475a-b726-b04345f39697
+- **Price:** free, already in your library
+- **Licence:** Standard. Last updated 18 June 2026.
+- **Engine:** 5.0 – 5.8.
+- **Format: Asset package** — not a complete project, so it has a plain
+  **Add to Project** and lands straight in this project's Content.
+
+This is the better answer to the animation gaps, found after the Game Animation
+Sample attempt below hit the complete-project wall:
+
+- **Rigged to the standard UE5 Mannequin**, which is the skeleton the customers
+  already use — so no IK Rig, no retargeter, no migration. The sequences load
+  and play.
+- 120+ animations, and the listing names the two gaps by name: **sitting** (at a
+  piano, but a seated pose is a seated pose) and eating off the floor, which is
+  a hand-to-mouth loop that can be retimed.
+- Idle variety and emotional reactions — happy, sad, injured, drunk — which is
+  what a queue of six identical idling customers needs.
+- Clean start/end poses, so transitions blend without extra work.
+
+Steps:
+
+1. Epic Games Launcher → Unreal Engine → Library → Fab Library
+2. Find **MC Sample Animation Pack** → **Add to Project**
+3. Pick `CigkofteSimulator`, confirm the 5.8 version
+
+Then tell me and I will wire sitting, eating, idle variety and the reaction
+states, and add the cook entries.
+
+---
+
+## 2. Game Animation Sample — Epic Games
 
 - **Fab URL:** https://www.fab.com/listings/880e319a-a59e-4ed2-b268-b32dac7fa016
 - **Price:** free, already in your library ("Kütüphanem'e kaydedildi")
@@ -50,7 +83,7 @@ entries.
 
 ---
 
-## 2. Stylized Catcafe 110 Asset Pack — China Capture
+## 3. Stylized Catcafe 110 Asset Pack — China Capture
 
 - **Price:** free, already in your library
 - **Why:** the best stylistic match in the library for the shop interior —
@@ -79,7 +112,17 @@ beyond being animation data in the game, check the terms again.
 
 - Fab library searched over the whole 2.6K catalogue: food, kitchen, low poly,
   character, animation, stylized, props, icon, furniture, vfx, market.
-- The download control on the library card was pressed. It produced no browser
-  download and no dialog; the Launcher was already running and takes the handoff
-  out of the browser's reach.
+- The download control was pressed on both packs. Neither produced a browser
+  download or a dialog: every Fab listing here offers Unreal Engine format only,
+  with no generic FBX to fetch directly, so the handoff always goes to the
+  Launcher and out of the browser's reach.
+- The Launcher was running headless with no window at all (`MainWindowHandle`
+  0). Restarting it did open a window — it is open now, on the account, and
+  should be showing the Fab listing after the last click.
+- A desktop screenshot came back entirely black: the session is locked. That is
+  the actual blocker. Nothing on the desktop can be driven until someone unlocks
+  the machine, and browser automation cannot reach a native window regardless.
 - No purchase was made, no licence accepted, no account setting changed.
+
+Neither of these blocks any current work. Everything shipped so far came from
+packs already on disk.
