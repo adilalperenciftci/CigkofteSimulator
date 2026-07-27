@@ -124,6 +124,46 @@ if (-not (Test-Path $stagedLog)) {
 $lines = Get-Content $stagedLog
 $csvCount = (Get-ChildItem (Join-Path $RepoRoot 'Config\Balance\*.csv')).Count
 
+# Read the cooked container and count what each declared directory produced.
+#
+# Every log check below is the absence of a complaint, and two of them are the
+# absence of a complaint from a lazy loader: ResolveSound and CigMesh both load
+# on first use, so a headless run that never triggers a sound cannot fail the
+# audio check. It passed for exactly that reason against a build that had not
+# cooked a single /Game asset. This check is positive: it asks the container
+# what is in it, and a directory that produced nothing is a directory whose
+# assets the player will never see.
+Write-CigStep 'Cook denetimi: her DirectoriesToAlwaysCook girdisi varlik uretti mi'
+
+$unrealPak = Join-Path $engine 'Engine\Binaries\Win64\UnrealPak.exe'
+$toc = Join-Path (Split-Path -Parent $exe.FullName) 'CigkofteSimulator\Content\Paks\CigkofteSimulator-Windows.utoc'
+$emptyDirs = @()
+
+if (-not (Test-Path $unrealPak)) { $emptyDirs += "<UnrealPak yok: $unrealPak>" }
+elseif (-not (Test-Path $toc))   { $emptyDirs += "<container yok: $toc>" }
+else {
+    $listing = & $unrealPak $toc -List 2>&1 | Out-String
+    $cookDirs = [regex]::Matches(
+            (Get-Content (Join-Path $RepoRoot 'Config\DefaultGame.ini') -Raw),
+            '\+DirectoriesToAlwaysCook=\(Path="([^"]+)"\)') |
+        ForEach-Object { $_.Groups[1].Value }
+
+    if (-not $cookDirs) { $emptyDirs += '<DefaultGame.ini icinde hic cook girdisi yok>' }
+
+    foreach ($d in $cookDirs) {
+        # /Game/Audio maps to CigkofteSimulator/Content/Audio in the container.
+        $rel = 'Content/' + $d.Substring('/Game/'.Length)
+        $n = ([regex]::Matches($listing, [regex]::Escape($rel) + '/[^\s"]+\.uasset')).Count
+        if ($n -eq 0) {
+            $emptyDirs += $d
+            Write-Host ("  {0,6}  {1}" -f 0, $d) -ForegroundColor Red
+        }
+        else {
+            Write-Host ("  {0,6}  {1}" -f $n, $d)
+        }
+    }
+}
+
 # Each check names the symptom the player would see, not the internal fault.
 $checks = @(
     @{ Name = 'metin tablosu';   Ok = -not (@($lines) -match 'Strings\.csv okunama')
@@ -132,6 +172,10 @@ $checks = @(
        Fail = "denge CSV'leri yuklenmedi - oyun C++ varsayilanlariyla calisir" }
     @{ Name = 'ses varliklari';  Ok = -not (@($lines) -match 'Ses bulunamadı: /Game/Audio/')
        Fail = 'ses varliklari cook edilmemis - oyun tamamen sessiz' }
+    @{ Name = 'mesh varliklari'; Ok = -not (@($lines) -match 'Mesh bulunamadi')
+       Fail = 'mesh varliklari cook edilmemis - dukkan ilkel kutulardan gorunur' }
+    @{ Name = 'cook kapsami';    Ok = ($emptyDirs.Count -eq 0)
+       Fail = "hicbir sey uretmeyen cook girdisi: $($emptyDirs -join ', ')" }
     @{ Name = 'olumcul hata';    Ok = -not (@($lines) -match 'LogCig: Error|Fatal error|Assertion failed')
        Fail = 'baslangicta hata var' }
 )

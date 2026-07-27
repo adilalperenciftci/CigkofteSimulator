@@ -8,6 +8,7 @@ the compiler cannot catch, or would catch too late:
   * does every header have `#pragma once`,
   * do the balance CSVs have the expected columns and row counts,
   * do the CSV row keys line up exactly with the C++ enums,
+  * is every asset the code loads by path listed in DirectoriesToAlwaysCook,
   * are the licence and credits files still in place.
 
 Runs locally too:  python Tools/check_sources.py
@@ -502,6 +503,152 @@ def check_single_callers() -> None:
         print(f"  tek çağıran: {len(SINGLE_CALLER_RULES)} kural tutuyor")
 
 
+# How CigMeshLibrary turns a call-site argument into a content folder. Each
+# prefix must still appear in CigMeshLibrary.cpp; rename one there without
+# touching this and the check would quietly stop covering that pack, which is
+# the same class of silence it exists to catch.
+MESH_LOADERS = {
+    "Park": "CityPark/Meshes",
+    "Bazaar": "Scene_Bazaar_Vol1/Assets/MS/3D",
+    "Load": "LowPoly",
+    "LoadAt": "",  # the caller passes the whole folder
+}
+
+# CigMesh::Park(TEXT("Props"), ...) and the PreferPark(...) wrappers alike.
+MESH_CALL_RE = re.compile(
+    r'(?:CigMesh::|Prefer)(Park|Bazaar|LoadAt|Load)\s*\(\s*TEXT\("([^"]+)"')
+# The inline wrappers inside namespace CigMesh call them without the prefix.
+MESH_INLINE_RE = re.compile(r'\b(LoadAt|Load)\s*\(\s*TEXT\("([^"]+)"')
+# A literal package path: /Game/Audio/S_Knead.S_Knead
+GAME_PATH_RE = re.compile(r'TEXT\("(/Game/[^"]*)"')
+ANY_TEXT_RE = re.compile(r'TEXT\("([^"]+)"\)')
+COOK_DIR_RE = re.compile(r'^\s*\+DirectoriesToAlwaysCook=\(Path="([^"]+)"\)', re.M)
+
+
+def pack_subfolders(base: Path) -> list[str]:
+    """Folder names under a pack root, one and two levels down.
+
+    Two levels because the CityPark trees live at Meshes/Flora/Trees; nothing
+    in the project reaches deeper, and walking a 6 GB Megascans tree in full
+    would cost more than it finds.
+    """
+    out: list[str] = []
+    for first in base.iterdir() if base.is_dir() else []:
+        if not first.is_dir():
+            continue
+        out.append(first.name)
+        for second in first.iterdir():
+            if second.is_dir():
+                out.append(f"{first.name}/{second.name}")
+    return out
+
+
+def requested_asset_folders() -> dict[str, str]:
+    """Every /Game folder the runtime can ask for, mapped to where it is asked.
+
+    Both loaders build their paths with FString::Printf and hand the result to
+    LoadObject, so nothing in the reference graph points at these assets and the
+    cooker has no way to know they are wanted.
+
+    Folder names are found two ways. Parsing the call sites is precise but only
+    sees an argument written at the call: BuildBazaar keeps its produce in a
+    static FBazaarGood[] table and passes G.Folder, and an earlier version of
+    this check reported all clear while six stalls' worth of goods stayed
+    uncooked. So the source is also searched for any string that happens to name
+    a real subfolder of a pack the loaders use. That does not care how the
+    string reaches the loader, and its failure direction is one folder cooked
+    for nothing rather than a prop missing from the shipped game.
+    """
+    folders: dict[str, str] = {}
+    literals: dict[str, str] = {}
+
+    for path in sorted(list(SOURCE.rglob("*.cpp")) + list(SOURCE.rglob("*.h"))):
+        if path.parent.name == "Tests":
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        rel = path.relative_to(ROOT).as_posix()
+
+        def where(pos: int) -> str:
+            return f"{rel}:{text.count(chr(10), 0, pos) + 1}"
+
+        for m in GAME_PATH_RE.finditer(text):
+            # Cut at the first format specifier: /Game/LowPoly/%s/%s.%s is only
+            # informative as far as /Game/LowPoly.
+            literal = m.group(1).split("%")[0]
+            folder = literal.rsplit("/", 1)[0]
+            if folder and folder != "/Game":
+                folders.setdefault(folder, where(m.start()))
+
+        matches = list(MESH_CALL_RE.finditer(text))
+        if path.name == "CigMeshLibrary.h":
+            matches += MESH_INLINE_RE.finditer(text)
+        for m in matches:
+            prefix = MESH_LOADERS[m.group(1)]
+            arg = m.group(2)
+            folder = f"/Game/{prefix}/{arg}" if prefix else f"/Game/{arg}"
+            folders.setdefault(folder, where(m.start()))
+
+        for m in ANY_TEXT_RE.finditer(text):
+            literals.setdefault(m.group(1), where(m.start()))
+
+    for prefix in sorted({p for p in MESH_LOADERS.values() if p}):
+        base = ROOT / "Content" / prefix
+        for sub in pack_subfolders(base):
+            if sub in literals:
+                folders.setdefault(f"/Game/{prefix}/{sub}", literals[sub])
+
+    return folders
+
+
+def check_cooked_assets() -> None:
+    """Assets loaded by path must be named in DirectoriesToAlwaysCook.
+
+    This is the quietest failure the project has: LoadObject returns nullptr,
+    the caller falls back to a primitive or to silence, and the packaged game
+    starts, logs no error and passes its smoke test. The first packaged build
+    shipped with no audio whatsoever; the fix named /Game/Audio and /Game/LowPoly
+    and missed the three mesh packs, so the next one shipped a shop rendered as
+    grey boxes. Neither was visible without launching the build and looking.
+    """
+    ini = ROOT / "Config" / "DefaultGame.ini"
+    if not ini.exists():
+        fail("Config/DefaultGame.ini yok — cook listesi doğrulanamıyor.")
+        return
+
+    lib = SOURCE / "CigkofteSimulator" / "World" / "CigMeshLibrary.cpp"
+    lib_text = lib.read_text(encoding="utf-8", errors="replace") if lib.exists() else ""
+    for name, prefix in MESH_LOADERS.items():
+        if prefix and prefix not in lib_text:
+            fail(f"CigMeshLibrary.cpp içinde '{prefix}' yok — CigMesh::{name} "
+                 f"başka bir klasöre bakıyor, bu betiğin eşlemesi eskimiş.")
+
+    cook_dirs = COOK_DIR_RE.findall(ini.read_text(encoding="utf-8-sig"))
+    if not cook_dirs:
+        fail("DefaultGame.ini içinde hiç DirectoriesToAlwaysCook yok — "
+             "yol ile yüklenen hiçbir varlık paketlenmez.")
+        return
+
+    content = ROOT / "Content"
+    for d in cook_dirs:
+        if not d.startswith("/Game/"):
+            fail(f"DefaultGame.ini: '{d}' /Game/ ile başlamıyor.")
+        elif not (content / d[len("/Game/"):]).is_dir():
+            fail(f"DefaultGame.ini: '{d}' diye bir klasör yok — bu satır "
+                 f"hiçbir şey cook etmez.")
+
+    folders = requested_asset_folders()
+    for folder, where in sorted(folders.items()):
+        if not any(folder == d or folder.startswith(d + "/") for d in cook_dirs):
+            fail(f"{where}: '{folder}' cook listesinde değil — paketlenmiş "
+                 f"oyunda bu varlıklar bulunamaz, oyun sessizce yedeğe düşer.")
+        rel_dir = folder[len("/Game/"):]
+        if not (content / rel_dir).is_dir():
+            fail(f"{where}: '{folder}' diye bir klasör yok — bu çağrı hiçbir "
+                 f"zaman varlık bulamaz.")
+
+    print(f"  cook: {len(folders)} varlık klasörü {len(cook_dirs)} kuralla karşılandı")
+
+
 def check_repo_files() -> None:
     for name in ("LICENSE", "CREDITS.md", "README.md", ".gitattributes"):
         if not (ROOT / name).exists():
@@ -518,6 +665,7 @@ def main() -> int:
     check_text()
     check_decoupling()
     check_single_callers()
+    check_cooked_assets()
     check_repo_files()
 
     if problems:

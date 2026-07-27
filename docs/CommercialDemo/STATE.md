@@ -63,31 +63,108 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 - **GameMode test harness.** `FCigTestShop` stands up a real shop in a throwaway
   world, and the two defects that had no runtime test now have one. See below.
 
+- **0.11 Everything loaded by path is cooked.** The packaged demo was shipping a
+  shop of grey boxes and a box cat. Nineteen cook directories, a static rule that
+  the code and the cook list agree, and the first positive check in the packaging
+  script. See below.
+
 ## Current task
 
-**Verify the packaging fix.** Not done — see below.
+**None in flight.** The packaged demo is verified end to end; see below.
 
 ## Next exact task
 
-**1. Confirm the packaged build actually loads its data.** Run:
+**Stage 1.1** — mixture visual state driven from food state, with cached
+material instances.
+
+Before starting it, read "Foreign changes in the working tree" at the bottom.
+Something rewrote `Scripts/BuildEditor.ps1` and `.gitignore` while the packaging
+runs were going, and the rewrite dropped a check this project had a bug in.
+
+## What the packaging run proved
 
 ```
 .\Scripts\PackageDemo.ps1 -Configuration Development
 ```
 
-The smoke test must print `metin tablosu OK`, `denge verisi OK`, `ses varliklari OK`.
-**This has never passed.** The first packaged build had none of the three; the
-`../Config/*` staging fix in `Config/DefaultGame.ini` is believed correct but the
-run that would have proved it died on a file lock, not on the fix. Until that
-output is seen, treat the packaged demo as broken.
+`BUILD SUCCESSFUL` in 3m 4s, 924.2 MB archived, and all four smoke checks green:
+`metin tablosu`, `denge verisi`, `ses varliklari`, `olumcul hata`. The staged log
+has 14 of 14 `Denge dosyası uygulandı`, zero `Ses bulunamadı` and zero
+`LogCig: Error`. Both halves of `4af66e0` do what they claim.
 
-If it still fails, the diagnosis path is the UAT log, not the console output:
-`%APPDATA%\Unreal Engine\AutomationTool\Logs\...\Log.txt`. That is where the
-"Unable to find directory ... Content/Config/Balance" line appeared — UAT warns
-and then reports overall success, so the console alone says nothing.
+The previous entry said the proof run "died on a file lock, not on the fix". That
+was wrong, and the archive sitting in `Build/WindowsDemo` was the evidence: it was
+built at 00:41 and `4af66e0` was committed at 01:04, so it predated the half of
+the fix that matters here. `DefaultGame.ini` has only two commits, and that one
+added the `../Config/*` staging lines *and* the `DirectoriesToAlwaysCook` lines
+together. The old archive had the first and not the second, which is exactly the
+result it showed. Nothing had regressed; the artefact was simply older than the
+fix, and re-running was always going to settle it.
 
-**2. Then Stage 1.1** — mixture visual state driven from food state, with cached
-material instances.
+Worth keeping: the container listing is the real evidence, not the smoke output.
+
+```
+UnrealPak.exe <...>\CigkofteSimulator-Windows.utoc -List
+```
+
+The old archive had **zero** `/Game` assets in it — 492 cooked uassets, all
+Engine, and its only map was `/Engine/Maps/Entry`. The new one has all 19
+`/Game/Audio` assets and 64 from `/Game/LowPoly`. That is a direct reading of
+what the cooker did; the smoke check only reports that nothing complained.
+
+## 0.11 Everything loaded by path is cooked, and a check that says so
+
+The run above passed its four checks and produced 47 `Mesh bulunamadi` warnings
+while doing it — the audio defect again, one layer down. `CigMeshLibrary` resolves
+meshes by path exactly as `CigAudioSubsystem` resolves sounds, and
+`DirectoriesToAlwaysCook` named `/Game/Audio` and `/Game/LowPoly` and stopped.
+The library returns nullptr, the caller falls back to a primitive, and the shop
+renders as grey boxes with no error logged anywhere.
+
+Three things were wrong, and only the first was known when this started.
+
+**The mesh packs.** Nineteen directories are now listed, named per requested
+subfolder rather than per pack. That is not tidiness: `Scene_Bazaar_Vol1` is
+6.1 GB on disk against the ten folders the game asks for, so cooking pack roots
+would have added several gigabytes of props nothing spawns. `dukkan/Geometries`
+is flat and goes in whole at 290 MB. The package went from 924 MB to 1836.7 MB.
+
+**The cat.** `ACigCat::TrySetupSkeletalCat` loads a skeletal mesh and three
+animations by path and returns early when they are absent, leaving the primitive
+cat standing there. No warning, no error, nothing in the log at all — the quietest
+version of this defect in the project, and nobody had noticed the packaged demo
+shipped a box cat. The static check found it, not a person.
+
+**The market stalls.** Found by the first version of the static check being
+wrong. It parsed call sites, which is precise and sees only arguments written at
+the call; `BuildBazaar` keeps its produce in a static `FBazaarGood[]` table and
+passes `G.Folder`, so six stalls' worth of goods stayed uncooked while the check
+reported all clear. It now also searches the source for any string that names a
+real subfolder of a pack the loaders use, which does not care how the literal
+reaches the loader. Its failure direction is a folder cooked for nothing rather
+than a prop missing from the shipped game.
+
+### What now holds it
+
+`check_sources.py` gained `check_cooked_assets`. Every `/Game` folder the code can
+reach must be listed in `DirectoriesToAlwaysCook`, every listed directory must
+exist, and every requested folder must exist. Verified in both directions:
+deleting the `dukkan/Geometries` line reports `CigMeshLibrary.h:24`, and a cook
+entry pointing at a folder that is not there is reported as cooking nothing.
+
+`PackageDemo.ps1` gained two checks. One reads the log for `Mesh bulunamadi`. The
+other is the important one, because it is the first positive assertion in that
+script: it runs `UnrealPak -List` against the cooked container and counts what
+each declared directory actually produced. Every other check there is the absence
+of a complaint, and two of them are the absence of a complaint from a lazy
+loader — `ResolveSound` and `CigMesh` both load on first use, so a 25-second
+headless run that never triggers a sound cannot fail the audio check. That is not
+hypothetical: it is why `ses varliklari` passed against a build with no `/Game`
+asset in it whatsoever.
+
+Still not covered: a mesh *name* that does not exist inside a folder that is
+correctly cooked. The log check catches it only for props the smoke run happens
+to spawn. Worth doing if a third instance of this family shows up.
 
 ## The test harness, and what it closed
 
@@ -264,10 +341,12 @@ failed, and restoring it returned 65 of 65.
 
 ## Corrected from the previous entry
 
-`STATE.md` said 0.9 needed the GameMode harness first. It did not — migration is
-static and needs no world. The harness is still genuinely missing, and what it
-blocks is the sale parity test and a `CaptureSave`/`ApplySave` round-trip, both
-of which remain untested.
+The packaged demo was recorded as unproven because the verifying run "died on a
+file lock". It had not: the archive on disk predated the fix by 23 minutes. See
+"What the packaging run proved". The lesson is narrow and worth keeping — an
+archive is dated, the commit that was supposed to change it is dated, and
+comparing the two costs one command and would have saved re-deriving the whole
+diagnosis.
 
 ## Last successful build
 
@@ -277,9 +356,23 @@ of which remain untested.
 
 Result: static PASS, build PASS, tests PASS, data PASS, package SKIPPED.
 
+```
+.\Scripts\PackageDemo.ps1 -Configuration Development
+```
+
+Result: BUILD SUCCESSFUL, 1836.7 MB, all six smoke checks green, 19 of 19 cook
+directories producing assets, and a staged log with no `LogCig` warning of any
+kind in it — down from 47.
+
+Run with `ModelContextProtocol` and `AllToolsets` disabled. They had been enabled
+in the working tree for an editor MCP session, and their modules are
+Runtime/Default, so leaving them on would have cooked an MCP server into the
+demo. If a packaging run ever comes out unexpectedly large or slow, check the
+plugin list in `CigkofteSimulator.uproject` against the committed one first.
+
 ## Last test result
 
-`Automation RunTests Cigkofte` — **65 passed, 0 failed**, exit code 0.
+`Automation RunTests Cigkofte` — **69 passed, 0 failed**, exit code 0.
 
 Test groups added on this branch: `Cigkofte.Sale`, `Cigkofte.Reviews`,
 `Cigkofte.SaveMigration`. Still missing from the commercial-demo test standard:
@@ -292,3 +385,27 @@ Test groups added on this branch: `Cigkofte.Sale`, `Cigkofte.Reviews`,
   authored here. See `ASSETS.md`. Ambience is no longer blocked.
 - Steam App ID and Steamworks credentials are required for Stage 10 and must never
   be committed. Not needed until then.
+
+## Foreign changes in the working tree
+
+Between 02:08 and 02:29 on 2026-07-27, while the packaging runs were going, some
+other tooling wrote to this repository. It was not part of 0.11 and none of it
+has been reviewed. Untracked: `.claude/`, `AGENTS.md`, `CLAUDE.md`,
+`CODEX_UNREAL_FULL_SETUP_PROMPT.txt`, `RUN_CODEX_FULL_SETUP.ps1`,
+`START_GAME_DEVELOPMENT.bat`, `Start-Claude-Unreal.ps1`,
+`Scripts/Ensure-UnrealMcp.ps1`, `Config/DefaultEditorPerProjectUserSettings.ini`.
+Modified: `.gitignore`, `Scripts/BuildEditor.ps1`, `CigkofteSimulator.uproject`
+(reindented, same four plugins).
+
+**`Scripts/BuildEditor.ps1` needs a decision before it is committed.** The rewrite
+checks the build exit code and nothing else. The version it replaced checked the
+exit code *and* that `Result: Succeeded` appeared in the output, with a comment
+saying why: a crashed toolchain can produce neither, and this project has already
+had a bug in that exact check — a bare `-notmatch` against an array that is always
+truthy, so every build was reported as failed. The comment recording that went
+with the rewrite. The `build PASS` above came from the new script, but the raw
+output did contain `Result: Succeeded`, so the build itself is not in doubt.
+
+`.gitignore` also stopped ignoring `.claude/` as a whole and started ignoring
+`*.bak`, which hides the `.gitignore.bak` and `Scripts/BuildEditor.ps1.bak`
+copies that same tooling left behind.
