@@ -3,6 +3,7 @@
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigDaySystem.h"
 #include "World/CigkofteStation.h"
+#include "World/CigWorldBuilder.h"
 #include "Orders/CigOrderSystem.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Cat/CigCat.h"
@@ -362,6 +363,12 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 	if (PC->WasInputKeyJustPressed(EKeys::F1))
 	{
 		Mode->bShowDebugHUD = !Mode->bShowDebugHUD;
+		// The station labels are part of the same decision: signage while
+		// playing, overhead capitals while inspecting a layout.
+		if (Mode->WorldBuilder)
+		{
+			Mode->WorldBuilder->SetStationLabelsDebug(Mode->bShowDebugHUD);
+		}
 	}
 	if (CigInput::WasPressed(PC, ECigAction::Settings))
 	{

@@ -44,6 +44,13 @@ public:
 
 	FString GetPromptText() const;
 
+	// The label is two things wearing one component. In play it is signage:
+	// small, warm, close to the counter it names. With the debug HUD on it goes
+	// back to what it was - large white capitals floating overhead, readable
+	// from anywhere, which is what you want when you are checking a layout and
+	// not what you want in a screenshot.
+	void SetLabelDebug(bool bDebug);
+
 	ECigStation StationType = ECigStation::Bulgur;
 
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Base;
@@ -78,6 +85,9 @@ private:
 	FLinearColor TopColor = FLinearColor::White;
 	FVector TopBaseScale = FVector::OneVector;
 	FString LabelBaseText;
+	// Kept so the label can be repositioned later without re-deriving it.
+	float LabelTopZ = 100.f;
+	bool bLabelDebug = false;
 
 	void ApplyDoughTransform();
 	void UpdateTickState();

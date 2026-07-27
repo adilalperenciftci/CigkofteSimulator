@@ -73,6 +73,10 @@ public:
 
 	ACigkofteStation* FindStation(ECigStation Type) const;
 
+	// Switches every station label between signage and the old overhead debug
+	// text. Follows the debug HUD, so one key controls both.
+	void SetStationLabelsDebug(bool bDebug);
+
 	// A locked district: the barrier actors are destroyed on unlock and its
 	// delivery addresses join the address pool at that moment.
 	struct FCigDistrictState

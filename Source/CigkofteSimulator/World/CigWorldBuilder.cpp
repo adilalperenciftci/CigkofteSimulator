@@ -177,6 +177,17 @@ ACigkofteStation* UCigWorldBuilder::FindStation(ECigStation Type) const
 	return Found ? Found->Get() : nullptr;
 }
 
+void UCigWorldBuilder::SetStationLabelsDebug(bool bDebug)
+{
+	for (const TPair<ECigStation, TWeakObjectPtr<ACigkofteStation>>& Pair : Stations)
+	{
+		if (ACigkofteStation* S = Pair.Value.Get())
+		{
+			S->SetLabelDebug(bDebug);
+		}
+	}
+}
+
 AActor* UCigWorldBuilder::SpawnWorldText(const FVector& Loc, const FString& Text, float Size, const FColor& Color, float Yaw)
 {
 	UWorld* World = GetWorld();

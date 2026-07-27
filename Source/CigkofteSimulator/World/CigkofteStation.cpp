@@ -183,11 +183,11 @@ void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, cons
 	Dough->SetRelativeLocation(FVector(0.f, 0.f, (TopZ + 25.f - 50.f * BaseScale.Z) / BaseScale.Z));
 
 	LabelBaseText = LabelText;
+	LabelTopZ = TopZ;
 	Label->SetText(FText::FromString(LabelText));
-	const float LabelZ = FMath::Max(185.f, TopZ + 70.f);
-	Label->SetRelativeLocation(FVector(0.f, 0.f, (LabelZ - 50.f * BaseScale.Z) / BaseScale.Z));
 	Label->SetRelativeScale3D(FVector(1.f) / BaseScale);
 	Label->SetWorldRotation(FRotator(0.f, LabelYaw, 0.f));
+	SetLabelDebug(false);
 
 	// The actor sits on the ground: the base cube is raised by half its height.
 	AddActorWorldOffset(FVector(0.f, 0.f, 50.f * BaseScale.Z));
@@ -197,6 +197,33 @@ void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, cons
 	ApplyStationMesh(MeshForStation(StationType), BaseScale);
 
 	UpdateTickState();
+}
+
+void ACigkofteStation::SetLabelDebug(bool bDebug)
+{
+	if (!Label)
+	{
+		return;
+	}
+	bLabelDebug = bDebug;
+
+	const FVector BaseScale = Base->GetRelativeScale3D();
+	// Signage sits just above the counter it names and is small enough to be
+	// read rather than announced. Debug goes back overhead at the old size.
+	const float Size = bDebug ? 26.f : 16.f;
+	const float Z = bDebug ? FMath::Max(185.f, LabelTopZ + 70.f) : LabelTopZ + 34.f;
+
+	Label->SetWorldSize(Size);
+	Label->SetRelativeLocation(FVector(0.f, 0.f, (Z - 50.f * BaseScale.Z) / BaseScale.Z));
+	// A locked station keeps its grey; SetLocked owns that colour.
+	//
+	// Dark brown rather than the warm cream that was tried first: the shop's
+	// walls and floor are cream, so cream signage disappeared into them. White
+	// is still right for debug, where it sits against the sky as often as not.
+	if (!bLocked)
+	{
+		Label->SetTextRenderColor(bDebug ? FColor::White : FColor(58, 42, 30));
+	}
 }
 
 void ACigkofteStation::UpdateTickState()
