@@ -33,13 +33,22 @@ void UCigWorldBuilder::OnInit()
 	ConeMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"));
 	BaseMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 
+	// A food shop's walls are tiled, and that one surface does more for the
+	// room than any prop in it. Null without the pack, which leaves the painted
+	// boxes exactly as they were.
+	WallTileMaterial = LoadObject<UMaterialInterface>(nullptr,
+		TEXT("/Game/ModularBuildingSet/materials/Bricks_Tiles/tile_trim_clean/tile_trim_clean_color_white.tile_trim_clean_color_white"));
+	BrickMaterial = LoadObject<UMaterialInterface>(nullptr,
+		TEXT("/Game/ModularBuildingSet/materials/Bricks_Tiles/brick_wall_orange.brick_wall_orange"));
+
 	if (!CubeMesh || !BaseMaterial)
 	{
 		UE_LOG(LogCig, Warning, TEXT("Engine BasicShapes bulunamadı; dünya görselleri eksik kurulabilir."));
 	}
 }
 
-AStaticMeshActor* UCigWorldBuilder::SpawnBox(const FVector& Loc, const FVector& Scale, const FLinearColor& Color, UStaticMesh* Mesh)
+AStaticMeshActor* UCigWorldBuilder::SpawnBox(const FVector& Loc, const FVector& Scale, const FLinearColor& Color, UStaticMesh* Mesh,
+	UMaterialInterface* MaterialOverride)
 {
 	UWorld* World = GetWorld();
 	if (!World)
@@ -57,7 +66,13 @@ AStaticMeshActor* UCigWorldBuilder::SpawnBox(const FVector& Loc, const FVector& 
 	{
 		C->SetStaticMesh(UseMesh);
 	}
-	if (BaseMaterial)
+	if (MaterialOverride)
+	{
+		// A real surface brings its own colour; no MID and no parameter, which
+		// also means these boxes share one material instead of one each.
+		C->SetMaterial(0, MaterialOverride);
+	}
+	else if (BaseMaterial)
 	{
 		UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(BaseMaterial, A);
 		MID->SetVectorParameterValue(TEXT("Color"), Color);
@@ -246,11 +261,13 @@ void UCigWorldBuilder::BuildKitchen()
 {
 	// Shop floor and walls (the front is open to the street)
 	SpawnBox(FVector(150.f, 0.f, 2.f), FVector(17.5f, 26.f, 0.05f), FLinearColor(0.42f, 0.34f, 0.24f));
-	SpawnBox(FVector(1000.f, 0.f, 200.f), FVector(0.4f, 26.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f));
-	SpawnBox(FVector(150.f, 1300.f, 200.f), FVector(17.f, 0.4f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f));
-	SpawnBox(FVector(150.f, -1300.f, 200.f), FVector(17.f, 0.4f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f));
-	SpawnBox(FVector(-700.f, 900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f));
-	SpawnBox(FVector(-700.f, -900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f));
+	// The four walls of the shop. Tiled where the pack is installed, painted
+	// cream where it is not.
+	SpawnBox(FVector(1000.f, 0.f, 200.f), FVector(0.4f, 26.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, WallTileMaterial);
+	SpawnBox(FVector(150.f, 1300.f, 200.f), FVector(17.f, 0.4f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, WallTileMaterial);
+	SpawnBox(FVector(150.f, -1300.f, 200.f), FVector(17.f, 0.4f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, WallTileMaterial);
+	SpawnBox(FVector(-700.f, 900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, BrickMaterial);
+	SpawnBox(FVector(-700.f, -900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, BrickMaterial);
 
 	SpawnWorldText(FVector(-720.f, 0.f, 430.f), TEXT("CIGKOFTECI"), 90.f, FColor(255, 140, 40), 180.f);
 

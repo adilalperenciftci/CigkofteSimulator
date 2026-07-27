@@ -35,7 +35,16 @@ public:
 	void BuildWorld();
 
 	// --- Spawn helpers (other systems use these too) ---
-	AStaticMeshActor* SpawnBox(const FVector& Loc, const FVector& Scale, const FLinearColor& Color, UStaticMesh* Mesh = nullptr);
+	// MaterialOverride replaces the flat colour entirely - pass one for a
+	// surface that should read as a material (tiled wall, brick) rather than as
+	// a painted box. Colour is ignored when it is set.
+	AStaticMeshActor* SpawnBox(const FVector& Loc, const FVector& Scale, const FLinearColor& Color, UStaticMesh* Mesh = nullptr,
+		UMaterialInterface* MaterialOverride = nullptr);
+
+	// Surfaces from ModularBuildingSet, or null without the pack. Loaded once in
+	// OnInit; a missing one just leaves the painted box it replaces.
+	UPROPERTY() TObjectPtr<UMaterialInterface> WallTileMaterial;
+	UPROPERTY() TObjectPtr<UMaterialInterface> BrickMaterial;
 
 	// Places an imported low poly mesh, scaling it from its bounds to the target
 	// height. With a null mesh (no asset) it falls back to a FallbackColor box.
