@@ -263,6 +263,28 @@ void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 	}
 }
 
+// Whether the coloured top survives the model going in underneath it.
+//
+// For most stations the top was a stand-in for the object itself and goes away
+// with the box. For the ingredient stations it is the ingredient: a tub of isot
+// on a counter, in the ingredient's own colour, positioned at counter height by
+// Setup. Hiding it would have cost the shop the one cue that works across the
+// room, and CigWorldBuilder colours it from CigIngredientColor already.
+static bool StationKeepsTop(ECigStation Type)
+{
+	switch (Type)
+	{
+	case ECigStation::Bulgur:
+	case ECigStation::Isot:
+	case ECigStation::Salca:
+	case ECigStation::Su:
+	case ECigStation::Baharat:
+		return true;
+	default:
+		return false;
+	}
+}
+
 UStaticMesh* ACigkofteStation::MeshForStation(ECigStation Type)
 {
 	// One pack for the whole shop, on purpose. Furniture from three sources at
@@ -280,14 +302,17 @@ UStaticMesh* ACigkofteStation::MeshForStation(ECigStation Type)
 	case ECigStation::Lavas:      return CigMesh::Market(TEXT("SM_BreadShelf"));
 	case ECigStation::Bulasik:    return CigMesh::Market(TEXT("SM_SteelTray"));
 
-	// The ingredient stations are crates of produce, which is what they are.
-	// Different woods and colours keep them apart at a glance; the label is no
-	// longer the only thing distinguishing one from the next.
-	case ECigStation::Bulgur:     return CigMesh::Market(TEXT("SM_FruitCrate_Wood_01"));
-	case ECigStation::Isot:       return CigMesh::Market(TEXT("SM_FruitCrate_Green"));
-	case ECigStation::Salca:      return CigMesh::Market(TEXT("SM_FruitCrate_Blue"));
-	case ECigStation::Su:         return CigMesh::Market(TEXT("SM_WoodBox_01"));
-	case ECigStation::Baharat:    return CigMesh::Market(TEXT("SM_WoodBox_02"));
+	// The ingredient stations are a counter each, and the coloured tub already
+	// sitting on top is kept (see StationKeepsTop). Crates were the first
+	// attempt and they read wrong: fitted to their box they end up on the floor,
+	// so the player was reaching down at a vegetable box instead of across a
+	// counter, and the ingredient's colour - the thing that tells bulgur from
+	// isot at a glance - went with it.
+	case ECigStation::Bulgur:
+	case ECigStation::Isot:
+	case ECigStation::Salca:
+	case ECigStation::Su:
+	case ECigStation::Baharat:    return CigMesh::Market(TEXT("SM_BakeryCounter02"));
 
 	// These already had good Kenney models in the world builder; reuse them
 	// rather than introducing a second look for the same object.
@@ -329,10 +354,11 @@ void ACigkofteStation::ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseSc
 	const float MeshBottom = (B.Origin.Z - B.BoxExtent.Z) * WorldScale;
 	Visual->SetRelativeLocation(FVector(0.f, 0.f, (BoxBottom - MeshBottom) / BaseScale.Z));
 
-	// The primitives were the placeholder for exactly this. The dough ball is
-	// not one of them - it is live state, and it stays.
+	// The primitives were the placeholder for exactly this. Two exceptions: the
+	// dough ball is live state rather than a placeholder, and the ingredient
+	// tubs are the ingredient.
 	Base->SetVisibility(false);
-	Top->SetVisibility(false);
+	Top->SetVisibility(StationKeepsTop(StationType));
 }
 
 void ACigkofteStation::UpdateDough(const FCigDoughVisual& InVisual)
