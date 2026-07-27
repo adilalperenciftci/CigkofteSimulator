@@ -40,8 +40,8 @@ be **in place**; root motion would fight the movement component.
 | Happy | Starter Pack reaction | In place | No | |
 | Angry | Starter Pack reaction | In place | No | |
 | WalkingToSeat | Same walk | In place | Yes | |
-| Sitting | **Gap** | In place | No | Sit-down transition, aligned to chair transform |
-| Eating | **Gap** | In place | Yes | Hand-to-mouth loop |
+| Sitting | **Gap — stopgap in place** | In place | No | Body drops 45cm and keeps playing idle. Legs stay straight and pass through the chair; the table hides most of it. Replace with a real sit. |
+| Eating | **Gap** | In place | Yes | Hand-to-mouth loop. Nothing at all right now — a seated customer just idles. |
 | Leaving | Walk | In place | Yes | |
 
 ## Staff and player

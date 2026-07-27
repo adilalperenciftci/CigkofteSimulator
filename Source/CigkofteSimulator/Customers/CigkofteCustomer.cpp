@@ -402,6 +402,20 @@ void ACigkofteCustomer::UpdateSkeletalAnim(bool bWalking)
 	{
 		return;
 	}
+	// Sitting has no animation. The mannequin set ships idle, walk, run, jump,
+	// fall and land - nothing seated - and no general animation pack contains
+	// one either (docs/Art/ANIMATION_MAPPING.md lists this as a gap). Without
+	// something here the customer stands to attention at the table, which is
+	// worse than the primitive it replaced, because the primitive at least
+	// lowered itself and mimed eating.
+	//
+	// So the body drops to seat height and keeps playing idle. The legs stay
+	// straight and go through the chair; the table hides most of it at the
+	// distance this is seen from. It is a stopgap and is meant to be replaced
+	// by a real sit as soon as one is retargeted.
+	const float SeatDrop = bSeated ? -45.f * HeightScale : 0.f;
+	SkelBody->SetRelativeLocation(FVector(0.f, 0.f, SeatDrop));
+
 	UAnimSequence* Want = (bWalking && AnimWalk) ? AnimWalk : AnimIdle;
 	if (!Want || Want == AnimPlaying)
 	{
