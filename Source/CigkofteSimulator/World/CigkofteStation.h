@@ -49,6 +49,14 @@ public:
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Base;
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Top;
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Dough;
+
+	// The real furniture, when the pack is installed. It is a separate component
+	// rather than a mesh swap on Base for one reason: Base is the root and it
+	// carries the interaction collision, sized in world units the shop layout
+	// was built around. Swapping its mesh would resize that volume and move
+	// where the player can stand. So the box stays, invisible, and the model
+	// sits inside it with collision off.
+	UPROPERTY() TObjectPtr<UStaticMeshComponent> Visual;
 	UPROPERTY() TObjectPtr<UTextRenderComponent> Label;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BaseMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> TopMID;
@@ -73,4 +81,11 @@ private:
 
 	void ApplyDoughTransform();
 	void UpdateTickState();
+
+	// Picks the model for a station type, or nullptr when the pack is absent.
+	static UStaticMesh* MeshForStation(ECigStation Type);
+	// Fits the model inside the collision box the layout was built around and
+	// hides the primitives. No-op without a mesh, which is what keeps the shop
+	// standing on a machine that does not have the pack.
+	void ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseScale);
 };

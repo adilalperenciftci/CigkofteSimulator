@@ -1,4 +1,5 @@
 #include "World/CigkofteStation.h"
+#include "World/CigMeshLibrary.h"
 #include "Core/CigText.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
@@ -36,6 +37,12 @@ ACigkofteStation::ACigkofteStation()
 	Dough->SetMobility(EComponentMobility::Movable);
 	Dough->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Dough->SetVisibility(false);
+
+	Visual = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Visual"));
+	Visual->SetupAttachment(Base);
+	Visual->SetMobility(EComponentMobility::Movable);
+	Visual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Visual->SetVisibility(false);
 
 	Label = CreateDefaultSubobject<UTextRenderComponent>(TEXT("Label"));
 	Label->SetupAttachment(Base);
@@ -185,6 +192,10 @@ void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, cons
 	// The actor sits on the ground: the base cube is raised by half its height.
 	AddActorWorldOffset(FVector(0.f, 0.f, 50.f * BaseScale.Z));
 
+	// Last, so everything above still describes the box the layout reserved.
+	// Without the pack this does nothing and the coloured primitives stand.
+	ApplyStationMesh(MeshForStation(StationType), BaseScale);
+
 	UpdateTickState();
 }
 
@@ -252,17 +263,89 @@ void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 	}
 }
 
-void ACigkofteStation::UpdateDough(const FCigDoughVisual& Visual)
+UStaticMesh* ACigkofteStation::MeshForStation(ECigStation Type)
+{
+	// One pack for the whole shop, on purpose. Furniture from three sources at
+	// three fidelities is what the style guide exists to prevent, and a bakery
+	// counter next to a bakery shelf already matches without any work.
+	switch (Type)
+	{
+	case ECigStation::Servis:     return CigMesh::Market(TEXT("SM_BakeryCounter01"));
+	case ECigStation::Yogurma:    return CigMesh::Market(TEXT("SM_BakeryCounter02"));
+	case ECigStation::Paketleme:  return CigMesh::Market(TEXT("SM_BakeryStand01"));
+	case ECigStation::Buzdolabi:  return CigMesh::Market(TEXT("SM_Refrigerator_01"));
+	case ECigStation::Tarif:      return CigMesh::Market(TEXT("SM_BakeryMenu"));
+	case ECigStation::YanUrun:    return CigMesh::Market(TEXT("SM_BakeryRack"));
+	case ECigStation::Dograma:    return CigMesh::Market(TEXT("SM_BakeryCounter02"));
+	case ECigStation::Lavas:      return CigMesh::Market(TEXT("SM_BreadShelf"));
+	case ECigStation::Bulasik:    return CigMesh::Market(TEXT("SM_SteelTray"));
+
+	// The ingredient stations are crates of produce, which is what they are.
+	// Different woods and colours keep them apart at a glance; the label is no
+	// longer the only thing distinguishing one from the next.
+	case ECigStation::Bulgur:     return CigMesh::Market(TEXT("SM_FruitCrate_Wood_01"));
+	case ECigStation::Isot:       return CigMesh::Market(TEXT("SM_FruitCrate_Green"));
+	case ECigStation::Salca:      return CigMesh::Market(TEXT("SM_FruitCrate_Blue"));
+	case ECigStation::Su:         return CigMesh::Market(TEXT("SM_WoodBox_01"));
+	case ECigStation::Baharat:    return CigMesh::Market(TEXT("SM_WoodBox_02"));
+
+	// These already had good Kenney models in the world builder; reuse them
+	// rather than introducing a second look for the same object.
+	case ECigStation::Lavabo:     return CigMesh::Furniture(TEXT("kitchenSink"));
+	case ECigStation::Cop:        return CigMesh::Furniture(TEXT("trashcan"));
+
+	default:                      return nullptr;
+	}
+}
+
+void ACigkofteStation::ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseScale)
+{
+	if (!Mesh || !Visual)
+	{
+		return;
+	}
+
+	Visual->SetStaticMesh(Mesh);
+	Visual->SetVisibility(true);
+
+	// Fit the model inside the box on all three axes, not just height. Fitting
+	// to height alone looked right in principle and was wrong on screen: a
+	// produce crate is wider than it is tall, so scaling it until it was as tall
+	// as its box made it several times too wide, and the ingredient stations ran
+	// into each other across the shop.
+	const FBoxSphereBounds B = Mesh->GetBounds();
+	const FVector RawSize = B.BoxExtent * 2.f;
+	const FVector TargetBox = 100.f * BaseScale.GetAbs(); // the cube is 100uu a side
+	const float WorldScale = FMath::Min3(
+		TargetBox.X / FMath::Max(RawSize.X, 1.f),
+		TargetBox.Y / FMath::Max(RawSize.Y, 1.f),
+		TargetBox.Z / FMath::Max(RawSize.Z, 1.f));
+
+	// Visual hangs off Base, which is already scaled, so undo that.
+	Visual->SetRelativeScale3D(FVector(WorldScale) / BaseScale);
+
+	// Sit the model's underside on the box's underside.
+	const float BoxBottom = -50.f * BaseScale.Z;
+	const float MeshBottom = (B.Origin.Z - B.BoxExtent.Z) * WorldScale;
+	Visual->SetRelativeLocation(FVector(0.f, 0.f, (BoxBottom - MeshBottom) / BaseScale.Z));
+
+	// The primitives were the placeholder for exactly this. The dough ball is
+	// not one of them - it is live state, and it stays.
+	Base->SetVisibility(false);
+	Top->SetVisibility(false);
+}
+
+void ACigkofteStation::UpdateDough(const FCigDoughVisual& InVisual)
 {
 	if (StationType != ECigStation::Yogurma || !Dough)
 	{
 		return;
 	}
-	if (Visual.NearlyEqual(CurVisual))
+	if (InVisual.NearlyEqual(CurVisual))
 	{
 		return;
 	}
-	CurVisual = Visual;
+	CurVisual = InVisual;
 	ApplyDoughTransform();
 }
 
