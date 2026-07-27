@@ -26,6 +26,17 @@ struct FCigRecipe
 constexpr int32 CigRecipeCount = 8;
 constexpr int32 CigSecretRecipeIndex = 7;
 
+// Servings a finished batch yields. One number, because the ball on the counter
+// has to shrink at the same rate the batch is actually used up - the visual read
+// it as a literal 6 while FinishDough set it, and the two could drift apart
+// without anything failing.
+constexpr int32 CigDoughServings = 6;
+
+// The isot fraction the visual treats as "as hot as it gets". Taken from the
+// hottest recipe's upper band (Çok Acılı, 0.35): a bowl is never a third isot,
+// so normalising against 1 would leave every batch looking equally mild.
+constexpr float CigIsotVisualMax = 0.35f;
+
 // One prepared batch of dough.
 struct FCigDough
 {
@@ -69,6 +80,10 @@ public:
 	// Consumes N units and returns the effective quality including freshness (-1 if none).
 	float UseServings(int32 N);
 	float EffectiveQuality() const;
+
+	// What is on the counter, as the station needs to draw it. Public and pure
+	// so the derivation can be checked without a world (Tests/CigDoughVisualTests.cpp).
+	struct FCigDoughVisual CurrentVisual() const;
 
 	// --- Fridge ---
 	void FridgeInteract();

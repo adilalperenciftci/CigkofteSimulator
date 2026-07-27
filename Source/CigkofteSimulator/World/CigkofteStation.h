@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Core/CigkofteTypes.h"
+#include "Cooking/CigDoughVisual.h"
 #include "CigkofteStation.generated.h"
 
 class UStaticMeshComponent;
@@ -22,8 +23,9 @@ public:
 	// Sets mesh, colour and label from the type; called once after spawning.
 	void Setup(ECigStation InType, const FLinearColor& Color, const FString& LabelText, float LabelYaw);
 
-	// Kneading station: the dough ball's fill level and colour.
-	void UpdateDough(float Fill01, float Knead01);
+	// Kneading station: what the batch looks like now. Cheap to call every
+	// stroke - it drops out when nothing visible has changed.
+	void UpdateDough(const FCigDoughVisual& Visual);
 
 	// Triggers the dough squash animation on a kneading stroke.
 	void PulseDough();
@@ -53,8 +55,12 @@ public:
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> DoughMID;
 
 private:
-	float CurFill = 0.f;
-	float CurKnead = 0.f;
+	// The last state pushed in, and the colour last written to the material.
+	// Kept so a repeated push costs nothing: the kneading station updates on
+	// every stroke and every ingredient, and a SetVectorParameterValue that
+	// writes the value already there still queues a render-thread command.
+	FCigDoughVisual CurVisual;
+	FLinearColor LastDoughColor = FLinearColor::Transparent;
 	float Pulse = 0.f;
 	float PopTime = 0.f;
 	bool bHighlighted = false;

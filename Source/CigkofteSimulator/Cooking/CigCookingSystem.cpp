@@ -565,6 +565,49 @@ void UCigCookingSystem::UpdateSystem(float DeltaSeconds)
 	}
 }
 
+FCigDoughVisual UCigCookingSystem::CurrentVisual() const
+{
+	const FCigRecipe& R = Recipe(CurrentRecipe);
+	FCigDoughVisual V;
+
+	if (Dough.IsValid())
+	{
+		// A finished batch: the ball shrinks as it is used and dulls as it sits.
+		V.Fill01 = (float)Dough.Servings / (float)CigDoughServings;
+		V.Knead01 = 1.f;
+		V.Quality01 = Dough.Quality / FMath::Max(R.QualityPotential, 1.f);
+		V.Freshness01 = Dough.Freshness / 100.f;
+		// The batch carries a spice band rather than a ratio, so the three
+		// levels map onto the same scale the bowl is measured against.
+		switch (Dough.Spice)
+		{
+		case ECigSpice::AzAci:  V.Spice01 = 0.15f; break;
+		case ECigSpice::Orta:   V.Spice01 = 0.5f;  break;
+		default:                V.Spice01 = 1.f;   break;
+		}
+	}
+	else
+	{
+		// Still in the bowl: what has gone in so far, and how far it has been
+		// worked. Freshness does not apply to a batch that does not exist yet.
+		const int32 Toplam = BowlTotal();
+		V.Fill01 = (float)Toplam / (float)BowlCapacity;
+		V.Knead01 = KneadProgress / 100.f;
+		V.Quality01 = QualityFromBowl() / FMath::Max(R.QualityPotential, 1.f);
+		V.Freshness01 = 1.f;
+		V.Spice01 = Toplam > 0
+			? ((float)Bowl[(int32)ECigIngredient::Isot] / (float)Toplam) / CigIsotVisualMax
+			: 0.f;
+	}
+
+	V.Fill01 = FMath::Clamp(V.Fill01, 0.f, 1.f);
+	V.Knead01 = FMath::Clamp(V.Knead01, 0.f, 1.f);
+	V.Spice01 = FMath::Clamp(V.Spice01, 0.f, 1.f);
+	V.Quality01 = FMath::Clamp(V.Quality01, 0.f, 1.f);
+	V.Freshness01 = FMath::Clamp(V.Freshness01, 0.f, 1.f);
+	return V;
+}
+
 void UCigCookingSystem::UpdateDoughVisual()
 {
 	ACigkofteStation* Yogurma = (GM && GM->WorldBuilder) ? GM->WorldBuilder->FindStation(ECigStation::Yogurma) : nullptr;
@@ -572,17 +615,5 @@ void UCigCookingSystem::UpdateDoughVisual()
 	{
 		return;
 	}
-	float Fill;
-	float Knead;
-	if (Dough.IsValid())
-	{
-		Fill = (float)Dough.Servings / 6.f;
-		Knead = 1.f;
-	}
-	else
-	{
-		Fill = (float)BowlTotal() / (float)BowlCapacity;
-		Knead = KneadProgress / 100.f;
-	}
-	Yogurma->UpdateDough(Fill, Knead);
+	Yogurma->UpdateDough(CurrentVisual());
 }

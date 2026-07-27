@@ -252,14 +252,17 @@ void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 	}
 }
 
-void ACigkofteStation::UpdateDough(float Fill01, float Knead01)
+void ACigkofteStation::UpdateDough(const FCigDoughVisual& Visual)
 {
 	if (StationType != ECigStation::Yogurma || !Dough)
 	{
 		return;
 	}
-	CurFill = FMath::Clamp(Fill01, 0.f, 1.f);
-	CurKnead = FMath::Clamp(Knead01, 0.f, 1.f);
+	if (Visual.NearlyEqual(CurVisual))
+	{
+		return;
+	}
+	CurVisual = Visual;
 	ApplyDoughTransform();
 }
 
@@ -271,23 +274,29 @@ void ACigkofteStation::PulseDough()
 
 void ACigkofteStation::ApplyDoughTransform()
 {
-	if (CurFill <= 0.f)
+	if (!CurVisual.IsVisible())
 	{
 		Dough->SetVisibility(false);
 		return;
 	}
 
 	Dough->SetVisibility(true);
-	const float S = 0.25f + 0.55f * CurFill;
+	const float S = CurVisual.Scale();
 	const FVector BaseScale = Base->GetRelativeScale3D();
 	const FVector Squash(S * (1.f + 0.20f * Pulse), S * (1.f + 0.20f * Pulse), S * (1.f - 0.30f * Pulse));
 	Dough->SetRelativeScale3D(Squash / BaseScale);
 
+	// The colour is the batch's, not the station's: see Cooking/CigDoughVisual.h
+	// for what feeds it. Written only when it actually differs, because this
+	// runs from the pulse tick as well as from every stroke.
 	if (DoughMID)
 	{
-		const FLinearColor Raw(0.76f, 0.60f, 0.42f);
-		const FLinearColor Kneaded(0.45f, 0.12f, 0.06f);
-		DoughMID->SetVectorParameterValue(TEXT("Color"), FMath::Lerp(Raw, Kneaded, CurKnead));
+		const FLinearColor Renk = CurVisual.Color();
+		if (!Renk.Equals(LastDoughColor, 0.002f))
+		{
+			DoughMID->SetVectorParameterValue(TEXT("Color"), Renk);
+			LastDoughColor = Renk;
+		}
 	}
 }
 

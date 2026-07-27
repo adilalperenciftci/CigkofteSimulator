@@ -74,11 +74,17 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 
 ## Next exact task
 
-**Stage 1.1** — mixture visual state driven from food state, with cached
-material instances.
+**Stage 1.2** — ingredient pouring with procedural utensil motion.
 
-M1.1 and M1.2 are closed; M1.3 (the shop renders as primitives) is what Stage 1
-and Stage 8 exist to replace rather than a bug to fix first. See `PLAN.md`.
+1.1 is done: the batch on the counter now derives its colour and size from what
+it actually is (`Cooking/CigDoughVisual.h`), and the station skips the material
+write when nothing visible changed. M1.1 and M1.2 are closed; M1.3 (the shop
+renders as primitives) is what Stage 1 and Stage 8 exist to replace rather than
+a bug to fix first. See `PLAN.md`.
+
+One thing 1.1 corrected about its own brief: the material instances were already
+created once in `Setup`, not per frame. The cost that was really there was the
+unconditional `SetVectorParameterValue` on a station that updates every stroke.
 
 ## What the packaging run proved
 

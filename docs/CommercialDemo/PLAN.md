@@ -99,7 +99,16 @@ automation until there is an in-game input hook.
 The single most important stage for the sales pitch. Depends on Stage 0.1 only
 in that the finished product must already be authoritative.
 
-- 1.1 Mixture visual state driven from food state, cached material instances
+- 1.1 Mixture visual state driven from food state, cached material instances —
+  **done.** The station was handed two numbers (fill, knead) and lerped between
+  two hardcoded colours, so isot, mix quality and freshness were invisible on the
+  counter while feeding the price, the customer's reaction and the review.
+  `FCigDoughVisual` (Cooking/CigDoughVisual.h) is pure and testable: it takes the
+  batch and returns a colour and a scale. The material instances were already
+  created once in `Setup` rather than per frame, so what was actually missing was
+  the write itself being skipped when nothing changed — `NearlyEqual` on the
+  state and an equality check on the colour, which matters because the kneading
+  station pushes its state on every stroke. Tests: `Cigkofte.DoughVisual`.
 - 1.2 Ingredient pouring with procedural utensil motion
 - 1.3 Kneading progression: pitch, cohesion, deformation, completion
 - 1.4 Chopping states and pooled fragments
