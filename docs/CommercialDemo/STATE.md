@@ -146,10 +146,20 @@ than a prop missing from the shipped game.
 ### What now holds it
 
 `check_sources.py` gained `check_cooked_assets`. Every `/Game` folder the code can
-reach must be listed in `DirectoriesToAlwaysCook`, every listed directory must
-exist, and every requested folder must exist. Verified in both directions:
+reach must be listed in `DirectoriesToAlwaysCook`. Verified in both directions:
 deleting the `dukkan/Geometries` line reports `CigMeshLibrary.h:24`, and a cook
 entry pointing at a folder that is not there is reported as cooking nothing.
+
+The existence half of that is asserted per pack, only where the pack root is
+checked out. Twelve packs are deliberately not in the repository — they carry
+uassets over GitHub's 100 MB limit — so a check that requires them on disk is
+true on the machine that has them and false everywhere else. The first version
+required them unconditionally: clean locally, fourteen failures on CI, which is
+the wrong direction for a check whose whole purpose is catching what a local run
+cannot see. What travels is the code-against-ini comparison, and that still
+fails on a missing cook line for a pack this checkout does not have. The summary
+line names the skipped packs rather than counting them, so a machine that is
+supposed to have one finds out that it does not.
 
 `PackageDemo.ps1` gained two checks. One reads the log for `Mesh bulunamadi`. The
 other is the important one, because it is the first positive assertion in that

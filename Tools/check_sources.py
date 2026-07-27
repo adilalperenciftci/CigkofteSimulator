@@ -634,6 +634,14 @@ def check_cooked_assets() -> None:
     shipped with no audio whatsoever; the fix named /Game/Audio and /Game/LowPoly
     and missed the three mesh packs, so the next one shipped a shop rendered as
     grey boxes. Neither was visible without launching the build and looking.
+
+    Two separate claims, and only the first one travels. That the code and the
+    cook list agree is true of a checkout on any machine. That a folder exists on
+    disk is only answerable where the packs are installed, and twelve of them are
+    deliberately not in the repository - they carry uassets over GitHub's 100 MB
+    limit (see .gitignore). The first version of this check asserted both
+    unconditionally, passed locally and failed CI on all fourteen directories.
+    Existence is now asserted per pack, only where the pack root is present.
     """
     ini = ROOT / "Config" / "DefaultGame.ini"
     if not ini.exists():
@@ -654,24 +662,42 @@ def check_cooked_assets() -> None:
         return
 
     content = ROOT / "Content"
+
+    def pack_installed(game_path: str) -> bool:
+        """Is the pack this /Game path belongs to checked out here at all."""
+        rel = game_path[len("/Game/"):]
+        return (content / rel.split("/", 1)[0]).is_dir()
+
+    eksik_paket: set[str] = set()
     for d in cook_dirs:
         if not d.startswith("/Game/"):
             fail(f"DefaultGame.ini: '{d}' /Game/ ile başlamıyor.")
+        elif not pack_installed(d):
+            eksik_paket.add(d[len("/Game/"):].split("/", 1)[0])
         elif not (content / d[len("/Game/"):]).is_dir():
             fail(f"DefaultGame.ini: '{d}' diye bir klasör yok — bu satır "
                  f"hiçbir şey cook etmez.")
 
     folders = requested_asset_folders()
     for folder, where in sorted(folders.items()):
+        # This half needs no assets on disk: it reads the code and the ini.
         if not any(folder == d or folder.startswith(d + "/") for d in cook_dirs):
             fail(f"{where}: '{folder}' cook listesinde değil — paketlenmiş "
                  f"oyunda bu varlıklar bulunamaz, oyun sessizce yedeğe düşer.")
         rel_dir = folder[len("/Game/"):]
-        if not (content / rel_dir).is_dir():
+        if not pack_installed(folder):
+            eksik_paket.add(rel_dir.split("/", 1)[0])
+        elif not (content / rel_dir).is_dir():
             fail(f"{where}: '{folder}' diye bir klasör yok — bu çağrı hiçbir "
                  f"zaman varlık bulamaz.")
 
-    print(f"  cook: {len(folders)} varlık klasörü {len(cook_dirs)} kuralla karşılandı")
+    kapsam = f"  cook: {len(folders)} varlık klasörü {len(cook_dirs)} kuralla karşılandı"
+    if eksik_paket:
+        # Named rather than counted: on a machine that is supposed to have the
+        # packs, this line is how you find out one of them is missing.
+        kapsam += (f"; {len(eksik_paket)} paket bu kopyada yok, "
+                   f"varlık kontrolü atlandı ({', '.join(sorted(eksik_paket))})")
+    print(kapsam)
 
 
 def check_repo_files() -> None:
