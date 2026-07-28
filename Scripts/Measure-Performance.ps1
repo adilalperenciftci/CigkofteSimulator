@@ -212,6 +212,47 @@ if ($measurements.Contains('GPUMem/LocalUsedMB') -and $measurements.Contains('GP
             $measurements['GPUMem/LocalUsedMB'].Max, $budget, $pct) -ForegroundColor Cyan
     }
 }
+# Per stop, which is the reason CigBench emits an event at each one.
+#
+# A single average over the whole route hides the expensive viewpoint inside four
+# cheap ones, and "the peak is somewhere" is not a finding anybody can act on.
+# The EVENTS column carries "CigBench/<stop>##<timestamp>" on the frame the
+# camera moved; a stop owns every frame from its marker up to the next one.
+$eventsIdx = [Array]::IndexOf($header, 'EVENTS')
+$frameIdx = [Array]::IndexOf($header, 'FrameTime')
+if ($eventsIdx -ge 0 -and $frameIdx -ge 0) {
+    $marks = [System.Collections.Generic.List[object]]::new()
+    for ($i = 1; $i -lt $fileLines.Count; $i++) {
+        $parts = $fileLines[$i] -split ','
+        if ($parts.Count -le $eventsIdx) { continue }
+        $m = [regex]::Match($parts[$eventsIdx], 'CigBench/([A-Za-z0-9_]+)')
+        if ($m.Success) { $marks.Add([pscustomobject]@{ Row = $i; Name = $m.Groups[1].Value }) }
+    }
+
+    if ($marks.Count -gt 0) {
+        Write-Host ''
+        Write-Host ("  {0,-30} {1,9} {2,9} {3,9} {4,7}" -f 'durak (ms)', 'ort', 'p99', 'en kotu', 'kare')
+        for ($k = 0; $k -lt $marks.Count; $k++) {
+            $from = $marks[$k].Row
+            $to = if ($k + 1 -lt $marks.Count) { $marks[$k + 1].Row - 1 } else { $fileLines.Count - 1 }
+
+            $vals = [System.Collections.Generic.List[double]]::new()
+            for ($i = $from; $i -le $to; $i++) {
+                $parts = $fileLines[$i] -split ','
+                if ($parts.Count -le $frameIdx) { continue }
+                $d = 0.0
+                if ([double]::TryParse($parts[$frameIdx], $floatStyle, $invariant, [ref]$d)) { $vals.Add($d) }
+            }
+
+            $s = Get-Stat -Values $vals.ToArray()
+            if ($s) {
+                Write-Host ("  {0,-30} {1,9} {2,9} {3,9} {4,7}" -f $marks[$k].Name, $s.Avg, $s.P99, $s.Max, $s.Count)
+            }
+        }
+    }
+}
+
+Write-Host ''
 Write-Host "  CSV: $($csv.FullName)"
 Write-Host "  etiket: $Label; cozunurluk ${Width}x${Height}; commit $(git rev-parse --short HEAD)"
 exit 0

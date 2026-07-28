@@ -99,20 +99,51 @@ machine. The texture streaming pool sits at 11 MB, because the shop's textures
 are small and mostly resident rather than streamed.
 
 Primitives drawn averages 2.37 M with an 8.27 M peak, and total RHI draw calls
-485 average against a 1281 peak. The gap between average and peak in both is the
-same shape as the frame-time gap: the route is cheap at four stops and expensive
-at one. Which stop that is has not been isolated yet — the CSV events are in the
-capture for exactly that, and slicing by them is the next measurement rather than
-a guess.
+485 average against a 1281 peak.
 
 Note that these are read from the capture taken after the shadow change, so the
 memory figures have no before/after pair. They were not measured earlier, which
 is a gap in the record and not a change in the numbers.
 
+## Per stop
+
+Sliced on the `CigBench` events, same capture. This corrects a guess made in an
+earlier version of this file — "cheap at four stops and expensive at one" — which
+was written before anything read the events and turns out to be wrong.
+
+| Stop | Frame avg | p99 | Worst | Frames | New PSOs | Frames > 25 ms |
+|---|---:|---:|---:|---:|---:|---:|
+| dukkan (shop interior) | **13.44 ms** | 24.50 | 36.42 | 446 | 2 | 3 |
+| oturma (seating) | **13.36 ms** | 24.51 | 35.84 | 449 | 17 | 3 |
+| cadde (street) | 9.94 ms | 12.99 | 14.13 | 604 | 0 | 0 |
+| meydan (square) | 10.42 ms | 12.87 | 16.30 | 576 | 0 | 0 |
+| pazar (market) | 10.11 ms | 13.19 | 38.79 | 407 | 0 | 1 |
+
+Two views are expensive, not one, and they are the two indoors: the shop and the
+seating area, at roughly 13.4 ms against the outdoor districts' 10 ms. That is
+the finding that matters, because the shop interior is where the entire game is
+played. The open-world districts the player visits between deliveries are the
+cheap part.
+
+The p99 tells the same story more sharply. At both interior stops it is 24.5 ms —
+41 FPS — so the 1% low target is not missed evenly across the route, it is missed
+**in the shop**. Outdoors the p99 sits at 13 ms and never moves.
+
+Six of the seven frames over 25 ms are at those two stops. The seventh is the
+38.79 ms worst frame at the market, which is otherwise the steadiest view in the
+route: an isolated hitch rather than a load.
+
+PSO compilation does not explain it. Seventeen new graphics PSOs were encountered
+at the seating stop against three slow frames, and two at the shop against the
+same three — the counts and the hitches do not line up, so the interior cost is
+steady-state work and not first-sight shader compilation.
+
 ## Still open
 
+- **The shop interior is the next thing to optimise**, and it is now identified
+  rather than guessed at. The whole-route average flatters it: 88 FPS across the
+  route, 74 FPS in the room the game is played in, with a 1% low of 41 FPS there.
 - Load time and shipping build size have no numbers yet.
-- Per-stop slicing: the events are captured, nothing reads them yet.
 - No minimum-spec machine has been tested. Everything above is one developer
   machine at 1080p, and the GPU budget in particular is that card's budget.
 - Shader hitches are invisible to this route by construction: the capture starts
