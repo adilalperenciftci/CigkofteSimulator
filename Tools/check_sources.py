@@ -709,11 +709,13 @@ def check_repo_files() -> None:
 
 # Config values that are written by the editor and must not be committed.
 #
-# Each is (section, key, why). Deleting the offending line is not enough on its
-# own: the editor writes the Android File Server block on startup and generates a
-# fresh token when it finds none, so the section came back - with a new token -
-# during a routine test run, minutes after being removed by hand. This check is
-# what actually keeps it out, by failing before the value can reach a commit.
+# Each is (section, key, why). This started as the only thing holding the Android
+# File Server token out: deleting the line did nothing, because the editor writes
+# that block on startup and generates a fresh token when it finds none, so it came
+# back seven times in one working session. The root cause is fixed now - the
+# plugin is disabled in the .uproject, so the settings object never loads and
+# never writes - and this stays as the backstop that would catch it returning, or
+# catch the next value of the same kind.
 GIZLI_CONFIG_ALANLARI = [
     ("/Script/AndroidFileServerEditor.AndroidFileServerRuntimeSettings",
      "SecurityToken",
