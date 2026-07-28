@@ -1,32 +1,41 @@
-# UE 5.8 animasyon ve mocap hattı
+# UE 5.8 animation and mocap pipeline
 
-## Yerel plugin denetimi
+## Plugin audit
 
-| İstenen yetenek | UE 5.8 yerel adı/durum |
+| Capability wanted | Name and status in UE 5.8 |
 |---|---|
-| Control Rig | `ControlRig` mevcut |
-| IK Rig / Retargeter | `IKRig` mevcut |
-| Full Body IK | `FullBodyIK` mevcut, Experimental |
-| Motion Warping | `MotionWarping` mevcut |
-| Animation Sharing | `AnimationSharing` mevcut |
-| Live Link | `LiveLink` mevcut |
-| Live Link Control Rig | `LiveLinkControlRig` mevcut, Experimental |
-| Take Recorder | `Takes` plugin’i içinde mevcut |
-| Capture Manager | `CaptureManagerCore/Editor/Devices/App` mevcut |
-| MetaHuman Animator | `MetaHuman` descriptor’ı `Engine/Plugins/MetaHuman/MetaHumanAnimator` altında mevcut |
-| Markerless Motion Capture | Ayrı descriptor bulunmadı; MetaHuman araç/Fab yetkisi ve UE 5.8 dokümantasyonuyla GUI’de doğrulanmalı |
+| Control Rig | `ControlRig` present |
+| IK Rig / Retargeter | `IKRig` present |
+| Full Body IK | `FullBodyIK` present, Experimental |
+| Motion Warping | `MotionWarping` present |
+| Animation Sharing | `AnimationSharing` present |
+| Live Link | `LiveLink` present |
+| Live Link Control Rig | `LiveLinkControlRig` present, Experimental |
+| Take Recorder | present, inside the `Takes` plugin |
+| Capture Manager | `CaptureManagerCore/Editor/Devices/App` present |
+| MetaHuman Animator | descriptor present at `Engine/Plugins/MetaHuman/MetaHumanAnimator` |
+| Markerless motion capture | no separate descriptor found; needs confirming in the GUI against MetaHuman entitlements and the UE 5.8 documentation |
 
-Kurulum görevi mevcut `.uproject` değişikliklerine karışmamak için bu pluginleri otomatik etkinleştirmedi. Gereken üretim görevi geldiğinde yalnız ilgili plugin etkinleştirilir; Experimental öğe production-ready sayılmaz.
+None of these were enabled automatically, to stay out of the existing
+`.uproject` changes. When a production task needs one, only that plugin is
+enabled; an Experimental item is not treated as production-ready.
 
-## Hattın kabul sırası
+## Order of work
 
-1. Blender rig/animation dosyasını `AssetWork/Blender` altında yedekli kaydet.
-2. FBX/glTF exportta metre/santimetre ölçeği, eksen, deform bones, bake ve frame aralığını kaydet.
-3. Import sonrası skeleton, bone names, root, bind pose ve import logunu doğrula.
-4. IK Rig, IK Retargeter ve retarget pose oluştur; root motion/root lock kararını kaydet.
-5. Animation Sequence, Montage, Blend Space ve Animation Blueprint ilişkilerini kur.
-6. Control Rig düzeltmesi; foot sliding, root offset, contact, loop seam ve curve/notifies kontrolü.
-7. Mocap cleanup sırasında jitter, penetrasyon, floor height ve frame rate dönüşümünü doğrula.
-8. Video-to-mocap yalnız resmî MetaHuman Animator araçlarıyla; deneysel/hesap gerektiren adımlar manuel.
+1. Save the Blender rig/animation file under `AssetWork/Blender`, with a backup.
+2. On FBX/glTF export, record the metre/centimetre scale, axis, deform bones,
+   bake settings and frame range.
+3. After import, verify the skeleton, bone names, root, bind pose and the import
+   log.
+4. Build the IK Rig, IK Retargeter and retarget pose; record the root
+   motion / root lock decision.
+5. Wire up the Animation Sequence, Montage, Blend Space and Animation Blueprint.
+6. Correct in Control Rig: foot sliding, root offset, contacts, loop seams,
+   curves and notifies.
+7. During mocap cleanup, check jitter, penetration, floor height and the frame
+   rate conversion.
+8. Video-to-mocap only through the official MetaHuman Animator tools; anything
+   experimental or account-gated stays manual.
 
-Bu kurulum sırasında oyun assetine animasyon uygulanmaz ve Content’e import yapılmaz.
+No animation is applied to a game asset during this setup, and nothing is
+imported into `Content`.

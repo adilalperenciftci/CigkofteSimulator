@@ -1,49 +1,50 @@
-# Çiğköfte Simulator — Asset Kaynakları ve Lisanslar
+# Çiğköfte Simulator — asset sources and licences
 
-Bir **EG Games** yapımı.
+An **EG Games** production.
 
-## Görsel & Ses Assetleri (Kenney)
+## Art and audio (Kenney)
 
-Aşağıdaki low poly modeller ve ses efektleri **Kenney** (https://kenney.nl)
-tarafından **Creative Commons CC0 1.0 (kamu malı)** lisansıyla yayınlanmıştır.
-CC0 ticari kullanıma uygundur ve atıf zorunlu değildir; yine de teşekkür ederiz.
+The low-poly models and sound effects below are published by **Kenney**
+(https://kenney.nl) under **Creative Commons CC0 1.0 (public domain)**. CC0
+permits commercial use and requires no attribution; it is given here anyway.
 
-### Modeller (`Content/LowPoly/`)
+### Models (`Content/LowPoly/`)
 - **Food Kit** — https://kenney.nl/assets/food-kit
-  (lavaş/taco, sub, tabak, domates, soğan, limon, marul, bardak, şişe vb.)
+  (flatbread/taco, sub, plate, tomato, onion, lemon, lettuce, glass, bottle, …)
 - **Furniture Kit** — https://kenney.nl/assets/furniture-kit
-  (masa, sandalye, buzdolabı, ocak, lavabo, dolap, çöp kovası, saksı, radyo, kanepe)
+  (table, chair, fridge, hob, sink, cupboard, bin, plant pot, radio, sofa)
 
-### Sesler (`Content/Audio/`)
-- **Interface Sounds** — https://kenney.nl/assets/interface-sounds (UI tık/onay/hata)
-- **Impact Sounds** — https://kenney.nl/assets/impact-sounds (yoğurma)
-- **RPG Audio** — https://kenney.nl/assets/rpg-audio (doğrama, bıçak, para, kap, kumaş)
-- **Music Jingles** — https://kenney.nl/assets/music-jingles (menü/gün başı/gün sonu)
+### Audio (`Content/Audio/`)
+- **Interface Sounds** — https://kenney.nl/assets/interface-sounds (UI click / confirm / error)
+- **Impact Sounds** — https://kenney.nl/assets/impact-sounds (kneading)
+- **RPG Audio** — https://kenney.nl/assets/rpg-audio (chopping, knife, coins, containers, cloth)
+- **Music Jingles** — https://kenney.nl/assets/music-jingles (menu / day start / day end)
 
-Lisans metni: https://creativecommons.org/publicdomain/zero/1.0/
+Licence text: https://creativecommons.org/publicdomain/zero/1.0/
 
-## Ortam Sesleri (Gregor Quendel)
+## Ambience (Gregor Quendel)
 
-`Content/Audio/S_AmbStreet`, `S_AmbNight` ve `S_AmbRain` şu paketten türetilmiştir:
+`Content/Audio/S_AmbStreet`, `S_AmbNight` and `S_AmbRain` derive from:
 
 - **Free City & Nature Sounds** — Gregor Quendel (Cinematic Sound Design), Fab.
-  Lisans: **Creative Commons Attribution 4.0 (CC BY 4.0)**,
+  Licence: **Creative Commons Attribution 4.0 (CC BY 4.0)**,
   https://creativecommons.org/licenses/by/4.0/
 
-CC BY 4.0 atıf ve yapılan değişikliğin belirtilmesini şart koşar. Değişiklikler:
+CC BY 4.0 requires attribution and a statement of what was changed. The changes:
 
-- `S_AmbStreet` — `WAV_City_Ambience_Traffic_Street_Cars_and_tram.wav` kaydının
-  78. saniyesinden 45 saniyelik bölüm; kuyruk çapraz geçişiyle kesintisiz
-  döngüye getirildi ve tepe seviyesi normalize edildi.
-- `S_AmbNight` — aynı kaydın 190. saniyesinden (kaydın en tenha bölümü)
-  45 saniye; 900 Hz alçak geçiren filtreyle uzaklaştırıldı, aynı şekilde
-  döngüye getirildi. Gece yatağının gündüzle aynı sokaktan gelmesi kasıtlıdır.
-- `S_AmbRain` — `WAV_Rain_Dropping_on_various_textures.wav` kaydının 3. saniyesinden
-  43 saniye, aynı döngü işlemiyle.
+- `S_AmbStreet` — 45 seconds from 1:18 of
+  `WAV_City_Ambience_Traffic_Street_Cars_and_tram.wav`; made seamless with a tail
+  crossfade and peak-normalised.
+- `S_AmbNight` — 45 seconds from 3:10 of the same recording (its quietest
+  stretch), pushed back with a 900 Hz low-pass and looped the same way. The night
+  bed coming off the same street as the day bed is deliberate.
+- `S_AmbRain` — 43 seconds from 0:03 of
+  `WAV_Rain_Dropping_on_various_textures.wav`, same loop treatment.
 
-## Motor İçeriği
-- `/Engine/BasicShapes` primitive mesh'leri ve `Roboto` fontu Unreal Engine ile gelir;
-  dünya ve karakterler runtime'da bu primitive'ler + Kenney mesh'leri karışımıyla kurulur.
+## Engine content
+- `/Engine/BasicShapes` primitive meshes and the `Roboto` font ship with Unreal
+  Engine; the world and the characters are built at runtime from a mix of those
+  primitives and the Kenney meshes.
 
-## Kod
-Tüm gameplay sistemleri özgün C++ olarak yazılmıştır (Blueprint gameplay mantığı yoktur).
+## Code
+Every gameplay system is original C++. There is no Blueprint gameplay logic.

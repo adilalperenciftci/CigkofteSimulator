@@ -1,153 +1,175 @@
 # Çiğköfte Simulator
 
-**Bir mahalle çiğköftecisini sıfırdan işlet.** Bulguru yoğur, isotu ayarla, dürümü sar, müşteriyi
-sabrı taşmadan yetiştir; kazandığın parayla dükkânı büyüt. Unreal Engine 5.8 üzerinde
-**tamamen C++** ile yazılmış, birinci şahıs bir işletme/pişirme simülasyonu.
+*[Türkçe](README.tr.md)*
 
-> Bir **EG Games** yapımı.
+**Run a neighbourhood çiğköfte shop from nothing.** Knead the bulgur, judge the
+isot, roll the wrap, and get it to the customer before their patience runs out —
+then spend what you earn on the shop. A first-person cooking and business
+simulator written **entirely in C++** on Unreal Engine 5.8.
 
-![Servis bankosu ve müşteri kuyruğu](docs/screenshots/01_servis.png)
+> Çiğköfte is a Turkish street food: spiced bulgur kneaded by hand, wrapped in
+> flatbread with herbs and pomegranate molasses. The shop, the menu and the
+> neighbourhood are Turkish; the game itself is playable in **Turkish or
+> English**, switchable in Settings at any time.
+
+> An **EG Games** production.
+
+![Service counter and the customer queue](docs/screenshots/01_servis.png)
 
 | | |
 | --- | --- |
-| ![Malzeme tezgâhları](docs/screenshots/02_mutfak.png) | ![Yoğurma tezgâhı](docs/screenshots/03_yogurma.png) |
-| *Bulgur, isot, salça, su, baharat — her tezgâh ayrı ölçek* | *Yoğurma: sol tıkla harcı hazırla* |
-| ![Tablet — dükkân geliştirmeleri](docs/screenshots/04_tablet_dukkan.png) | ![Tablet — görevler](docs/screenshots/05_tablet_gorevler.png) |
-| *Dükkân geliştirmeleri* | *Günlük görevler, hikâye hedefleri, müdavimler* |
+| ![Ingredient stations](docs/screenshots/02_mutfak.png) | ![The kneading counter](docs/screenshots/03_yogurma.png) |
+| *Bulgur, isot, tomato paste, water, spice — each station measured separately* | *Kneading: hold the rhythm with the left mouse button* |
+| ![Tablet — shop upgrades](docs/screenshots/04_tablet_dukkan.png) | ![Tablet — quests](docs/screenshots/05_tablet_gorevler.png) |
+| *Shop upgrades* | *Daily quests, story goals, regulars* |
 
-## Oynanış
+## Playing it
 
-Her gün 3 dakikadır. Gün başlar, müşteriler sırayla gelir, sipariş verir ve sabır çubukları dolarken
-sen mutfakta koştururursun. Gün sonunda kira düşer, kazanç ve itibar hesaplanır, ertesi gün açılır.
+A day is three minutes. It opens, customers arrive in order, they place an order,
+and their patience bar fills while you work. At close, rent comes out, earnings
+and reputation are settled, and the next day opens.
 
-**Bir dürümün yolculuğu:**
+**The life of one wrap:**
 
-1. **Harç** — bulgur, isot, salça, su, baharat istasyonlarından ölç. İstenen acılık (az acı / orta /
-   çok acı) isot miktarına bağlı.
-2. **Yoğurma** — tezgâha bak ve sol tıkla; her vuruş harcı biraz daha hazırlar.
-3. **Doğrama** — marul, maydanoz, domates, turşu, soğan, limon, nar ekşisi.
-4. **Lavaş & sarma** — lavaşı koy, `1-7` ile garnitürleri seç, `8` ayran, `9` yan ürün ekle, `F` ile sar.
-5. **Servis** — tabakta mı paket mi? Müşterinin istediğini ver, parayı ve XP'yi al.
+1. **The mix** — measure from the bulgur, isot, paste, water and spice stations.
+   The heat the customer asked for (mild / medium / hot) is a function of how much
+   isot went in.
+2. **Kneading** — look at the counter and press. Every stroke works the mix a
+   little further.
+3. **Chopping** — lettuce, parsley, tomato, pickle, onion, lemon, pomegranate
+   molasses.
+4. **Flatbread and rolling** — lay the bread, pick toppings with `1`–`7`, `8` for
+   ayran, `9` for a side, `F` to roll it.
+5. **Service** — on a plate or in a bag? Give them what they asked for, take the
+   money and the XP.
 
-**Menü sadece dürüm değil.** Seviye 3'te yan ürün tezgâhı açılır: içli köfte, mercimek çorbası,
-künefe ve çay. Müşteri "yanında künefe" isteyebilir; doğru ürünü koyarsan hem fiyat hem puan artar,
-unutursan sipariş puanı düşer. Tedarikçi sekmesinden **malzeme kalitesini** de seçersin — ucuz
-malzeme kâr bırakır ama gurme müşteri farkı anlar, kaliteli malzeme maliyeti yükseltir.
+**The menu is not only wraps.** The side station opens at level 3: içli köfte,
+lentil soup, künefe and tea. A customer may ask for künefe alongside their wrap;
+get it right and both the price and the score go up, forget it and the order
+score drops. The supplier tab also sets **ingredient quality** — cheap stock
+leaves more profit, but a gourmet customer can taste the difference, and good
+stock costs more.
 
-Sipariş ne kadar birebir tutarsa bahşiş ve itibar o kadar yüksek; yanlış acılık, eksik garnitür ya da
-geciken servis müşteriyi kızdırır.
+The closer the order matches what was asked for, the better the tip and the
+reputation. Wrong heat, a missing topping or a late service makes them angry.
 
-## Açılan dünya
+## A world that opens up
 
-Oyun her şey açıkken başlamaz. İlk gün elinde sade bir tezgâh vardır: bulgur, isot, salça, su,
-baharat, yoğurma, lavaş ve servis. Doğrama, paketleme, buzdolabı, çay ocağı, mama kabı gibi
-istasyonlar kilitli durur — üstlerinde "SEVIYE N" yazar, dokunduğunda açılış seviyesini söyler.
-Müşteriler de kapalı istasyonun işini istemez: doğrama açılmadan kimse garnitür, paketleme
-açılmadan kimse paket servis istemez.
+The game does not start with everything unlocked. Day one is a plain counter:
+bulgur, isot, paste, water, spice, kneading, flatbread and service. Chopping,
+packing, the fridge, the tea urn and the cat bowl stay locked — they read
+"LEVEL N" and tell you when you touch them. Customers will not ask for what a
+locked station does either: nobody orders toppings before chopping opens, and
+nobody orders takeaway before packing does.
 
-Mahalle de aynı şekilde büyür. Ana caddenin iki ucundaki kavşaklar ve oradan batıya uzanan
-caddeler başta şantiye bariyeriyle kapalıdır; seviye geldikçe bariyer kalkar, bölge canlanır ve
-yeni teslimat adresleri açılır:
+The neighbourhood grows the same way. The junctions at both ends of the main
+street, and the roads running west from them, start behind construction
+barriers. Each level lifts one, the district comes alive, and new delivery
+addresses open with it:
 
-| Seviye | Bölge | Ne var |
+| Level | District | What is there |
 | --- | --- | --- |
-| 2 | Semt Pazarı | Tenteli tezgâhlar, sebze reyonları, pazar esnafı |
-| 3 | Cumhuriyet Meydanı | Fıskiyeli havuz, saat kulesi, banklar, kalabalık |
-| 4 | Okul ve Park | Okul binası, bayrak direği, salıncak-kaydırak, öğrenciler |
-| 5 | Sanayi — Tedarikçi Deposu | Depolar, yükleme rampası, variller, kamyon |
-| 6 | Şehir Stadı | Tribün halkası, projektör direkleri, maç günü izdihamı |
-| 7 | Sahil Kordonu | Deniz, kum, palmiyeler, şemsiyeler, kordon korkuluğu |
+| 2 | The market | Awned stalls, produce, market traders |
+| 3 | Republic Square | Fountain, clock tower, benches, crowds |
+| 4 | School and park | School building, flagpole, swings and slide, students |
+| 5 | Industrial — supplier depot | Warehouses, loading ramp, barrels, a lorry |
+| 6 | City stadium | Stand ring, floodlight masts, match-day crush |
+| 7 | The seafront | Sea, sand, palms, parasols, the promenade railing |
 
-Gün ilerledikçe güneş alçalır ve akşamüstü sokak lambaları yanar; yağmurda zemin ıslanır, gökyüzü
-kurşunileşir, ekrana damla çizgileri düşer; kavurucu sıcakta dünya sarıya çalar; elektrik
-kesintisinde dükkânın ışıkları söner.
+The sun drops as the day runs and the street lights come on in the evening; rain
+wets the ground, greys the sky and streaks the screen; a heatwave turns the world
+yellow; a power cut kills the shop lights.
 
-## Ustalık, prestij ve başarımlar
+## Mastery, prestige and achievements
 
-Her seviye atlayışı bir **yetenek puanı** getirir. Tabletin Yetenekler sekmesinden dağıtırsın:
+Every level grants a **skill point**, spent from the tablet's Skills tab:
 
-| Yetenek | Etki |
+| Skill | Effect |
 | --- | --- |
-| Hızlı El | Yoğurma vuruşları rütbe başına %15 daha etkili |
-| Keskin Bıçak | Doğrama rütbe başına 1 vuruş azalır |
-| Güler Yüz | Bahşiş ve itibar kazancı rütbe başına %12 artar |
-| Temiz İşçi | Kirlenme rütbe başına %15 yavaşlar |
-| Dayanıklı Bünye | Enerji tüketimi rütbe başına %20 azalır |
-| Hızlı Ayak | Koşu hızı rütbe başına %8 artar |
-| Pazarlık Ustası | Stok maliyeti rütbe başına %8 düşer |
-| Mutfak Ustası | Hamur kalitesi rütbe başına %5 artar |
+| Fast Hands | Kneading strokes 15% more effective per rank |
+| Sharp Knife | One fewer chop stroke per rank |
+| Friendly Face | Tips and reputation up 12% per rank |
+| Clean Worker | Dirt accumulates 15% slower per rank |
+| Strong Constitution | Energy drain down 20% per rank |
+| Quick Feet | Run speed up 8% per rank |
+| Hard Bargainer | Stock costs down 8% per rank |
+| Kitchen Master | Dough quality up 5% per rank |
 
-Seviye 10'a ulaşıp kasanda 20.000 TL biriktirdiğinde dükkânı **devredebilirsin** (prestij). Gün,
-seviye, kasa ve bütün yatırımlar sıfırlanır; yetenekler, başarımlar ve açılmış mahalle bölgeleri
-kalır, üstüne her devretme kalıcı **%12 gelir bonusu** ve 3 yetenek puanı bırakır.
+Reach level 10 with 20,000 lira in the till and you can **hand the shop on**
+(prestige). Day, level, money and every investment reset; skills, achievements
+and the unlocked districts stay, and each handover leaves a permanent **12%
+income bonus** and three skill points.
 
-**20 başarım** var — ilk dürümden 1000 dürüme, ilk teslimattan beş yıldıza, tam donanımlı dükkândan
-devretmeye kadar. Tabletin Başarımlar sekmesinde toplam istatistiklerinle birlikte durur.
+There are **20 achievements**, from the first wrap to a thousand, from the first
+delivery to five stars, from a fully equipped shop to handing it on. They sit in
+the tablet's Achievements tab with your lifetime statistics.
 
-## Sistemler
+## Systems
 
-18 bağımsız sistem, oyunu bir "tıkla ve sat" döngüsünden çıkarıp işletmeye çeviriyor:
+Eighteen independent systems are what make this a business rather than a
+click-and-sell loop:
 
-| Sistem | Ne yapıyor |
+| System | What it does |
 | --- | --- |
-| **Müşteriler** | 14 farklı karakter özelliği — Sabırsız, Gurme, Fenomen, Turist, Öğrenci, Müdavim, Gizli Eleştirmen… Her biri farklı sipariş verir, farklı tepki gösterir. |
-| **Sipariş & Tarif** | Acılık, porsiyon, garnitür maskesi, ayran, paket/tabak. Yeni tarifler seviye ile açılır. |
-| **Ekonomi** | Fiyatlandırma, kira, tedarikçiler, stok maliyetleri, günlük kâr-zarar. |
-| **Stok** | 14 kalem malzeme, tedarikçiden sipariş, kıtlık ve zam olayları. |
-| **Hijyen** | Tezgâh kirlenir, eldiven değişir, el yıkanır, bulaşık birikir. Titiz müşteri fark eder. |
-| **İtibar & Yorumlar** | Müşteriler puan verir, yorum yazar; ortalama puan müşteri akışını belirler. |
-| **Rakipler** | Mahalledeki diğer büfeler kampanya yapar, müşteri çalar. |
-| **Olaylar** | Okul çıkışı, maç günü, yağmur, sıcak hava, elektrik kesintisi, belediye denetimi, sokak festivali, isot zammı ve daha fazlası. |
-| **Görevler** | Günlük ve zincirleme hedefler, ödüllü. |
-| **Personel** | Eleman al, maaş öde, işleri devret. |
-| **Paket Servis** | Seviye 4'te araba açılır; şehirde adrese teslimat. |
-| **İlerleme** | 10 seviye, XP, unvanlar, toplam istatistikler. |
-| **Yetenekler** | 8 ustalık yeteneği, seviye başına puan, prestij (devretme) döngüsü. |
-| **Başarımlar** | 20 başarım, istatistik ekranı. |
-| **Dükkân** | 13 geliştirme — büyük buzdolabı, klima, müzik sistemi, ikinci kasa, dış oturma alanı, yeni şube… hepsi hem dünyayı hem oynanışı değiştirir. |
-| **Kedi** | Dükkânın kedisi var. İsmini koyabilir, mamasını verebilir, sevebilirsin. |
-| **Kayıt** | Versiyonlu kayıt sistemi, `F5` / `F9`. |
-| **Ses** | Yoğurma, doğrama, kasa, jingle'lar — hepsi olay tabanlı. |
+| **Customers** | 14 traits — Impatient, Gourmet, Influencer, Tourist, Student, Regular, Secret Critic… each orders differently and reacts differently. |
+| **Orders and recipes** | Heat, portion, topping mask, ayran, bag or plate. New recipes unlock with level. |
+| **Economy** | Pricing, rent, suppliers, stock costs, the daily profit and loss. |
+| **Stock** | 14 ingredients, supplier orders, shortages and price-hike events. |
+| **Hygiene** | Counters get dirty, gloves get changed, hands get washed, dishes pile up. A fastidious customer notices. |
+| **Reputation and reviews** | Customers score you and write reviews; the average drives footfall. |
+| **Rivals** | The other shops in the neighbourhood run promotions and take customers. |
+| **Events** | School turnout, match day, rain, heat, power cuts, council inspections, a street festival, an isot price hike, and more. |
+| **Quests** | Daily and chained goals, with rewards. |
+| **Staff** | Hire, pay wages, hand work over. |
+| **Delivery** | The car opens at level 4; deliver to addresses across the city. |
+| **Progression** | 10 levels, XP, titles, lifetime statistics. |
+| **Skills** | 8 mastery skills, a point per level, and the prestige loop. |
+| **Achievements** | 20 achievements and a statistics screen. |
+| **The shop** | 13 upgrades — big fridge, air conditioning, sound system, second till, outdoor seating, a second branch… each changes both the world and the play. |
+| **The cat** | The shop has a cat. Name it, feed it, pet it. |
+| **Saving** | Versioned save system, `F5` / `F9`. |
+| **Audio** | Kneading, chopping, the till, jingles — all event-driven. |
 
-Tablet (`T`) sekmelerinden stok, tarifler, dükkân geliştirmeleri, tedarikçiler, rakipler, yorumlar,
-görevler ve personel yönetilir.
+The tablet (`T`) manages stock, recipes, shop upgrades, suppliers, rivals,
+reviews, quests and staff.
 
-## Kontroller
+## Controls
 
-Oyun klavye/fare ve **gamepad** ile oynanır; HUD ipuçları kullandığın cihaza göre değişir.
+Keyboard and mouse or **gamepad**; the HUD hints follow whichever you last used.
 
-| Tuş | Gamepad | İşlev |
+| Key | Gamepad | Action |
 | --- | --- | --- |
-| `W A S D` | Sol çubuk | Hareket |
-| `Shift` | L3 | Koş |
-| `Space` | Y | Zıpla |
-| `Fare` | Sağ çubuk | Bak |
-| `E` | A | Etkileşim (istasyon / araba / kediyi sev / teslimat) |
-| `Sol tık` | RT | Yoğurma vuruşu |
-| `1` – `7` | LB/RB seç, B uygula | Dürüme garnitür ekle/çıkar |
-| `8` | aynı | Ayran ekle/çıkar |
-| `9` | aynı | Yan ürün ekle (içli köfte / çorba / künefe / çay) |
-| `F` | X | Dürümü sar ve bitir |
-| `G` | R3 | Sarılı dürümü rafa kaldır |
-| `T` | Select | Tablet (stok, dükkân, yetenekler, başarımlar…) |
-| `O` | — | Ayarlar |
-| `Esc` / `P` | Start | Duraklat |
-| `F5` / `F9` | — | Kaydet / Yükle |
+| `W A S D` | Left stick | Move |
+| `Shift` | L3 | Run |
+| `Space` | Y | Jump |
+| `Mouse` | Right stick | Look |
+| `E` | A | Interact (station / car / pet the cat / deliver) |
+| `LMB` | RT | Kneading stroke |
+| `1` – `7` | LB/RB to select, B to apply | Add or remove a topping |
+| `8` | same | Ayran on or off |
+| `9` | same | Add a side (içli köfte / soup / künefe / tea) |
+| `F` | X | Roll the wrap and finish it |
+| `G` | R3 | Put the rolled wrap on the shelf |
+| `T` | Select | Tablet (stock, shop, skills, achievements…) |
+| `O` | — | Settings |
+| `Esc` / `P` | Start | Pause |
+| `F5` / `F9` | — | Save / load |
 | `F1` | — | Debug HUD |
-| `R` | — | Oyun bitince yeniden başlat |
-| `↑ ↓ ← →` + `Enter` | D-Pad + A | Menü ve tablet navigasyonu (sekme: LB/RB) |
+| `R` | — | Restart after game over |
+| `↑ ↓ ← →` + `Enter` | D-pad + A | Menu and tablet navigation (tabs: LB/RB) |
 
-## Kurulum
+## Building it
 
-Gereken: **Unreal Engine 5.8** ve Visual Studio 2022 (C++ masaüstü geliştirme yükü).
+You need **Unreal Engine 5.8** and Visual Studio 2022 with the C++ desktop
+workload.
 
 ```bash
 git clone https://github.com/adilalperenciftci/CigkofteSimulator.git
 cd CigkofteSimulator
 ```
 
-`CigkofteSimulator.uproject` dosyasına sağ tıklayıp **Generate Visual Studio project files** deyip
-solution'ı derleyebilir ya da doğrudan komut satırından derleyebilirsin:
+Either right-click `CigkofteSimulator.uproject` → **Generate Visual Studio
+project files** and build the solution, or build from the command line:
 
 ```powershell
 & "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" `
@@ -155,119 +177,126 @@ solution'ı derleyebilir ya da doğrudan komut satırından derleyebilirsin:
     -project="$PWD\CigkofteSimulator.uproject" -WaitMutex
 ```
 
-Sonrasında `.uproject` dosyasına çift tıklaman yeterli. Dünya runtime'da kurulduğu için hazır bir
-level açman gerekmez — Play'e basınca dükkân kendini inşa eder.
+After that, double-click the `.uproject`. There is no level to open — the world
+is built at runtime, so pressing Play builds the shop.
 
-### Asset paketleri hakkında
+### About the asset packs
 
-> **Depo, ek asset indirmeden derlenir ve çalışır.** Aşağıdaki paketlerin hiçbiri derleme için
-> gerekli değildir. `CigMeshLibrary` her mesh yüklemesinde asset bulunamazsa `nullptr` döner ve
-> çağıran taraf `/Engine/BasicShapes` primitive'ine düşer — oyun kutu-primitif görselleriyle
-> baştan sona oynanabilir. Eksik asset uyarıları `LogCig` kanalına `Warning` olarak düşer,
-> hata değildir.
+> **The repository builds and runs with no extra downloads.** None of the packs
+> below are needed to compile. `CigMeshLibrary` returns `nullptr` when an asset
+> is missing and the caller falls back to an `/Engine/BasicShapes` primitive, so
+> the game is playable end to end as boxes. Missing assets are logged as
+> `Warning` on the `LogCig` channel, not as errors.
 
-Depoda ne var, ne yok:
+What is in the repository and what is not:
 
-| Klasör | Durum | Kaynak |
+| Folder | Status | Source |
 | --- | --- | --- |
-| `Content/LowPoly/` | **Depoda** | Kenney Food Kit + Furniture Kit (CC0) |
-| `Content/Audio/` | **Depoda** | Kenney Interface/Impact/RPG/Music Jingles (CC0) |
-| `Content/dukkan/`, `Content/Fab/`, `Content/ModellerEnistem/`, `Content/ModellerEnistem2/` | Depoda yok | Fab / Unreal Marketplace mağaza içeriği |
-| `Content/CityPark/` | Depoda yok | Şehir parkı sahne paketi (Fab) |
-| `Content/Scene_Bazaar_Vol1/` | Depoda yok | Çarşı-pazar sahne paketi (Fab) |
-| `Content/CitySampleBuildings/`, `Content/ModularBuildingSet/`, `Content/MMSupermarket/`, `Content/Scene_Banquet/` | Depoda yok | Bina/iç mekân paketleri (Fab) |
-| `Content/Cat_Animation_Pack/` | Depoda yok | Kedi modeli ve animasyonları (Fab) |
-| `Content/Characters/` | Depoda yok | Karakter mesh'leri (Fab) |
+| `Content/LowPoly/` | **In the repo** | Kenney Food Kit + Furniture Kit (CC0) |
+| `Content/Audio/` | **In the repo** | Kenney Interface/Impact/RPG/Music Jingles (CC0) |
+| `Content/dukkan/`, `Content/Fab/`, `Content/ModellerEnistem/`, `Content/ModellerEnistem2/` | Not in the repo | Fab / Unreal Marketplace store content |
+| `Content/CityPark/` | Not in the repo | City park scene pack (Fab) |
+| `Content/Scene_Bazaar_Vol1/` | Not in the repo | Bazaar scene pack (Fab) |
+| `Content/CitySampleBuildings/`, `Content/ModularBuildingSet/`, `Content/MMSupermarket/`, `Content/Scene_Banquet/` | Not in the repo | Building and interior packs (Fab) |
+| `Content/Cat_Animation_Pack/` | Not in the repo | Cat model and animations (Fab) |
+| `Content/Characters/`, `Content/MC_Sample/` | Not in the repo | Character meshes and motion capture (Fab) |
 
-Ağır paketler `.gitignore`'da: tekil `.uasset` dosyaları GitHub'ın 100 MB sınırını aşıyor ve
-lisansları yeniden dağıtıma izin vermiyor. Bu paketlere sahipsen, Fab kütüphanenden indirip
-tablodaki klasör adıyla `Content/` altına kopyalaman yeterli — kod tarafında yapılacak bir şey yok,
-mesh yolları yukarıdaki klasör adlarına göre çözülür (`World/CigMeshLibrary.cpp`).
+The heavy packs are in `.gitignore`: individual `.uasset` files exceed GitHub's
+100 MB limit and their licences do not permit redistribution. If you own them,
+download them from your own Fab library and copy them under `Content/` with the
+folder names in the table — there is nothing to change in code, because mesh
+paths resolve against exactly those names (`World/CigMeshLibrary.cpp`).
 
-## Mimari
+## Architecture
 
-`ACigkofteGameMode` bir koordinatör; oynanışın tamamı `UCigSystem` (UObject) türevi 18 sisteme
-bölünmüş ve `Source/CigkofteSimulator/` altında klasörlenmiştir:
+`ACigkofteGameMode` is a coordinator; the gameplay is split across 18 systems
+deriving from `UCigSystem` (a `UObject`), foldered under
+`Source/CigkofteSimulator/`:
 
 ```
-Core/        ortak tipler, log, upgrade tanımları
-Game/        GameMode + gün döngüsü + sistem taban sınıfı
-World/       runtime dünya kurucu, istasyonlar, mesh kütüphanesi
+Core/        shared types, logging, upgrade definitions
+Game/        GameMode + day loop + the system base class
+World/       runtime world builder, stations, mesh library
 Cooking/  Orders/  Customers/  Economy/  Inventory/
 Progression/  Quests/  Events/  Delivery/  Hygiene/  Staff/  Cat/
 Player/  Vehicles/  UI/  Save/  Audio/  Debug/
 ```
 
-Blueprint oynanış mantığı yoktur; HUD dahil her şey C++ ile çizilir. Dünya, `/Engine/BasicShapes`
-primitive'leri ile Kenney low poly mesh'lerinin karışımından oluşur — asset bulunamazsa sistem
-otomatik olarak primitive'e düşer, yani proje eksik asset'le de çalışır.
+There is no Blueprint gameplay logic; everything including the HUD is drawn from
+C++. The world mixes `/Engine/BasicShapes` primitives with Kenney low-poly
+meshes — when an asset cannot be found the system falls back to a primitive, so
+the project runs with assets missing.
 
-### Denge sayıları veri tarafında
+### Balance numbers live in data
 
-Yetenekler, dükkân geliştirmeleri, müşteri özellikleri, stok kalemleri ve başarımlar
-`Config/Balance/*.csv` dosyalarından okunur:
+Skills, shop upgrades, customer traits, stock items and achievements are read
+from `Config/Balance/*.csv`:
 
-| Dosya | Neyi ayarlar |
+| File | What it tunes |
 | --- | --- |
-| `Skills.csv` | Yetenek adı, azami rütbe, rütbe başına etki katsayısı |
-| `Upgrades.csv` | Geliştirme fiyatı ve açılış seviyesi |
-| `Traits.csv` | Özellik havuz ağırlığı, görünme günü, sabır ve bahşiş etkileri |
-| `Stock.csv` | Malzeme taban fiyatı, başlangıç stoğu, sipariş miktarı |
-| `Achievements.csv` | Başarımın baktığı istatistik ve eşiği |
+| `Skills.csv` | Skill name, maximum rank, effect per rank |
+| `Upgrades.csv` | Upgrade price and unlock level |
+| `Traits.csv` | Trait pool weight, first day seen, patience and tip effects |
+| `Stock.csv` | Ingredient base price, starting stock, order quantity |
+| `Achievements.csv` | Which statistic an achievement watches, and its threshold |
 
-Satırlar `FTableRowBase` türevi USTRUCT'lara karşılık gelir (`Core/CigBalanceTypes.h`), yani
-istenirse editörde aynı sütunlarla `UDataTable` asset'i de oluşturulabilir. Çalışma zamanında CSV
-okunur çünkü UDataTable'ın CSV içe aktarımı yalnızca editörde çalışır.
+Rows map to `FTableRowBase` USTRUCTs (`Core/CigBalanceTypes.h`), so the same
+columns can be made into a `UDataTable` asset in the editor if wanted. At runtime
+the CSV is read directly, because `UDataTable`'s CSV import is editor-only.
 
-Dosya yoksa, bozuksa veya bir satır eksikse `Core/CigBalance.cpp`'deki C++ varsayılanları geçerli
-olur — depo bu dosyalar silinse de aynı dengeyle oynanır. Oyun açıkken konsoldan
-`CigReloadBalance` tabloları yeniden okur, yani bir sayıyı denemek için yeniden derlemek gerekmez.
+If a file is missing, malformed or short a row, the C++ defaults in
+`Core/CigBalance.cpp` apply — delete all of them and the game plays with the same
+balance. With the game running, `CigReloadBalance` re-reads the tables, so trying
+a number out does not need a rebuild.
 
-### Müşteri diyalogu: üretim hattı, runtime API değil
+### Customer dialogue: a production pipeline, not a runtime API
 
-Müşteri replikleri oyun sırasında API'ye sorularak değil, **geliştirme sırasında toplu üretilip
-veri olarak dağıtılarak** üretilir. Böylece runtime maliyeti sıfır, gecikme sıfır, oyun internetsiz
-çalışır ve moderasyon riski yoktur.
+Customer lines are not requested from an API while playing. They are **generated
+in bulk during development and shipped as data**, so the runtime cost is zero,
+there is no latency, the game works offline, and there is no moderation risk.
 
-Durum uzayı sonludur: 5 ruh hali × 15 baskın müşteri özelliği × 2⁵ (VIP, müdavim, ayran, hijyen,
-sabır) = **2.400 kova**. Kova başına 4 varyantla ~9.600 replik.
+The state space is finite: 5 moods × 15 dominant traits × 2⁵ (VIP, regular,
+ayran, hygiene, patience) = **2,400 buckets**. At four variants each, about 9,600
+lines.
 
 ```
-1. Editörde konsoldan:  CigGenerateDialogue     → Saved/Dialogue/prompts.jsonl (2.400 istem)
+1. In the editor console:  CigGenerateDialogue  → Saved/Dialogue/prompts.jsonl (2,400 prompts)
 2. python Tools/generate_dialogue.py            → Config/Dialogue/Lines.csv
-3. CSV gözden geçirilip commit edilir
+3. The CSV is reviewed and committed
 ```
 
-İkinci adım ayrı bir betiktir çünkü para harcar, saatler sürebilir ve yarıda kalabilir; betik
-kaldığı yerden devam eder (`--limit N` ile önce küçük bir deneme yapılabilir) ve
-`ANTHROPIC_API_KEY` ortam değişkeni ister.
+Step two is a separate script because it costs money, can take hours and can be
+interrupted; it resumes where it stopped (`--limit N` runs a small trial first)
+and expects `ANTHROPIC_API_KEY` in the environment.
 
-Tablo iki dilli (`TR`, `EN`) olduğu için İngilizce aynı hattan bedava gelir. Kova bulunamazsa oyun
-koddaki hazır cümlelere düşer — depoda şu an gözden geçirilmiş bir tohum tablo var.
+The table is bilingual (`TR`, `EN`), so English comes off the same line for free.
+If a bucket is missing the game falls back to lines held in the text table. A
+reviewed seed table ships in the repository.
 
-### Rastgelelik deterministik
+### Randomness is deterministic
 
-Oynanışı etkileyen bütün zarlar tek bir `FRandomStream` üzerinden akar
-(`Core/CigRandomSubsystem.h`). Seed ve akışın konumu kayda yazılır: aynı seed aynı günü aynı
-biçimde oynatır, kayıt yüklemek akışı başa sarmaz. Bir hata bildirimini birebir tekrar üretmek için
-konsoldan `CigSeed` ile seed'i okuyup `CigSetSeed <n>` ile geri verebilirsin. Dünya süslemesi, kedi
-tüyü rengi, trafik ve diyalog cümlesi seçimi bilerek bu akışın dışındadır — oyun durumunu
-değiştirmezler.
+Every die roll that affects play runs through one `FRandomStream`
+(`Core/CigRandomSubsystem.h`). The seed and the stream position are written to
+the save: the same seed plays the same day the same way, and loading does not
+rewind the stream. To reproduce a bug report exactly, read the seed with `CigSeed`
+and hand it back with `CigSetSeed <n>`. World decoration, the cat's fur colour,
+traffic and which dialogue line is picked are deliberately outside that stream —
+they do not change game state.
 
-Geliştirme sırasında `F1` debug HUD'unu açar; konsolda `StartDayNow`, `AddMoney`, `SpawnCustomer`,
-`UnlockAllUpgrades`, `SetTimeScale`, `CigSeed`, `CigSetSeed`, `CigReloadBalance` gibi onlarca exec
-komutu vardır (`Debug/CigCheatManager.h`).
-Yukarıdaki ekran görüntüleri `CigShots` komutuyla üretilir:
+`F1` opens the debug HUD during development, and the console has dozens of exec
+commands: `StartDayNow`, `AddMoney`, `SpawnCustomer`, `UnlockAllUpgrades`,
+`SetTimeScale`, `CigSeed`, `CigSetSeed`, `CigReloadBalance` and more
+(`Debug/CigCheatManager.h`). The screenshots above are produced by `CigShots`:
 
 ```powershell
 & "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" `
     "$PWD\CigkofteSimulator.uproject" -game -windowed -ResX=1600 -ResY=900 -ExecCmds="CigShots"
 ```
 
-## Lisans & Krediler
+## Licence and credits
 
-Kodun tamamı özgündür ve **tüm hakları saklıdır** — depo herkese açık olarak görüntülenebilir
-ancak açık kaynak değildir; koşullar için [LICENSE](LICENSE) dosyasına bak.
+All of the code is original and **all rights are reserved** — the repository is
+publicly viewable but it is not open source; see [LICENSE](LICENSE) for terms.
 
-Depodaki görsel ve ses assetleri **Kenney** (CC0, kamu malı) kaynaklıdır ve bu lisansın dışındadır
-— ayrıntı için [CREDITS.md](CREDITS.md).
+The art and audio assets in the repository come from **Kenney** (CC0, public
+domain) and fall outside that licence — see [CREDITS.md](CREDITS.md).
