@@ -454,9 +454,12 @@ void ACigkofteStation::UpdateDough(const FCigDoughVisual& InVisual)
 	ApplyDoughTransform();
 }
 
-void ACigkofteStation::PulseDough()
+void ACigkofteStation::PulseDough(float Strength)
 {
-	Pulse = 1.f;
+	// A mistimed stroke still moves the dough, because a stroke that did nothing
+	// at all would read as a dropped input rather than as a wasted one. It moves
+	// about a third as far, which is the difference the player has to feel.
+	Pulse = FMath::Clamp(0.3f + 0.7f * FMath::Clamp(Strength, 0.f, 1.f), 0.f, 1.f);
 	ApplyDoughTransform();
 }
 
@@ -469,9 +472,13 @@ void ACigkofteStation::ApplyDoughTransform()
 	}
 
 	Dough->SetVisibility(true);
-	const float S = CurVisual.Scale();
 	const FVector BaseScale = Base->GetRelativeScale3D();
-	const FVector Squash(S * (1.f + 0.20f * Pulse), S * (1.f + 0.20f * Pulse), S * (1.f - 0.30f * Pulse));
+
+	// Two shapes multiplied: what the batch is, and what the last stroke did to
+	// it. Scale3D carries the slump of a loose mix; the pulse is the squash of
+	// the hand coming down, and it fades.
+	const FVector Shape = CurVisual.Scale3D();
+	const FVector Squash(Shape.X * (1.f + 0.20f * Pulse), Shape.Y * (1.f + 0.20f * Pulse), Shape.Z * (1.f - 0.30f * Pulse));
 	Dough->SetRelativeScale3D(Squash / BaseScale);
 
 	// The colour is the batch's, not the station's: see Cooking/CigDoughVisual.h

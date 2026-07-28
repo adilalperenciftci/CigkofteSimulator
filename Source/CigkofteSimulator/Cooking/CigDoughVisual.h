@@ -38,6 +38,27 @@ struct FCigDoughVisual
 	// full one are told apart at a glance across the room.
 	float Scale() const { return 0.25f + 0.55f * FMath::Clamp(Fill01, 0.f, 1.f); }
 
+	// How well the batch holds together. Kneading is what does it, so this is
+	// Knead01 by another name - but it is named for what the player sees rather
+	// than for the counter that drives it, because the two stop agreeing the
+	// moment anything else affects cohesion.
+	float Cohesion01() const { return FMath::Clamp(Knead01, 0.f, 1.f); }
+
+	// Not a uniform ball. Wet bulgur that has just been mixed slumps: it spreads
+	// across the bowl and sits low. Worked dough holds its shape and stands up.
+	// The volume is roughly preserved between the two, so the batch does not
+	// appear to grow or shrink as it comes together - only to gather.
+	//
+	// This is the whole visible difference between a bowl the player has stirred
+	// twice and one that is ready, and until now there was none: the ball was a
+	// sphere at every stage and only its colour moved.
+	FVector Scale3D() const
+	{
+		const float S = Scale();
+		const float Loose = 1.f - Cohesion01();
+		return FVector(S * (1.f + 0.30f * Loose), S * (1.f + 0.30f * Loose), S * (1.f - 0.40f * Loose));
+	}
+
 	// Bulgur soaked in paste and isot: pale and dry at the start, dark and red
 	// once it has been worked. The order matters - spice reads through kneading,
 	// because isot stirred into a loose bowl has not coloured anything yet.

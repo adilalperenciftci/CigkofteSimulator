@@ -320,14 +320,21 @@ void UCigCookingSystem::KneadPress()
 
 	UCigEconomySystem* Eco = GM ? GM->Economy.Get() : nullptr;
 
+	// Stroke quality, 0-1, kept alongside the gain rather than derived from it:
+	// the gain also carries gloves, upgrades, skills and tiredness, so a rested
+	// expert's worst stroke can out-earn a beginner's best one and the dough
+	// would report the wrong thing.
 	float Gain = 4.f;
+	float StrokeQuality = 0.5f;
 	if (Dt >= 0.25 && Dt <= 0.85)
 	{
 		Gain = 7.f + 2.f * (Eco ? Eco->GloveLevel : 0);
+		StrokeQuality = 1.f;
 	}
 	else if (Dt < 0.15)
 	{
 		Gain = 2.f; // panic kneading achieves nothing
+		StrokeQuality = 0.f;
 	}
 
 	if (Eco && Eco->HasUpgrade(ECigUpgrade::IkinciYogurma))
@@ -362,7 +369,7 @@ void UCigCookingSystem::KneadPress()
 		}
 		if (ACigkofteStation* Yogurma = GM->WorldBuilder ? GM->WorldBuilder->FindStation(ECigStation::Yogurma) : nullptr)
 		{
-			Yogurma->PulseDough();
+			Yogurma->PulseDough(StrokeQuality);
 		}
 	}
 

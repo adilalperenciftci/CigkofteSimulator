@@ -28,7 +28,14 @@ public:
 	void UpdateDough(const FCigDoughVisual& Visual);
 
 	// Triggers the dough squash animation on a kneading stroke.
-	void PulseDough();
+	// Strength 0-1: how hard the batch reacts to a stroke.
+	//
+	// The kneading rhythm has always been the mechanic - a stroke landing between
+	// 0.25 s and 0.85 s after the last one is worth nearly twice a mistimed one -
+	// and it has always been invisible. The player pressed, the bar moved by an
+	// amount they could not account for, and nothing on the counter said why. The
+	// dough now answers the stroke it was given.
+	void PulseDough(float Strength = 1.f);
 
 	// Briefly swells the top on any interaction, then settles (game feel).
 	void Pop();

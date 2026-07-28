@@ -192,4 +192,51 @@ bool FCigDoughVisualFromFoodStateTest::RunTest(const FString& /*Parameters*/)
 	return true;
 }
 
+// Stage 1.3: a loose mix slumps and a worked one gathers.
+//
+// The shape is the only thing on the counter that separates a bowl stirred twice
+// from one that is ready - the colour moves too, but slowly and under four other
+// inputs. Pinned as directions rather than numbers: wider and flatter when
+// loose, and roughly the same volume throughout, so the batch gathers instead of
+// appearing to grow.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigDoughCohesionShape,
+	"Cigkofte.DoughVisual.LooseDoughSlumpsAndWorkedDoughGathers",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigDoughCohesionShape::RunTest(const FString&)
+{
+	FCigDoughVisual Gevsek;
+	Gevsek.Fill01 = 0.8f;
+	Gevsek.Knead01 = 0.f;
+
+	FCigDoughVisual Yogrulmus = Gevsek;
+	Yogrulmus.Knead01 = 1.f;
+
+	const FVector G = Gevsek.Scale3D();
+	const FVector Y = Yogrulmus.Scale3D();
+
+	TestTrue(TEXT("Gevşek karışım daha geniş yayılmalı"), G.X > Y.X);
+	TestTrue(TEXT("Gevşek karışım daha alçak durmalı"), G.Z < Y.Z);
+	TestTrue(TEXT("Yoğrulmuş hamur küresel olmalı"),
+		FMath::IsNearlyEqual(Y.X, Y.Z, 0.001f) && FMath::IsNearlyEqual(Y.X, Y.Y, 0.001f));
+
+	// Volume is only roughly held - the point is that the batch does not read as
+	// growing while it is being worked, not that the maths conserves anything.
+	const float HacimG = G.X * G.Y * G.Z;
+	const float HacimY = Y.X * Y.Y * Y.Z;
+	TestTrue(TEXT("Toparlanırken hacim büyümemeli"), HacimY <= HacimG * 1.05f);
+	TestTrue(TEXT("Toparlanırken hacim çökmemeli"), HacimY >= HacimG * 0.65f);
+
+	// Cohesion is Knead01 today and is named separately because it will not
+	// always be. If they are ever wired apart, this is what says so.
+	TestEqual(TEXT("Tutunma yoğurma ilerlemesini izlemeli"), Yogrulmus.Cohesion01(), 1.f, 0.001f);
+
+	// An empty bowl has no shape to report; Scale3D must not be asked to divide
+	// by anything it was not given.
+	FCigDoughVisual Bos;
+	TestFalse(TEXT("Boş kase görünmemeli"), Bos.IsVisible());
+
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

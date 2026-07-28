@@ -1,4 +1,5 @@
 #include "Orders/CigOrderSystem.h"
+#include "Orders/CigToppingVisual.h"
 #include "Core/CigText.h"
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigEventBus.h"
@@ -386,79 +387,79 @@ void UCigOrderSystem::UpdateToppingVisuals()
 		return;
 	}
 
-	// Colours rather than models. A pea-sized piece of lettuce is read by its
-	// colour at this distance and nothing else, and the shop has no lettuce
-	// model to load anyway - the vegetable packs are photoscanned produce meant
-	// for the market stalls outside.
-	static const FLinearColor Colors[(int32)ECigTopping::COUNT] = {
-		FLinearColor(0.35f, 0.68f, 0.24f),  // Marul
-		FLinearColor(0.20f, 0.52f, 0.18f),  // Maydanoz
-		FLinearColor(0.82f, 0.18f, 0.14f),  // Domates
-		FLinearColor(0.55f, 0.62f, 0.24f),  // Turşu
-		FLinearColor(0.93f, 0.90f, 0.84f),  // Soğan
-		FLinearColor(0.95f, 0.85f, 0.25f),  // Limon
-		FLinearColor(0.45f, 0.12f, 0.16f)   // Nar ekşisi
-	};
-
 	// Inside a rolled wrap nothing is visible, and an inactive counter shows
 	// nothing at all.
 	const bool bShowAny = Wrap.bActive && !Wrap.bWrapped;
 	const FVector Base = WrapVisualPos();
 
+	// One slot per topping per piece, allocated once and reused.
+	//
+	// The pool is sized from the table rather than from the enum, so adding a
+	// piece to a topping does not need this line changed - and so nothing is
+	// spawned while the player is mid-wrap, which is the one moment they are
+	// pressing keys quickly.
+	const int32 Pieces = CigToppingVisual::MaxPieces();
+	const int32 Slots = (int32)ECigTopping::COUNT * Pieces;
+	if (ToppingVisuals.Num() != Slots)
+	{
+		ToppingVisuals.SetNum(Slots);
+	}
+
 	for (int32 i = 0; i < (int32)ECigTopping::COUNT; ++i)
 	{
-		const bool bWant = bShowAny && Wrap.HasTopping((ECigTopping)i);
+		const ECigTopping T = (ECigTopping)i;
+		const FCigToppingPlacement& P = CigToppingVisual::Placement(T);
+		const bool bWant = bShowAny && Wrap.HasTopping(T);
 
-		if (!ToppingVisuals.IsValidIndex(i))
+		for (int32 Piece = 0; Piece < Pieces; ++Piece)
 		{
-			ToppingVisuals.SetNum((int32)ECigTopping::COUNT);
-		}
-		AStaticMeshActor* A = ToppingVisuals[i];
+			const int32 Slot = i * Pieces + Piece;
+			AStaticMeshActor* A = ToppingVisuals[Slot];
 
-		if (!bWant)
-		{
-			if (A)
+			// A topping that asks for two pieces leaves the rest of its slots
+			// hidden rather than unallocated, so the pool never has to grow.
+			if (!bWant || Piece >= P.Count)
 			{
-				A->SetActorHiddenInGame(true);
-			}
-			continue;
-		}
-
-		if (!A)
-		{
-			UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
-			UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr,
-				TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
-			if (!Sphere)
-			{
+				if (A)
+				{
+					A->SetActorHiddenInGame(true);
+				}
 				continue;
 			}
-			FActorSpawnParameters P;
-			P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-			A = World->SpawnActor<AStaticMeshActor>(Base, FRotator::ZeroRotator, P);
+
 			if (!A)
 			{
-				continue;
+				UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+				UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr,
+					TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+				if (!Sphere)
+				{
+					continue;
+				}
+				FActorSpawnParameters Params;
+				Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				A = World->SpawnActor<AStaticMeshActor>(Base, FRotator::ZeroRotator, Params);
+				if (!A)
+				{
+					continue;
+				}
+				UStaticMeshComponent* SC = A->GetStaticMeshComponent();
+				SC->SetMobility(EComponentMobility::Movable);
+				SC->SetStaticMesh(Sphere);
+				A->SetActorEnableCollision(false);
+				if (Mat)
+				{
+					UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Mat, A);
+					MID->SetVectorParameterValue(TEXT("Color"), P.Color);
+					SC->SetMaterial(0, MID);
+				}
+				ToppingVisuals[Slot] = A;
 			}
-			UStaticMeshComponent* SC = A->GetStaticMeshComponent();
-			SC->SetMobility(EComponentMobility::Movable);
-			SC->SetStaticMesh(Sphere);
-			A->SetActorEnableCollision(false);
-			if (Mat)
-			{
-				UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Mat, A);
-				MID->SetVectorParameterValue(TEXT("Color"), Colors[i]);
-				SC->SetMaterial(0, MID);
-			}
-			ToppingVisuals[i] = A;
-		}
 
-		// Laid out across the flatbread rather than stacked, so four toppings
-		// read as four things and not as one lump.
-		const float Offset = (i - ((int32)ECigTopping::COUNT - 1) * 0.5f) * 5.5f;
-		A->SetActorScale3D(FVector(0.045f));
-		A->SetActorLocation(Base + FVector(0.f, Offset, 6.f));
-		A->SetActorHiddenInGame(false);
+			A->SetActorScale3D(FVector(P.Scale));
+			A->SetActorLocation(Base + CigToppingVisual::PieceOffset(T, Piece));
+			A->SetActorHiddenInGame(false);
+		}
 	}
 }
 
