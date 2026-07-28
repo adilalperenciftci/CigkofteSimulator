@@ -1,9 +1,9 @@
-name: Kaynak kontrolu
+name: Source checks
 
-# Tam bir Unreal derlemesi ucretsiz runner'da hem cok uzun surer hem motor
-# kurulumu ister. Bu is akisi onun yerine derleyicinin yakalamadigi seylere
-# bakar: dosya kodlamasi, baslik hijyeni ve denge CSV'lerinin sema butunlugu.
-# Editor derlemesi yerelde yapilir (bkz. README "Kurulum").
+# A full Unreal build takes far too long on a free runner and needs the engine
+# installed. This workflow looks instead at what the compiler does not catch:
+# file encoding, header hygiene, and the schema integrity of the balance CSVs.
+# The editor build runs locally - see "Building it" in the README.
 
 on:
   push:
@@ -12,6 +12,8 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Do not rename this job. It is the required status check on master, and
+  # renaming it silently leaves the branch with no required check at all.
   static-checks:
     runs-on: ubuntu-latest
     steps:
@@ -21,15 +23,15 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Kaynak ve denge dosyalarini dogrula
+      - name: Validate sources and balance data
         run: python Tools/check_sources.py
 
-      - name: Satir sonu tutarliligi
-        # .gitattributes depoda LF diyor. Bir dosya CRLF ile commit'lenmisse
-        # git bunu normalize edilmemis olarak gorur ve burada yakalanir.
+      - name: Line endings
+        # .gitattributes says LF in the repository. A file committed with CRLF
+        # shows up as un-normalised to git and is caught here.
         run: |
           if git ls-files --eol | grep -E 'i/crlf|i/mixed'; then
-            echo "::error::Depoda CRLF ya da karisik satir sonu iceren dosya var (.gitattributes LF bekliyor)."
+            echo "::error::A file in the repository has CRLF or mixed line endings (.gitattributes expects LF)."
             exit 1
           fi
-          echo "Satir sonlari temiz."
+          echo "Line endings are clean."
