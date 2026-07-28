@@ -5,6 +5,15 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Visual
 
+- **The service counter does not read.** `ECigStation::Servis` spawns at
+  (-600, 0) and its label draws there, but standing on the shop floor and looking
+  at it shows an empty front — no counter to serve across, at any camera pitch.
+  Found trying to compose a screenshot around it, which is the only reason
+  anybody looked: the player stands behind it and never sees it face on. It is
+  the one station the customer interacts with, so it is the one that should read
+  best. Not fixed here, because it needs the mesh and placement worked out rather
+  than a value nudged.
+
 - **Signage pops in and out at 700uu.** Fixed the overlap it replaced — the far
   counter row's names no longer project across the near row in wide shots — but
   the boundary is a hard visibility switch, not a fade. `UTextRenderComponent`

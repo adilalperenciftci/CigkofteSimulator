@@ -20,12 +20,15 @@ simulator written **entirely in C++** on Unreal Engine 5.8.
 `Scripts/Record-Demo.ps1`, which produces the same clip every time rather than
 whatever the person holding the mouse managed on the day.*
 
-![Service counter and the customer queue](docs/screenshots/01_servis.png)
+![The ingredient stations, with the next customer's order on the right](docs/screenshots/02_mutfak.png)
+
+*Bulgur, isot, tomato paste, water, spice — each measured separately, against the
+order on the right and the recipe on the left.*
 
 | | |
 | --- | --- |
-| ![Ingredient stations](docs/screenshots/02_mutfak.png) | ![The kneading counter](docs/screenshots/03_yogurma.png) |
-| *Bulgur, isot, tomato paste, water, spice — each station measured separately* | *Kneading: hold the rhythm with the left mouse button* |
+| ![The shop front and the street](docs/screenshots/01_servis.png) | ![The kneading counter](docs/screenshots/03_yogurma.png) |
+| *The shop front, the awning and the queue coming off the street* | *Kneading: hold the rhythm with the left mouse button* |
 | ![Tablet — shop upgrades](docs/screenshots/04_tablet_dukkan.png) | ![Tablet — quests](docs/screenshots/05_tablet_gorevler.png) |
 | *Shop upgrades* | *Daily quests, story goals, regulars* |
 | ![The seating area](docs/screenshots/06_salon.png) | |

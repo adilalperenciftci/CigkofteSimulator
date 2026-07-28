@@ -695,53 +695,74 @@ void UCigCheatManager::ShotStep()
 		}
 		break;
 
-	case 2: // service counter and street
+	case 2: // nothing: one step of walking time
+		// The customers spawned last step start out on the street. At the old
+		// spacing the service shot was taken while they were still crossing it,
+		// so the picture at the top of the README had an empty counter and three
+		// people in the middle distance. An idle step is the cheapest fix.
+		break;
+
+	case 3: // the shop front: seating, awning, the queue and the street
+		// Two attempts at reframing this as a counter shot were abandoned, and
+		// the reason is worth writing down: the service counter at (-600, 0)
+		// does not read from the shop floor at any pitch. Its station spawns and
+		// its label draws, but there is no counter to photograph - which is a
+		// defect in the world, not in the framing, and is recorded in
+		// KNOWN_LIMITATIONS.md rather than papered over with a camera angle.
+		//
+		// So this stays the establishing shot it always was, and the kitchen
+		// leads the README instead.
 		Place(FVector(120.f, 0.f, 110.f), 180.f, -7.f);
 		break;
 
-	case 3:
+	case 4:
 		Shot(TEXT("01_servis"));
 		break;
 
-	case 4: // ingredient stations
-		Place(FVector(300.f, 0.f, 110.f), 0.f, -14.f);
+	case 5: // ingredient stations - the shot that leads the README
+		// Off the centre line on purpose. Standing at y=0 puts SALCA at (600,0)
+		// and the locked IsotPlus at (870,0) in exact line, so the back one's
+		// "SEVIYE 6" printed across the front one's name. Ninety units to the
+		// side separates them, and a counter seen slightly off-axis is a better
+		// photograph than one seen dead on.
+		Place(FVector(300.f, 90.f, 110.f), -6.f, -14.f);
 		break;
 
-	case 5:
+	case 6:
 		Shot(TEXT("02_mutfak"));
 		break;
 
-	case 6: // kneading station
+	case 7: // kneading station
 		Place(FVector(-30.f, -640.f, 110.f), 0.f, -12.f);
 		break;
 
-	case 7:
+	case 8:
 		Shot(TEXT("03_yogurma"));
 		break;
 
-	case 8: // tablet: shop upgrades
+	case 9: // tablet: shop upgrades
 		Mode->bTabletOpen = true;
 		Mode->TabletTab = ECigTabletTab::Dukkan;
 		break;
 
-	case 9:
+	case 10:
 		Shot(TEXT("04_tablet_dukkan"));
 		break;
 
-	case 10:
+	case 11:
 		Mode->TabletTab = ECigTabletTab::Gorevler;
 		break;
 
-	case 11:
+	case 12:
 		Shot(TEXT("05_tablet_gorevler"));
 		break;
 
-	case 12:
+	case 13:
 		Mode->bTabletOpen = false;
 		Place(FVector(-100.f, 700.f, 110.f), 135.f, -10.f);
 		break;
 
-	case 13:
+	case 14:
 		Shot(TEXT("06_salon"));
 		break;
 

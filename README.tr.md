@@ -14,12 +14,15 @@ sabrı taşmadan yetiştir; kazandığın parayla dükkânı büyüt. Unreal Eng
 ile kaydedildi; o gün fareyi kimin tuttuğuna göre değil, her seferinde aynı klibi
 üretir.*
 
-![Servis bankosu ve müşteri kuyruğu](docs/screenshots/01_servis.png)
+![Malzeme tezgâhları ve sağda sıradaki müşterinin siparişi](docs/screenshots/02_mutfak.png)
+
+*Bulgur, isot, salça, su, baharat — her biri ayrı ölçülür; sağda sipariş, solda
+tarif.*
 
 | | |
 | --- | --- |
-| ![Malzeme tezgâhları](docs/screenshots/02_mutfak.png) | ![Yoğurma tezgâhı](docs/screenshots/03_yogurma.png) |
-| *Bulgur, isot, salça, su, baharat — her tezgâh ayrı ölçek* | *Yoğurma: sol tıkla harcı hazırla* |
+| ![Dükkân cephesi ve cadde](docs/screenshots/01_servis.png) | ![Yoğurma tezgâhı](docs/screenshots/03_yogurma.png) |
+| *Dükkân cephesi, tente ve caddeden gelen kuyruk* | *Yoğurma: sol tıkla harcı hazırla* |
 | ![Tablet — dükkân geliştirmeleri](docs/screenshots/04_tablet_dukkan.png) | ![Tablet — görevler](docs/screenshots/05_tablet_gorevler.png) |
 | *Dükkân geliştirmeleri* | *Günlük görevler, hikâye hedefleri, müdavimler* |
 | ![Oturma alanı](docs/screenshots/06_salon.png) | |
