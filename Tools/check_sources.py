@@ -707,6 +707,43 @@ def check_repo_files() -> None:
     print("  depo: zorunlu dosyalar yerinde")
 
 
+# Config values that are written by the editor and must not be committed.
+#
+# Each is (section, key, why). Deleting the offending line is not enough on its
+# own: the editor writes the Android File Server block on startup and generates a
+# fresh token when it finds none, so the section came back - with a new token -
+# during a routine test run, minutes after being removed by hand. This check is
+# what actually keeps it out, by failing before the value can reach a commit.
+GIZLI_CONFIG_ALANLARI = [
+    ("/Script/AndroidFileServerEditor.AndroidFileServerRuntimeSettings",
+     "SecurityToken",
+     "editörün ürettiği makineye özel token; herkese açık depoda durmamalı"),
+]
+
+
+def check_config_secrets() -> None:
+    ini = ROOT / "Config" / "DefaultEngine.ini"
+    if not ini.is_file():
+        fail("Config/DefaultEngine.ini yok.")
+        return
+
+    bolum = None
+    for no, satir in enumerate(ini.read_text(encoding="utf-8-sig").splitlines(), 1):
+        s = satir.strip()
+        if s.startswith("[") and s.endswith("]"):
+            bolum = s[1:-1]
+            continue
+        if s.startswith(";") or "=" not in s:
+            continue
+        anahtar, deger = (p.strip() for p in s.split("=", 1))
+        for hedef_bolum, hedef_anahtar, neden in GIZLI_CONFIG_ALANLARI:
+            if bolum == hedef_bolum and anahtar == hedef_anahtar and deger:
+                fail(f"Config/DefaultEngine.ini:{no}: {anahtar} dolu — {neden}. "
+                     f"[{hedef_bolum}] bölümünü tamamen silin.")
+
+    print(f"  config: {len(GIZLI_CONFIG_ALANLARI)} gizli alan kuralı tutuyor")
+
+
 def main() -> int:
     print("Cigkofte kaynak kontrolu")
     check_sources()
@@ -718,6 +755,7 @@ def main() -> int:
     check_single_callers()
     check_cooked_assets()
     check_repo_files()
+    check_config_secrets()
 
     if problems:
         print(f"\n{len(problems)} sorun bulundu:\n")
