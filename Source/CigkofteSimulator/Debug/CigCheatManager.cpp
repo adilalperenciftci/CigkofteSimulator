@@ -726,6 +726,10 @@ void UCigCheatManager::ShotStep()
 		// side separates them, and a counter seen slightly off-axis is a better
 		// photograph than one seen dead on.
 		Place(FVector(300.f, 90.f, 110.f), -6.f, -14.f);
+		// A measure is taken on the way past, so the shot catches the scoop in
+		// the air. It is the one piece of motion at this station and a still
+		// frame of an idle counter does not show it exists.
+		if (Mode->Cooking) { Mode->Cooking->AddIngredient(ECigIngredient::Salca); }
 		break;
 
 	case 6:

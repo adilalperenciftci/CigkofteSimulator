@@ -78,6 +78,11 @@ public:
 	// where the player can stand. So the box stays, invisible, and the model
 	// sits inside it with collision off.
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Visual;
+
+	// The measure being lifted out of the tub. Only the ingredient stations have
+	// one; everywhere else it stays hidden and costs nothing.
+	UPROPERTY() TObjectPtr<UStaticMeshComponent> Scoop;
+	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> ScoopMID;
 	UPROPERTY() TObjectPtr<UTextRenderComponent> Label;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BaseMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> TopMID;
@@ -92,6 +97,13 @@ private:
 	FLinearColor LastDoughColor = FLinearColor::Transparent;
 	float Pulse = 0.f;
 	float PopTime = 0.f;
+	// The scoop's run, counting down. Its rest pose is kept so the motion can be
+	// expressed as an offset from it rather than recomputed from the station
+	// layout on every frame.
+	float ScoopTime = 0.f;
+	float ScoopRestZ = 0.f;
+	FVector ScoopScale = FVector::OneVector;
+	static constexpr float ScoopDuration = 0.55f;
 	bool bHighlighted = false;
 	bool bAlwaysTick = false;
 	bool bLocked = false;

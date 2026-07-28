@@ -7,6 +7,32 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/StaticMesh.h"
 
+// Whether the coloured top survives the model going in underneath it.
+//
+// For most stations the top was a stand-in for the object itself and goes away
+// with the box. For the ingredient stations it is the ingredient: a tub of isot
+// on a counter, in the ingredient's own colour, positioned at counter height by
+// Setup. Hiding it would have cost the shop the one cue that works across the
+// room, and CigWorldBuilder colours it from CigIngredientColor already.
+//
+// Declared here rather than next to its one original caller because it now also
+// answers "does this station have something to scoop out of", which Setup and
+// Pop both need and both run earlier in the file.
+static bool StationKeepsTop(ECigStation Type)
+{
+	switch (Type)
+	{
+	case ECigStation::Bulgur:
+	case ECigStation::Isot:
+	case ECigStation::Salca:
+	case ECigStation::Su:
+	case ECigStation::Baharat:
+		return true;
+	default:
+		return false;
+	}
+}
+
 namespace
 {
 	UStaticMesh* CigLoadPrimitiveMesh(const TCHAR* Path)
@@ -44,6 +70,16 @@ ACigkofteStation::ACigkofteStation()
 	Visual->SetMobility(EComponentMobility::Movable);
 	Visual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Visual->SetVisibility(false);
+
+	// The scoop. Hidden until a measure is taken, then it lifts out of the tub,
+	// tips, and drops back - which is the whole of "ingredient pouring with
+	// procedural utensil motion" without an animation asset in it. Attached to
+	// Top rather than Base so it travels with the tub the ingredient is in.
+	Scoop = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Scoop"));
+	Scoop->SetupAttachment(Base);
+	Scoop->SetMobility(EComponentMobility::Movable);
+	Scoop->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Scoop->SetVisibility(false);
 
 	Label = CreateDefaultSubobject<UTextRenderComponent>(TEXT("Label"));
 	Label->SetupAttachment(Base);
@@ -183,6 +219,27 @@ void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, cons
 	Dough->SetRelativeScale3D(FVector(0.5f) / BaseScale);
 	Dough->SetRelativeLocation(FVector(0.f, 0.f, (TopZ + 25.f - 50.f * BaseScale.Z) / BaseScale.Z));
 
+	// The scoop, on the stations that have something to scoop out of.
+	//
+	// A cylinder standing on end, a third of the tub's width, in the ingredient's
+	// own colour: it is the measure being lifted, so it has to be the colour of
+	// the thing being measured or it reads as a tool rather than as a portion.
+	// Everywhere else it stays hidden and is never ticked.
+	if (Scoop && StationKeepsTop(StationType))
+	{
+		Scoop->SetStaticMesh(Cylinder);
+		ScoopRestZ = (TopZ + 6.f - 50.f * BaseScale.Z) / BaseScale.Z;
+		ScoopScale = FVector(TopScale.X * 0.32f, TopScale.Y * 0.32f, TopScale.Z * 0.9f) / BaseScale;
+		Scoop->SetRelativeScale3D(ScoopScale);
+		Scoop->SetRelativeLocation(FVector(0.f, 0.f, ScoopRestZ));
+		if (Mat)
+		{
+			ScoopMID = UMaterialInstanceDynamic::Create(Mat, this);
+			ScoopMID->SetVectorParameterValue(TEXT("Color"), Color);
+			Scoop->SetMaterial(0, ScoopMID);
+		}
+	}
+
 	LabelBaseText = LabelText;
 	LabelTopZ = TopZ;
 	Label->SetText(FText::FromString(LabelText));
@@ -246,13 +303,21 @@ void ACigkofteStation::SetLabelVisible(bool bVisible)
 
 void ACigkofteStation::UpdateTickState()
 {
-	// Kneading always ticks; the rest only while a pop is running.
-	SetActorTickEnabled(bAlwaysTick || PopTime > 0.f || Pulse > 0.01f);
+	// Kneading always ticks; the rest only while something is running.
+	SetActorTickEnabled(bAlwaysTick || PopTime > 0.f || Pulse > 0.01f || ScoopTime > 0.f);
 }
 
 void ACigkofteStation::Pop()
 {
 	PopTime = 0.28f;
+	// The scoop runs twice as long as the tub's bounce, so the measure is still
+	// in the air when the tub has finished reacting - a scoop that started and
+	// ended with the pop read as one flicker rather than as two things.
+	if (Scoop && StationKeepsTop(StationType))
+	{
+		ScoopTime = ScoopDuration;
+		Scoop->SetVisibility(true);
+	}
 	SetActorTickEnabled(true);
 }
 
@@ -305,28 +370,6 @@ void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 	if (bWasLocked && !bLocked)
 	{
 		Pop(); // unlock feedback
-	}
-}
-
-// Whether the coloured top survives the model going in underneath it.
-//
-// For most stations the top was a stand-in for the object itself and goes away
-// with the box. For the ingredient stations it is the ingredient: a tub of isot
-// on a counter, in the ingredient's own colour, positioned at counter height by
-// Setup. Hiding it would have cost the shop the one cue that works across the
-// room, and CigWorldBuilder colours it from CigIngredientColor already.
-static bool StationKeepsTop(ECigStation Type)
-{
-	switch (Type)
-	{
-	case ECigStation::Bulgur:
-	case ECigStation::Isot:
-	case ECigStation::Salca:
-	case ECigStation::Su:
-	case ECigStation::Baharat:
-		return true;
-	default:
-		return false;
 	}
 }
 
@@ -518,6 +561,32 @@ void ACigkofteStation::Tick(float DeltaSeconds)
 		if (PopTime <= 0.f && Top)
 		{
 			Top->SetRelativeScale3D(TopBaseScale);
+			UpdateTickState();
+		}
+	}
+
+	if (ScoopTime > 0.f && Scoop)
+	{
+		ScoopTime = FMath::Max(0.f, ScoopTime - DeltaSeconds);
+		const float T = FMath::Clamp(1.f - ScoopTime / ScoopDuration, 0.f, 1.f);
+
+		// Up, over, and back down. Height is a single sine so the measure leaves
+		// the tub and returns to it; the tip is a separate curve that peaks later
+		// and stays over, because a scoop that starts pouring on the way up is
+		// pouring at the tub it just came out of.
+		const float Lift = FMath::Sin(T * PI) * 34.f;
+		const float TipT = FMath::Clamp((T - 0.35f) / 0.45f, 0.f, 1.f);
+		const float Tip = FMath::Sin(TipT * PI) * 75.f;
+
+		const FVector BaseScale = Base->GetRelativeScale3D();
+		Scoop->SetRelativeLocation(FVector(0.f, 0.f, ScoopRestZ + Lift / FMath::Max(BaseScale.Z, 0.01f)));
+		Scoop->SetRelativeRotation(FRotator(Tip, 0.f, 0.f));
+
+		if (ScoopTime <= 0.f)
+		{
+			Scoop->SetVisibility(false);
+			Scoop->SetRelativeRotation(FRotator::ZeroRotator);
+			Scoop->SetRelativeLocation(FVector(0.f, 0.f, ScoopRestZ));
 			UpdateTickState();
 		}
 	}
