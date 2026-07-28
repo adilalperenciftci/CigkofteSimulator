@@ -10,6 +10,7 @@ param(
     [switch]$Clean,
     [switch]$IncludePrereqs,
     [switch]$IncludeSymbols,
+    [switch]$SkipSmokeTest,
     [switch]$DryRun
 )
 Set-StrictMode -Version Latest
@@ -65,3 +66,13 @@ if ($exitCode -ne 0) { throw "Paketleme başarısız (exit $exitCode). Log: $log
 $exe = Get-ChildItem -LiteralPath $output -Filter "$($gameTargets[0]).exe" -File -Recurse | Select-Object -First 1
 if (-not $exe) { throw "UAT başarılı döndü ancak EXE bulunamadı: $output" }
 Write-Output "Paketleme başarılı: $($exe.FullName)"
+
+# A green UAT exit and an EXE on disk is the bar this project has already failed
+# against: the archive was complete and the game came up with raw text keys, no
+# sound and no balance data, because none of it was referenced by an asset and so
+# none of it cooked. Content is verified by the same smoke test PackageDemo.ps1
+# runs, never by a weaker local copy.
+if (-not $SkipSmokeTest) {
+    & (Join-Path $PSScriptRoot 'SmokeTest-PackagedBuild.ps1') -PackageDirectory $output -EngineRoot $engine
+    if ($LASTEXITCODE -ne 0) { throw "Paket smoke testi başarısız (exit $LASTEXITCODE)." }
+}
