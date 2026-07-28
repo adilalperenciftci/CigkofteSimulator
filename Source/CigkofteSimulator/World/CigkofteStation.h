@@ -54,6 +54,9 @@ public:
 	// owns the reasoning; this end only does what it is told and skips the call
 	// when nothing would change.
 	void SetLabelVisible(bool bVisible);
+	// The direction the signage reads from. Text drawn from behind is mirrored,
+	// so the range check needs to know which side is the front.
+	FVector LabelFacing() const;
 
 	ECigStation StationType = ECigStation::Bulgur;
 

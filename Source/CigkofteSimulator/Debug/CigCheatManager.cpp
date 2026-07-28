@@ -454,6 +454,10 @@ void UCigCheatManager::TourStep()
 		if (Mode->Progression) { Mode->Progression->AddXP(3600); }
 		RefillStock();
 		GiveSides(20);
+		// Clear weather, for the same reason CigShots clears it: this tour is how
+		// a visual change gets checked, and rain streaks across every frame make
+		// two passes hard to compare.
+		if (Mode->Events) { Mode->Events->TumOlaylariBitir(); }
 		break;
 
 	case 1: // shop interior: counters and the new plate/bowl props
@@ -649,8 +653,14 @@ void UCigCheatManager::ShotStep()
 		}
 		PC->SetControlRotation(FRotator(Pitch, Yaw, 0.f));
 	};
-	auto Shot = [World](const TCHAR* Name)
+	auto Shot = [World, Mode](const TCHAR* Name)
 	{
+		// The message feed is cleared first. Setting the shop up for a shot means
+		// calling RefillStock and GiveSides, and those announce themselves with
+		// "[DEBUG] Stoklar dolduruldu" - which then sits in the corner of the
+		// screenshot at the top of the README. The feed is real UI and belongs in
+		// the picture; the scaffolding that built the scene does not.
+		if (Mode) { Mode->Messages.Empty(); }
 		FScreenshotRequest::RequestScreenshot(FString(Name), /*bShowUI=*/true, /*bAddFilenameSuffix=*/false);
 	};
 
@@ -661,6 +671,13 @@ void UCigCheatManager::ShotStep()
 		if (Mode->Economy) { Mode->Economy->Money = 5400; }
 		if (Mode->Progression) { Mode->Progression->AddXP(900); Mode->Progression->Rep = 82.f; }
 		RefillStock();
+		// Clear weather, deliberately.
+		//
+		// Rain, heat and power cuts are rolled from the day's dice, and the last
+		// screenshot pass came back with rain streaks over every frame including
+		// the one at the top of the README. A hero shot is a choice, not a die
+		// roll - the weather layers stay in the game and out of the pictures.
+		if (Mode->Events) { Mode->Events->TumOlaylariBitir(); }
 		break;
 
 	case 1: // called early so the customers have time to walk in

@@ -442,6 +442,19 @@ void ACigkofteHUD::DrawMessages(ACigkofteGameMode* GM)
 {
 	const float LH = LineHeight(FontBody, BodyScale);
 	float MsgY = SX(24.f);
+
+	// Start below the delivery panel when there is one.
+	//
+	// The panel is 720 wide and centred; the message feed is right-aligned and
+	// starts 24 from the top. A long message reaches back far enough to sit on
+	// top of the panel, and the screenshot pass caught two lines of delivery text
+	// printed over one another. Neither element is wrong on its own - they were
+	// simply never asked to share the top of the screen.
+	const UCigDeliverySystem* Del = GM ? GM->Delivery.Get() : nullptr;
+	if (Del && Del->Orders.Num() > 0)
+	{
+		MsgY += LineHeight(FontBody, HeadScale) + Del->Orders.Num() * LH * 1.15f + SX(24.f);
+	}
 	for (const FCigMessage& M : GM->Messages)
 	{
 		const float Alpha = FMath::Clamp(M.TimeLeft / 1.5f, 0.f, 1.f);

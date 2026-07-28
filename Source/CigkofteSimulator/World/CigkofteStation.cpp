@@ -226,6 +226,15 @@ void ACigkofteStation::SetLabelDebug(bool bDebug)
 	}
 }
 
+FVector ACigkofteStation::LabelFacing() const
+{
+	// A TextRender is read from the side its forward vector points at. Checked
+	// against the shot pass rather than reasoned about: the first version negated
+	// this, and the kitchen view - where every name had read correctly - came back
+	// with all of them hidden, while the street view kept its mirrored ones.
+	return Label ? Label->GetForwardVector() : FVector::ForwardVector;
+}
+
 void ACigkofteStation::SetLabelVisible(bool bVisible)
 {
 	if (Label && Label->IsVisible() != bVisible)

@@ -143,10 +143,21 @@ AStaticMeshActor* UCigWorldBuilder::SpawnProp(UStaticMesh* Mesh, const FVector& 
 	C->SetMobility(EComponentMobility::Movable);
 	C->SetStaticMesh(Mesh);
 
-	// Scale from bounds to the target height
+	// Scale from bounds to the target height, but never past the footprint that
+	// height implies.
+	//
+	// Height alone is the wrong measure for anything wider than it is tall. The
+	// flatbread station uses a baguette mesh, which is long and low: scaling its
+	// 8cm height to 28 made it fourteen times its own length, and the shop
+	// shipped a rack of loaves the size of the counter. A prop is allowed to be
+	// twice as wide as it is tall - most tableware is - and is clamped beyond
+	// that, which leaves every correctly proportioned prop untouched.
 	const FBoxSphereBounds B = Mesh->GetBounds();
 	const float RawHeight = FMath::Max(1.f, B.BoxExtent.Z * 2.f);
-	const float Scale = TargetHeight / RawHeight;
+	const float RawWidth = FMath::Max(1.f, FMath::Max(B.BoxExtent.X, B.BoxExtent.Y) * 2.f);
+	constexpr float MaxWidthOverHeight = 2.f;
+	const float Scale = FMath::Min(TargetHeight / RawHeight,
+		(TargetHeight * MaxWidthOverHeight) / RawWidth);
 	A->SetActorScale3D(FVector(Scale));
 
 	// Sit the mesh base on the ground (Loc.Z)
@@ -258,10 +269,27 @@ void UCigWorldBuilder::UpdateStationLabelRange()
 
 	for (const TPair<ECigStation, TWeakObjectPtr<ACigkofteStation>>& Pair : Stations)
 	{
-		if (ACigkofteStation* S = Pair.Value.Get())
+		ACigkofteStation* S = Pair.Value.Get();
+		if (!S)
 		{
-			S->SetLabelVisible(FVector::DistSquared2D(Here, S->GetActorLocation()) <= RangeSq);
+			continue;
 		}
+
+		const FVector There = S->GetActorLocation();
+		bool bShow = FVector::DistSquared2D(Here, There) <= RangeSq;
+
+		// Hide a name being read from behind. A UTextRenderComponent seen from
+		// its back side draws mirrored, and the screenshot pass came back with a
+		// street view full of backwards signage - "PAKETLEME" and "LAVAS" spelled
+		// right to left across the front of the shop. Every station label faces
+		// the same way, so one dot product against its forward vector settles it.
+		if (bShow)
+		{
+			const FVector ToPlayer = (Here - There).GetSafeNormal2D();
+			bShow = FVector::DotProduct(ToPlayer, S->LabelFacing()) > 0.f;
+		}
+
+		S->SetLabelVisible(bShow);
 	}
 }
 
@@ -331,7 +359,30 @@ void UCigWorldBuilder::BuildKitchen()
 	SpawnBox(FVector(-700.f, 900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, BrickMaterial);
 	SpawnBox(FVector(-700.f, -900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, BrickMaterial);
 
+	// The shop sign, on a board.
+	//
+	// The letters are a TextRender, drawn on nothing and readable from both
+	// sides, so from inside the shop the name read back to front across the top
+	// of the frame - which is exactly where the README's first screenshot is
+	// taken from. A real sign has a board behind it.
+	//
+	// The board goes at -710, between the letters at -720 and the shop. The
+	// street is further out at -X: it sees the letters first and the board behind
+	// them, while the inside sees the board and nothing else. Putting it at -733
+	// gets this exactly backwards and hides the sign from the customers.
+	SpawnBox(FVector(-710.f, 0.f, 430.f), FVector(0.15f, 6.f, 1.3f), FLinearColor(0.10f, 0.09f, 0.08f));
 	SpawnWorldText(FVector(-720.f, 0.f, 430.f), TEXT("CIGKOFTECI"), 90.f, FColor(255, 140, 40), 180.f);
+
+	// Two posts holding the canopy up.
+	//
+	// The awning runs the width of the shop front, and the middle of that width
+	// is the doorway - so three of the six stripes had nothing behind them and
+	// hung in the air. They are not wrong to be there; a shop entrance has a
+	// canopy. It just needs to be standing on something.
+	for (float PostY : { -520.f, 520.f })
+	{
+		SpawnBox(FVector(-830.f, PostY, 170.f), FVector(0.12f, 0.12f, 3.4f), FLinearColor(0.24f, 0.20f, 0.16f));
+	}
 
 	// Awning (red and white stripes)
 	for (int32 i = 0; i < 6; ++i)
