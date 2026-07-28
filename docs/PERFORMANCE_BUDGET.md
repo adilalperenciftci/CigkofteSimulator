@@ -1,25 +1,98 @@
 # Performance budget
 
-Every row is still TBD. Nothing on this branch has been measured, which is worth
-stating plainly rather than leaving the table to imply otherwise.
+Measured, not estimated. The route, the seed and the dwell time are fixed by
+`CigBench` in the game, so two runs differ because the build changed and not
+because the camera was somewhere else.
 
-| Area | Target | How it is measured | Result |
-|---|---:|---|---|
-| Frame rate | 60 | Packaged Development benchmark | TBD |
-| Frame budget | 16.67 ms | Unreal Insights frame track | TBD |
-| Game thread | ≤ 8 ms | Insights CPU track | TBD |
-| Render thread | ≤ 8 ms | Insights CPU track | TBD |
-| GPU frame | ≤ 16.67 ms | Insights GPU track | TBD |
-| 1% low | ≥ 45 FPS | Fixed-scene benchmark | TBD |
-| Draw calls | To be set per scene | `stat RHI` | TBD |
-| Triangles | View and scene budget to be set | Primitive stats | TBD |
-| Texture memory | ≤ 70% of the target GPU's VRAM | `stat streaming` | TBD |
-| System memory | Safe headroom on a 16 GB machine | Insights memory | TBD |
-| Shader hitches | 0 critical hitches in play | Insights / log | TBD |
-| Load time | Main-flow target to be set | Bookmark / trace | TBD |
-| Shipping build size | Release target to be set | Verify-Release | TBD |
+## How a run is taken
 
-Every run must record the benchmark resolution, the scalability profile, the map,
-the camera route, the build commit and the duration. Binary `.utrace` files are
-not carried into a model context; the CSV or stat summary from inside Insights
-is.
+```powershell
+.\Scripts\Measure-Performance.ps1 -SecondsPerStop 6 -Label <what-changed>
+```
+
+Five viewpoints — shop interior, seating, street, square, market — held for six
+seconds each, on seed 1337 with every district open, the stock full and every
+upgrade bought. That last part is deliberate: a budget measured on an empty first
+day would be met by a build that stutters as soon as the player earns anything.
+
+Not Unreal Insights. A `.utrace` is a binary that needs the Insights GUI to read,
+so a number taken from one cannot be pasted into this file, diffed against last
+week's, or checked by anyone who was not at the machine. The CSV profiler writes
+the same frame timings as text.
+
+Every run records the resolution, the build commit and the label. The capture
+itself stays in the package's `Saved/Profiling/CSV` and is not committed.
+
+## Results
+
+Both runs: `1920x1080`, packaged **Development**, five stops at six seconds.
+Hardware is the development machine — a baseline to compare against, not
+minimum-spec figures.
+
+- **before** — `stage1-rt-disabled`, 1580 frames
+- **after** — `shadow-casting-off-on-fills`, 2482 frames, same route and seed
+
+| Area | Target | Before | After | Verdict |
+|---|---:|---:|---:|---|
+| Frame rate (avg) | 60 | 55.4 FPS | **88.3 FPS** | met |
+| Frame budget (avg) | 16.67 ms | 18.04 ms | **11.33 ms** | met |
+| Game thread (avg) | ≤ 8 ms | 7.28 ms | **6.78 ms** | met |
+| Render thread (avg) | ≤ 8 ms | 18.01 ms | **11.31 ms** | still over |
+| GPU frame (avg) | ≤ 16.67 ms | 12.33 ms | **9.76 ms** | met |
+| 1% low | ≥ 45 FPS | 22.4 FPS | **47.1 FPS** | met |
+| Worst frame | — | 65.11 ms | **38.79 ms** | |
+| Draw calls — shadow depths | to be set | 361 avg / 1113 peak | **182 avg** / 1104 peak | |
+| Draw calls — base pass | to be set | 46 avg / 418 peak | 59 avg / 494 peak | |
+| Static mesh actors | to be set | 626 | 626 | unchanged |
+| Triangles | view and scene budget to be set | — | TBD | not yet measured |
+| Texture memory | ≤ 70% of the target GPU's VRAM | — | TBD | not yet measured |
+| System memory | safe headroom on a 16 GB machine | — | TBD | not yet measured |
+| Shader hitches | 0 critical hitches in play | — | TBD | the capture starts after the world is built |
+| Load time | main-flow target to be set | — | TBD | not yet measured |
+| Shipping build size | release target to be set | — | TBD | Development archive is 2.2 GB |
+
+## What the numbers said, and what was done about it
+
+The first run was **render-thread bound by a wide margin**. Render thread 18.01 ms
+against a frame time of 18.04 ms means everything else was waiting on it: the game
+thread finished in 7.28 ms and the GPU in 12.33 ms, both inside budget. Optimising
+either would have bought nothing, which is the whole reason for measuring before
+changing anything.
+
+The cause was in the draw call split. Shadow depths averaged 361 calls against the
+base pass's 46 — the scene was being drawn roughly eight times over, for shadows.
+
+Six movable point lights were casting: four room fills at 2800uu, the counter key
+light, and the door light. A movable point light renders six cube faces of shadow
+depth for every primitive inside its radius, and 626 static mesh actors are in
+range. Four overlapping fills in one room produce shadows that largely cancel one
+another, and the sun is what gives the scene its shape.
+
+Casting was turned off on the four fills and the door light. The counter key light
+kept its shadows: it sits directly over the surface the player works at, where a
+bowl casting onto the counter is the reason the light exists, and its radius stops
+before the walls.
+
+Result: shadow draw calls halved, and the render thread came down 37%. The frame
+budget and the 1% low both moved from missed to met, and the worst frame in the
+route dropped from 65.11 ms to 38.79 ms.
+
+Two things worth noting rather than glossing over:
+
+- **The render thread is still over its 8 ms target** at 11.31 ms. It is now
+  within the overall frame budget, so this is a target to revisit rather than a
+  defect — but the budget row says "still over" because it is.
+- **Base pass draw calls went up slightly**, 46 to 59. Frames that were being
+  spent on shadows are now spent drawing more of the scene per second, so a
+  per-frame average taken over 2482 frames is not comparing like with like against
+  one taken over 1580. The peak (418 → 494) moved for the same reason.
+
+## Still open
+
+- Triangles, texture memory, system memory and load time have no numbers yet.
+- No minimum-spec machine has been tested. Everything above is one developer
+  machine at 1080p.
+- Shader hitches are invisible to this route by construction: the capture starts
+  after the world is built, so first-run compilation is excluded on purpose.
+- The lighting change has not been looked at by a human. The numbers are certain;
+  whether the shop still reads the way it did is a judgement nobody has made yet.

@@ -3,6 +3,16 @@
 Genuine, non-blocking limitations of the current branch. Defects that are simply
 not fixed yet belong in `PLAN.md`, not here.
 
+## Visual
+
+- **Station signage overlaps at shallow angles.** Each station draws its own name
+  in world space, and standing back to see the whole counter puts several of them
+  on top of one another — "BULGUR" lands across the fridge, "BAHARAT" across
+  "BULAŞIK". Legible when the player is working at a station, which is when it
+  matters, and wrong in every wide shot, which is what a store page is made of.
+  Found in the `CigTour` frames taken to check the lighting change, not by
+  anybody playing.
+
 ## Verification
 
 - **Nobody has played the game on this branch.** Every check is static analysis,

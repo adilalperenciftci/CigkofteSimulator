@@ -490,6 +490,17 @@ void UCigWorldBuilder::SpawnLights()
 		{
 			P->GetLightComponent()->SetMobility(EComponentMobility::Movable);
 			P->GetLightComponent()->SetIntensity(6000.f);
+			// Fill light, and fill light does not need to cast.
+			//
+			// A movable point light renders six cube faces of shadow depth for
+			// every primitive inside its radius. With four of these at 2800uu
+			// over 626 static meshes, the shadow pass was averaging 361 draw
+			// calls against the base pass's 46, and the render thread was
+			// spending 18.01 ms of an 18.04 ms frame. Four overlapping fills in
+			// one room produce shadows that largely cancel each other anyway -
+			// the sun casts the shadows that give the scene its shape, and the
+			// counter key light below keeps its own.
+			P->GetLightComponent()->SetCastShadows(false);
 			if (UPointLightComponent* PC = Cast<UPointLightComponent>(P->GetLightComponent()))
 			{
 				PC->SetAttenuationRadius(2800.f);
@@ -525,6 +536,11 @@ void UCigWorldBuilder::SpawnLights()
 				PC->SetLightColor(FLinearColor(1.f, 0.78f, 0.52f));
 				PC->SetAttenuationRadius(1250.f);
 				PC->SetIntensity(9000.f);
+				// The one point light that keeps its shadows. It is directly
+				// over the surface the player works at, where a hand and a bowl
+				// casting onto the counter is the whole reason the light is
+				// there. Its radius stops short of the walls, so it shadows the
+				// counter and not the room.
 			}
 		}
 	}
@@ -541,6 +557,10 @@ void UCigWorldBuilder::SpawnLights()
 			PC->SetLightColor(FLinearColor(0.62f, 0.74f, 0.95f)); // roughly 6000K
 			PC->SetAttenuationRadius(1500.f);
 			PC->SetIntensity(5000.f);
+			// Same reasoning as the room fills. This one exists to put a cool
+			// tone on the doorway wall for the interior to read warm against,
+			// and a colour cast costs nothing to render.
+			PC->SetCastShadows(false);
 		}
 	}
 
