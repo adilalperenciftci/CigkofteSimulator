@@ -744,29 +744,45 @@ void UCigCheatManager::ShotStep()
 		Shot(TEXT("03_yogurma"));
 		break;
 
-	case 9: // tablet: shop upgrades
+	case 9: // the chopping board, part-way through a garnish
+		// Two strokes in, so the board carries a part-cut head and the pieces
+		// taken off it. An untouched board shows only the head, which says
+		// nothing about what chopping looks like.
+		if (Mode->Inventory)
+		{
+			Mode->Inventory->ChopPress();
+			Mode->Inventory->ChopPress();
+		}
+		Place(FVector(380.f, 700.f, 130.f), 10.f, -22.f);
+		break;
+
+	case 10:
+		Shot(TEXT("07_dograma"));
+		break;
+
+	case 11: // tablet: shop upgrades
 		Mode->bTabletOpen = true;
 		Mode->TabletTab = ECigTabletTab::Dukkan;
 		break;
 
-	case 10:
+	case 12:
 		Shot(TEXT("04_tablet_dukkan"));
 		break;
 
-	case 11:
+	case 13:
 		Mode->TabletTab = ECigTabletTab::Gorevler;
 		break;
 
-	case 12:
+	case 14:
 		Shot(TEXT("05_tablet_gorevler"));
 		break;
 
-	case 13:
+	case 15:
 		Mode->bTabletOpen = false;
 		Place(FVector(-100.f, 700.f, 110.f), 135.f, -10.f);
 		break;
 
-	case 14:
+	case 16:
 		Shot(TEXT("06_salon"));
 		break;
 

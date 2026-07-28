@@ -240,6 +240,42 @@ void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, cons
 		}
 	}
 
+	// The chopping board's pieces, built once.
+	//
+	// Created here rather than in the constructor because only one station in the
+	// shop needs them and the constructor runs for all twenty. The world is built
+	// at runtime anyway, so registering components here is the same kind of work
+	// everything else on this actor already does.
+	if (StationType == ECigStation::Dograma && Cube)
+	{
+		ChopPieces.Reserve(ChopPieceCount);
+		for (int32 i = 0; i < ChopPieceCount; ++i)
+		{
+			UStaticMeshComponent* Piece = NewObject<UStaticMeshComponent>(this);
+			if (!Piece)
+			{
+				break;
+			}
+			Piece->SetupAttachment(Base);
+			Piece->RegisterComponent();
+			Piece->SetMobility(EComponentMobility::Movable);
+			Piece->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Piece->SetStaticMesh(i == 0 ? Cube : Sphere);
+			Piece->SetVisibility(false);
+			if (Mat)
+			{
+				// Lettuce green, and the cut pieces a shade lighter than the
+				// head so a board part-way through reads as two things.
+				UMaterialInstanceDynamic* PieceMID = UMaterialInstanceDynamic::Create(Mat, this);
+				PieceMID->SetVectorParameterValue(TEXT("Color"),
+					i == 0 ? FLinearColor(0.22f, 0.52f, 0.18f) : FLinearColor(0.38f, 0.70f, 0.26f));
+				Piece->SetMaterial(0, PieceMID);
+			}
+			ChopPieces.Add(Piece);
+		}
+		SetChopState(0, 4);
+	}
+
 	LabelBaseText = LabelText;
 	LabelTopZ = TopZ;
 	Label->SetText(FText::FromString(LabelText));
@@ -291,6 +327,60 @@ FVector ACigkofteStation::LabelFacing() const
 	// this, and the kitchen view - where every name had read correctly - came back
 	// with all of them hidden, while the street view kept its mirrored ones.
 	return Label ? Label->GetForwardVector() : FVector::ForwardVector;
+}
+
+void ACigkofteStation::SetChopState(int32 Done, int32 Needed)
+{
+	if (ChopPieces.Num() == 0 || !Base)
+	{
+		return;
+	}
+
+	const int32 Steps = FMath::Max(Needed, 1);
+	const float T = FMath::Clamp((float)Done / (float)Steps, 0.f, 1.f);
+	const FVector BaseScale = Base->GetRelativeScale3D();
+
+	// Where the cut pieces land. Fixed rather than random: the same stroke should
+	// put a piece in the same place every time, or the board flickers as the
+	// player chops and the eye reads it as pieces moving rather than as pieces
+	// accumulating.
+	static const FVector2D Scatter[ChopPieceCount - 1] = {
+		{ -14.f,  -9.f }, { 11.f, -13.f }, { -8.f, 12.f }, { 16.f, 6.f }, { 2.f, -3.f }
+	};
+
+	const float BoardZ = (LabelTopZ + 4.f - 50.f * BaseScale.Z) / FMath::Max(BaseScale.Z, 0.01f);
+
+	// The head: full size on an untouched board, down to a third by the last
+	// stroke. It never disappears entirely mid-count, because a board with
+	// nothing on it and a board one stroke from done would look the same.
+	if (UStaticMeshComponent* Head = ChopPieces[0])
+	{
+		const float HeadSize = FMath::Lerp(0.26f, 0.09f, T);
+		Head->SetVisibility(true);
+		Head->SetRelativeScale3D(FVector(HeadSize, HeadSize, HeadSize * 0.7f) / BaseScale);
+		Head->SetRelativeLocation(FVector(-6.f, 0.f, BoardZ) / BaseScale);
+	}
+
+	// One fragment per stroke, appearing in order. With four strokes the board
+	// fills; with the fast-chopping upgrade at two, it fills in bigger jumps,
+	// which is the upgrade being visible rather than only felt.
+	for (int32 i = 1; i < ChopPieces.Num(); ++i)
+	{
+		UStaticMeshComponent* Piece = ChopPieces[i];
+		if (!Piece)
+		{
+			continue;
+		}
+		const float Threshold = (float)i / (float)ChopPieces.Num();
+		const bool bShow = T >= Threshold - KINDA_SMALL_NUMBER;
+		Piece->SetVisibility(bShow);
+		if (bShow)
+		{
+			const FVector2D S = Scatter[(i - 1) % UE_ARRAY_COUNT(Scatter)];
+			Piece->SetRelativeScale3D(FVector(0.055f) / BaseScale);
+			Piece->SetRelativeLocation(FVector(S.X, S.Y, BoardZ + 2.f) / BaseScale);
+		}
+	}
 }
 
 void ACigkofteStation::SetLabelVisible(bool bVisible)

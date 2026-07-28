@@ -83,6 +83,19 @@ public:
 	// one; everywhere else it stays hidden and costs nothing.
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Scoop;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> ScoopMID;
+
+	// The chopping board: one whole head and a fixed set of cut pieces.
+	//
+	// Pooled rather than spawned. A chop is four keypresses and a garnish is ten
+	// of those, so spawning a fragment per stroke would allocate and destroy a
+	// few hundred actors across a day for something that is never more than six
+	// things on a board. They are built once and only ever shown or hidden.
+	UPROPERTY() TArray<TObjectPtr<UStaticMeshComponent>> ChopPieces;
+	static constexpr int32 ChopPieceCount = 6;
+
+	// Done strokes out of Needed. The board shows a whole head at zero, loses it
+	// to fragments as the count rises, and is swept when the garnish is finished.
+	void SetChopState(int32 Done, int32 Needed);
 	UPROPERTY() TObjectPtr<UTextRenderComponent> Label;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BaseMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> TopMID;

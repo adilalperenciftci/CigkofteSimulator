@@ -9,6 +9,7 @@
 #include "Progression/CigProgressionSystem.h"
 #include "Progression/CigSkillSystem.h"
 #include "World/CigWorldBuilder.h"
+#include "World/CigkofteStation.h"
 #include "Core/CigRandomSubsystem.h"
 #include "Core/CigBalance.h"
 #include "Player/CigkoftePlayerCharacter.h"
@@ -176,9 +177,22 @@ void UCigInventorySystem::ChopPress()
 		GM->Hygiene->ChopDirt = FMath::Min(100.f, GM->Hygiene->ChopDirt + 2.f);
 	}
 
+	// The board follows the count. Pushed after the increment and before the
+	// completion branch resets it, so a finished garnish sweeps the board back to
+	// a whole head rather than leaving the last stroke's fragments on it.
+	ACigkofteStation* Board = GM->WorldBuilder ? GM->WorldBuilder->FindStation(ECigStation::Dograma) : nullptr;
+	if (Board)
+	{
+		Board->SetChopState(ChopCombo, NeededChops);
+	}
+
 	if (ChopCombo >= NeededChops)
 	{
 		ChopCombo = 0;
+		if (Board)
+		{
+			Board->SetChopState(0, NeededChops);
+		}
 		Consume(CigStockMarul);
 		Garnish++;
 		if (GM->Progression)
