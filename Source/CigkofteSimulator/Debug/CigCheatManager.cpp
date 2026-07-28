@@ -26,6 +26,7 @@
 #include "UnrealClient.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
+#include "ProfilingDebugging/CsvProfiler.h"
 
 ACigkofteGameMode* UCigCheatManager::GM() const
 {
@@ -506,6 +507,127 @@ void UCigCheatManager::TourStep()
 		PC->ConsoleCommand(TEXT("quit"), true);
 		break;
 	}
+}
+
+// ---------------------------------------------------------------- benchmark
+
+namespace
+{
+	// Where the benchmark stands, and what each viewpoint is there to cost.
+	// Shared with CigTour on purpose: a route that drifts from the one the
+	// screenshots use stops being comparable to what anybody has looked at.
+	struct FCigBenchStop
+	{
+		const TCHAR* Name;
+		FVector Location;
+		float Yaw;
+		float Pitch;
+	};
+
+	// Any fixed value would do; what matters is that it is the same one every
+	// run, so two builds are compared against the same day.
+	constexpr int32 CigBenchSeed = 1337;
+
+	const FCigBenchStop CigBenchStops[] = {
+		{ TEXT("dukkan"), FVector(-250.f,     0.f, 150.f),   0.f,  -8.f },
+		{ TEXT("oturma"), FVector(-150.f,   750.f, 150.f), 120.f, -10.f },
+		{ TEXT("cadde"),  FVector(-1800.f,    0.f, 220.f), 180.f,  -5.f },
+		{ TEXT("meydan"), FVector(-1800.f, 9600.f, 220.f),  90.f,  -6.f },
+		{ TEXT("pazar"),  FVector(-1800.f,-9800.f, 220.f), -90.f,  -6.f },
+	};
+
+	constexpr int32 CigBenchStopCount = UE_ARRAY_COUNT(CigBenchStops);
+}
+
+void UCigCheatManager::CigBench(int32 SecondsPerStop)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// Clamped rather than trusted: a zero or negative period makes SetTimer fire
+	// every frame, and the run would teleport through the whole route before the
+	// profiler had a single frame at any of it.
+	const float Period = (float)FMath::Clamp(SecondsPerStop, 2, 120);
+
+	BenchIndex = 0;
+	UE_LOG(LogCig, Log, TEXT("CigBench: %d durak x %.0f sn."), CigBenchStopCount, Period);
+
+	// The first step is delayed by one period for the same reason CigTour delays
+	// its own: districts open and shaders compile in those first seconds, and
+	// measuring them would report a hitch that no player ever sees twice.
+	World->GetTimerManager().SetTimer(BenchTimer, this, &UCigCheatManager::BenchStep, Period, true, Period);
+}
+
+void UCigCheatManager::BenchStep()
+{
+	UWorld* World = GetWorld();
+	ACigkofteGameMode* Mode = GM();
+	APlayerController* PC = World ? World->GetFirstPlayerController() : nullptr;
+	if (!World || !Mode || !PC)
+	{
+		return;
+	}
+
+	const int32 Step = BenchIndex++;
+
+	if (Step == 0)
+	{
+		// The heaviest state the game reaches, reproduced the same way each run.
+		if (UCigRandomSubsystem* Rng = CheatRng(World))
+		{
+			Rng->SeedWith(CigBenchSeed);
+		}
+		Mode->StartFirstDayIfIntro();
+		if (Mode->Economy) { Mode->Economy->Money = 12000; }
+		if (Mode->Progression) { Mode->Progression->AddXP(3600); }
+		RefillStock();
+		GiveSides(20);
+		UnlockAllUpgrades();
+		return;
+	}
+
+	const int32 StopIndex = Step - 1;
+	if (StopIndex >= CigBenchStopCount)
+	{
+		UE_LOG(LogCig, Log, TEXT("CigBench tamam: %d durak."), CigBenchStopCount);
+		PC->ConsoleCommand(TEXT("CsvProfile Stop"), true);
+		World->GetTimerManager().ClearTimer(BenchTimer);
+		PC->ConsoleCommand(TEXT("quit"), true);
+		return;
+	}
+
+	const FCigBenchStop& Stop = CigBenchStops[StopIndex];
+	if (APawn* P = PC->GetPawn())
+	{
+		P->SetActorLocation(Stop.Location);
+	}
+	PC->SetControlRotation(FRotator(Stop.Pitch, Stop.Yaw, 0.f));
+
+	if (StopIndex == 0)
+	{
+		// Started here, not in CigBench, so the capture never contains the world
+		// build or the first-frame shader work.
+		PC->ConsoleCommand(TEXT("CsvProfile Start"), true);
+	}
+
+	// One event per stop. Without it the CSV is a single run of frames and the
+	// one expensive viewpoint disappears into the average of the other four.
+	//
+	// Emitted next tick, not now. The profiler begins capturing on the frame
+	// after the Start above, so the first stop's marker was written into a
+	// capture that did not exist yet and was silently dropped - leaving the one
+	// section the shop is actually played in unsliceable. Every stop takes the
+	// same path so they are all offset identically.
+	const TCHAR* StopName = Stop.Name;
+	World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda([StopName]()
+	{
+		CSV_EVENT_GLOBAL(TEXT("CigBench/%s"), StopName);
+	}));
+
+	UE_LOG(LogCig, Log, TEXT("CigBench durak %d/%d: %s"), StopIndex + 1, CigBenchStopCount, Stop.Name);
 }
 
 void UCigCheatManager::ShotStep()
