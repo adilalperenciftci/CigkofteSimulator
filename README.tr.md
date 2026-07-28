@@ -8,6 +8,12 @@ sabrı taşmadan yetiştir; kazandığın parayla dükkânı büyüt. Unreal Eng
 
 > Bir **EG Games** yapımı.
 
+![Dükkân, oturma alanı, cadde, meydan ve pazar](docs/demo.gif)
+
+*Sabit tur rotasından on iki saniye. Paketli yapıdan `Scripts/Record-Demo.ps1`
+ile kaydedildi; o gün fareyi kimin tuttuğuna göre değil, her seferinde aynı klibi
+üretir.*
+
 ![Servis bankosu ve müşteri kuyruğu](docs/screenshots/01_servis.png)
 
 | | |

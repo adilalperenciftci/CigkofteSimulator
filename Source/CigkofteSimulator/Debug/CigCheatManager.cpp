@@ -615,6 +615,12 @@ void UCigCheatManager::BenchStep()
 		// Started here, not in CigBench, so the capture never contains the world
 		// build or the first-frame shader work.
 		PC->ConsoleCommand(TEXT("CsvProfile Start"), true);
+
+		// The setup step calls RefillStock, GiveSides and UnlockAllUpgrades, and
+		// each announces itself in the message feed. Harmless in a profile and
+		// not harmless in the demo recording, which uses this same route: the
+		// clip opened on "[DEBUG] Stoklar dolduruldu".
+		Mode->Messages.Empty();
 	}
 
 	// One event per stop. Without it the CSV is a single run of frames and the

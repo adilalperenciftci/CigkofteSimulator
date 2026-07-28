@@ -14,6 +14,12 @@ simulator written **entirely in C++** on Unreal Engine 5.8.
 
 > An **EG Games** production.
 
+![The shop, the seating area, the street, the square and the market](docs/demo.gif)
+
+*Twelve seconds of the fixed tour route. Recorded from a packaged build with
+`Scripts/Record-Demo.ps1`, which produces the same clip every time rather than
+whatever the person holding the mouse managed on the day.*
+
 ![Service counter and the customer queue](docs/screenshots/01_servis.png)
 
 | | |
