@@ -162,9 +162,18 @@ function Get-Stat {
     }
 }
 
+# Timings first, then the scene cost, then what the machine is holding. A column
+# that the capture does not carry is skipped rather than reported as zero: the
+# set differs with the command line (-csvGpuStats) and with the build
+# configuration, and a silent zero reads as "free" instead of "not measured".
+$timings = 'FrameTime', 'GameThreadTime', 'RenderThreadTime', 'GPUTime'
+$sceneCost = 'DrawCall/ShadowDepths', 'DrawCall/Basepass', 'DrawCall/BeginOcclusionTests',
+             'RHI/DrawCalls', 'RHI/PrimitivesDrawn', 'ActorCount/StaticMeshActor'
+$memory = 'PhysicalUsedMB', 'GPUMem/LocalUsedMB', 'GPUMem/LocalBudgetMB',
+          'TextureStreaming/StreamingPool', 'TextureStreaming/RequiredPool'
+
 $measurements = [ordered]@{}
-foreach ($col in 'FrameTime', 'GameThreadTime', 'RenderThreadTime', 'GPUTime',
-                 'RHIT/DrawCalls', 'DrawCalls', 'PrimitivesDrawn') {
+foreach ($col in ($timings + $sceneCost + $memory)) {
     $stat = Get-Stat -Values (Get-Series -Lines $fileLines -Header $header -Column $col)
     if ($stat) { $measurements[$col] = $stat }
 }
@@ -178,14 +187,31 @@ $frame = $measurements['FrameTime']
 $avgFps = [math]::Round(1000.0 / [math]::Max($frame.Avg, 0.001), 1)
 $lowFps = [math]::Round(1000.0 / [math]::Max($frame.P99, 0.001), 1)
 
-Write-Host ''
-Write-Host ("  {0,-18} {1,9} {2,9} {3,9}" -f 'olcum', 'ort', 'p99', 'en kotu')
-foreach ($name in $measurements.Keys) {
-    $m = $measurements[$name]
-    Write-Host ("  {0,-18} {1,9} {2,9} {3,9}" -f $name, $m.Avg, $m.P99, $m.Max)
+$groups = [ordered]@{ 'sure (ms)' = $timings; 'sahne' = $sceneCost; 'bellek (MB)' = $memory }
+foreach ($groupName in $groups.Keys) {
+    $present = @($groups[$groupName] | Where-Object { $measurements.Contains($_) })
+    if (-not $present) { continue }
+    Write-Host ''
+    Write-Host ("  {0,-30} {1,9} {2,9} {3,9}" -f $groupName, 'ort', 'p99', 'en kotu')
+    foreach ($name in $present) {
+        $m = $measurements[$name]
+        Write-Host ("  {0,-30} {1,9} {2,9} {3,9}" -f $name, $m.Avg, $m.P99, $m.Max)
+    }
 }
+
 Write-Host ''
 Write-Host ("  kare: {0} | ortalama {1} FPS | %1 dusuk {2} FPS" -f $frame.Count, $avgFps, $lowFps) -ForegroundColor Cyan
+
+# The texture budget is a ratio, and a ratio is the thing worth reading. Reported
+# only when both halves are present, rather than assuming a default budget.
+if ($measurements.Contains('GPUMem/LocalUsedMB') -and $measurements.Contains('GPUMem/LocalBudgetMB')) {
+    $budget = $measurements['GPUMem/LocalBudgetMB'].Avg
+    if ($budget -gt 0) {
+        $pct = [math]::Round(100.0 * $measurements['GPUMem/LocalUsedMB'].Max / $budget, 1)
+        Write-Host ("  GPU bellek: en yuksek {0} MB / butce {1} MB = %{2}" -f
+            $measurements['GPUMem/LocalUsedMB'].Max, $budget, $pct) -ForegroundColor Cyan
+    }
+}
 Write-Host "  CSV: $($csv.FullName)"
 Write-Host "  etiket: $Label; cozunurluk ${Width}x${Height}; commit $(git rev-parse --short HEAD)"
 exit 0

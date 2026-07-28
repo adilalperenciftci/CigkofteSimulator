@@ -43,11 +43,13 @@ minimum-spec figures.
 | Worst frame | — | 65.11 ms | **38.79 ms** | |
 | Draw calls — shadow depths | to be set | 361 avg / 1113 peak | **182 avg** / 1104 peak | |
 | Draw calls — base pass | to be set | 46 avg / 418 peak | 59 avg / 494 peak | |
+| Draw calls — total (RHI) | to be set | — | 485 avg / 1281 peak | |
+| Primitives drawn | to be set | — | 2.37 M avg / 8.27 M peak | |
 | Static mesh actors | to be set | 626 | 626 | unchanged |
-| Triangles | view and scene budget to be set | — | TBD | not yet measured |
-| Texture memory | ≤ 70% of the target GPU's VRAM | — | TBD | not yet measured |
-| System memory | safe headroom on a 16 GB machine | — | TBD | not yet measured |
-| Shader hitches | 0 critical hitches in play | — | TBD | the capture starts after the world is built |
+| GPU memory | ≤ 70% of the target GPU's VRAM | — | **1930 MB of 3366 MB = 57.3%** | met |
+| System memory | safe headroom on a 16 GB machine | — | **1.76 GB peak** | met |
+| Texture streaming pool | — | — | 10.9 MB avg / 23.0 MB peak | |
+| Shader hitches | 0 critical hitches in play | — | not measurable here | the capture starts after the world is built |
 | Load time | main-flow target to be set | — | TBD | not yet measured |
 | Shipping build size | release target to be set | — | TBD | Development archive is 2.2 GB |
 
@@ -87,11 +89,32 @@ Two things worth noting rather than glossing over:
   per-frame average taken over 2482 frames is not comparing like with like against
   one taken over 1580. The peak (418 → 494) moved for the same reason.
 
+## Memory and scene cost
+
+Both memory rows are comfortable and neither is where the time is going.
+
+GPU memory peaks at 1930 MB against a 3366 MB budget — 57.3%, inside the 70%
+target. System memory peaks at 1.76 GB, which leaves a large margin on a 16 GB
+machine. The texture streaming pool sits at 11 MB, because the shop's textures
+are small and mostly resident rather than streamed.
+
+Primitives drawn averages 2.37 M with an 8.27 M peak, and total RHI draw calls
+485 average against a 1281 peak. The gap between average and peak in both is the
+same shape as the frame-time gap: the route is cheap at four stops and expensive
+at one. Which stop that is has not been isolated yet — the CSV events are in the
+capture for exactly that, and slicing by them is the next measurement rather than
+a guess.
+
+Note that these are read from the capture taken after the shadow change, so the
+memory figures have no before/after pair. They were not measured earlier, which
+is a gap in the record and not a change in the numbers.
+
 ## Still open
 
-- Triangles, texture memory, system memory and load time have no numbers yet.
+- Load time and shipping build size have no numbers yet.
+- Per-stop slicing: the events are captured, nothing reads them yet.
 - No minimum-spec machine has been tested. Everything above is one developer
-  machine at 1080p.
+  machine at 1080p, and the GPU budget in particular is that card's budget.
 - Shader hitches are invisible to this route by construction: the capture starts
   after the world is built, so first-run compilation is excluded on purpose.
 - The lighting change has not been looked at by a human. The numbers are certain;
