@@ -22,6 +22,8 @@ simulator written **entirely in C++** on Unreal Engine 5.8.
 | *Bulgur, isot, tomato paste, water, spice — each station measured separately* | *Kneading: hold the rhythm with the left mouse button* |
 | ![Tablet — shop upgrades](docs/screenshots/04_tablet_dukkan.png) | ![Tablet — quests](docs/screenshots/05_tablet_gorevler.png) |
 | *Shop upgrades* | *Daily quests, story goals, regulars* |
+| ![The seating area](docs/screenshots/06_salon.png) | |
+| *Customers who eat in take a table* | |
 
 ## Playing it
 

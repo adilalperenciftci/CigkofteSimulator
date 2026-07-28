@@ -16,6 +16,8 @@ sabrı taşmadan yetiştir; kazandığın parayla dükkânı büyüt. Unreal Eng
 | *Bulgur, isot, salça, su, baharat — her tezgâh ayrı ölçek* | *Yoğurma: sol tıkla harcı hazırla* |
 | ![Tablet — dükkân geliştirmeleri](docs/screenshots/04_tablet_dukkan.png) | ![Tablet — görevler](docs/screenshots/05_tablet_gorevler.png) |
 | *Dükkân geliştirmeleri* | *Günlük görevler, hikâye hedefleri, müdavimler* |
+| ![Oturma alanı](docs/screenshots/06_salon.png) | |
+| *Yerinde yiyen müşteriler masaya oturur* | |
 
 ## Oynanış
 
