@@ -5,14 +5,14 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Visual
 
-- **The service counter does not read.** `ECigStation::Servis` spawns at
-  (-600, 0) and its label draws there, but standing on the shop floor and looking
-  at it shows an empty front — no counter to serve across, at any camera pitch.
-  Found trying to compose a screenshot around it, which is the only reason
-  anybody looked: the player stands behind it and never sees it face on. It is
-  the one station the customer interacts with, so it is the one that should read
-  best. Not fixed here, because it needs the mesh and placement worked out rather
-  than a value nudged.
+- **The ingredient counters are stubs.** `SM_BakeryCounter02` is a four-metre
+  bakery counter and the ingredient stations measure it against a 90cm cube, so
+  it comes out at 0.22 scale — 90 wide and 39 high, a low cabinet rather than a
+  counter. It reads acceptably because the coloured tub sits on top and that is
+  what the player aims at, but the shop is furnished with knee-high units. The
+  quarter-turn fix does not reach this: the box is cubic, so both orientations
+  fit the same. It needs either a shorter mesh or stations that share one counter
+  run.
 
 - **Signage pops in and out at 700uu.** Fixed the overlap it replaced — the far
   counter row's names no longer project across the near row in wide shots — but

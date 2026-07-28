@@ -1,6 +1,7 @@
 #include "World/CigkofteStation.h"
 #include "World/CigMeshLibrary.h"
 #include "Core/CigText.h"
+#include "Core/CigLog.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -385,13 +386,47 @@ void ACigkofteStation::ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseSc
 	const FBoxSphereBounds B = Mesh->GetBounds();
 	const FVector RawSize = B.BoxExtent * 2.f;
 	const FVector TargetBox = 100.f * BaseScale.GetAbs(); // the cube is 100uu a side
-	const float WorldScale = FMath::Min3(
-		TargetBox.X / FMath::Max(RawSize.X, 1.f),
-		TargetBox.Y / FMath::Max(RawSize.Y, 1.f),
-		TargetBox.Z / FMath::Max(RawSize.Z, 1.f));
+
+	auto FitInto = [&TargetBox](float SizeX, float SizeY, float SizeZ)
+	{
+		return FMath::Min3(TargetBox.X / FMath::Max(SizeX, 1.f),
+			TargetBox.Y / FMath::Max(SizeY, 1.f),
+			TargetBox.Z / FMath::Max(SizeZ, 1.f));
+	};
+
+	// Turn the model a quarter turn when that fits it better.
+	//
+	// The service counter is why. Its mesh is 400 long on X, 72 deep and 100
+	// high; its box is 100 deep on X and 400 long on Y, because the counter is
+	// meant to run across the shop front. The two long axes were perpendicular,
+	// so fitting on all three axes squeezed a four-metre counter into a
+	// one-metre depth - a quarter scale, knee high, and effectively invisible in
+	// the room. Nobody had noticed because the player stands behind it.
+	//
+	// Turned, the same mesh fits its box exactly. The test is a comparison and
+	// not a special case, so a station whose mesh already points the right way
+	// keeps the scale it had: the ingredient counters are measured against a
+	// cubic box and come out identical either way.
+	const float FitAsIs = FitInto(RawSize.X, RawSize.Y, RawSize.Z);
+	const float FitTurned = FitInto(RawSize.Y, RawSize.X, RawSize.Z);
+	const bool bTurn = FitTurned > FitAsIs;
+	const float WorldScale = bTurn ? FitTurned : FitAsIs;
+
+	Visual->SetRelativeRotation(FRotator(0.f, bTurn ? 90.f : 0.f, 0.f));
 
 	// Visual hangs off Base, which is already scaled, so undo that.
+	//
+	// Component-wise and not swapped, even when the model is turned. Unreal
+	// multiplies a child's scale against its parent's per axis in the child's
+	// own local space, so a quarter turn does not move which parent number
+	// applies to which mesh axis. Swapping them "to match the rotation" was
+	// tried and measured: the service counter came out 289 deep and 100 wide,
+	// the exact opposite of a shop counter, instead of 400 across and 72 deep.
 	Visual->SetRelativeScale3D(FVector(WorldScale) / BaseScale);
+
+	UE_LOG(LogCig, Verbose, TEXT("[MESHFIT] %d turn=%d scale=%.2f world=%.0fx%.0fx%.0f"),
+		(int32)StationType, bTurn ? 1 : 0, WorldScale,
+		Visual->Bounds.BoxExtent.X * 2.f, Visual->Bounds.BoxExtent.Y * 2.f, Visual->Bounds.BoxExtent.Z * 2.f);
 
 	// Sit the model's underside on the box's underside.
 	const float BoxBottom = -50.f * BaseScale.Z;
