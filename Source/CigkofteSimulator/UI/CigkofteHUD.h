@@ -61,6 +61,12 @@ private:
 	void Bar(float X, float Y, float W, float H, float Frac, const FLinearColor& Fill);
 	void Text(const FString& S, const FLinearColor& Color, float X, float Y, UFont* Font, float Scale = 1.f);
 	void CenterText(const FString& S, float Y, UFont* Font, float Scale, const FLinearColor& Color);
+	// Text drawn straight onto the world, with no panel behind it. The shop floor
+	// is light and the walls are cream, so a grey label on either disappears; a
+	// dark offset copy gives it an edge whatever it lands on. Panelled text does
+	// not need this - the panel already supplies the contrast.
+	void ShadowText(const FString& S, const FLinearColor& Color, float X, float Y, UFont* Font, float Scale = 1.f);
+	void ShadowCenterText(const FString& S, float Y, UFont* Font, float Scale, const FLinearColor& Color);
 	float TextWidth(const FString& S, UFont* Font, float Scale) const;
 	float LineHeight(UFont* Font, float Scale) const;
 	// Draws a line and advances Y by the real height plus spacing.

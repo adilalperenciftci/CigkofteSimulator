@@ -103,6 +103,19 @@ void ACigkofteHUD::CenterText(const FString& S, float Y, UFont* Font, float Scal
 	DrawText(S, Color, (ScreenSize.X - W) * 0.5f, Y, Font, Scale * UIScale);
 }
 
+void ACigkofteHUD::ShadowText(const FString& S, const FLinearColor& Color, float X, float Y, UFont* Font, float Scale)
+{
+	const float Off = FMath::Max(1.f, SX(2.f));
+	DrawText(S, FLinearColor(0.f, 0.f, 0.f, Color.A * 0.8f), X + Off, Y + Off, Font, Scale * UIScale);
+	DrawText(S, Color, X, Y, Font, Scale * UIScale);
+}
+
+void ACigkofteHUD::ShadowCenterText(const FString& S, float Y, UFont* Font, float Scale, const FLinearColor& Color)
+{
+	const float W = TextWidth(S, Font, Scale);
+	ShadowText(S, Color, (ScreenSize.X - W) * 0.5f, Y, Font, Scale);
+}
+
 FString ACigkofteHUD::Stars(float Value01to5)
 {
 	const int32 Full = FMath::Clamp(FMath::RoundToInt(Value01to5), 0, 5);
@@ -710,12 +723,12 @@ void ACigkofteHUD::DrawEnergyBar(ACigkofteGameMode* GM)
 	const float X = (ScreenSize.X - W) * 0.5f;
 	const float Y = ScreenSize.Y - SX(76.f);
 
-	Text(CigText::Get(TEXT("hud.energy")), GDim, X - SX(84.f), Y - BodyLH * 0.15f, FontBody, BodyScale);
+	ShadowText(CigText::Get(TEXT("hud.energy")), GDim, X - SX(84.f), Y - BodyLH * 0.15f, FontBody, BodyScale);
 	Bar(X, Y, W, BodyLH * 0.5f, Player->Energy / 100.f, Player->Energy < 30.f ? GBad : FLinearColor(0.4f, 0.9f, 0.5f));
 
 	if (Player->bDriving && GM->PlayerCar)
 	{
-		Text(CigText::Get(TEXT("hud.fuel")), GDim, X - SX(84.f), Y + BodyLH * 0.6f, FontBody, BodyScale);
+		ShadowText(CigText::Get(TEXT("hud.fuel")), GDim, X - SX(84.f), Y + BodyLH * 0.6f, FontBody, BodyScale);
 		Bar(X, Y + BodyLH * 0.75f, W, BodyLH * 0.4f, GM->PlayerCar->Fuel / 100.f, FLinearColor(0.9f, 0.7f, 0.2f));
 	}
 }
@@ -755,17 +768,17 @@ void ACigkofteHUD::DrawPrompt(ACigkofteGameMode* GM)
 	const float PromptY = ScreenSize.Y * 0.5f + SX(36.f);
 	if (PC->bDriving)
 	{
-		CenterText(CigText::Get(TEXT("hud.deliverprompt")), ScreenSize.Y - SX(120.f), FontBody, BodyScale, GInfo);
+		ShadowCenterText(CigText::Get(TEXT("hud.deliverprompt")), ScreenSize.Y - SX(120.f), FontBody, BodyScale, GInfo);
 	}
 	else if (PC->bCarFocused)
 	{
 		const int32 Level = GM->Progression ? GM->Progression->Level : 1;
-		CenterText(CigText::Get(Level >= 4 ? TEXT("hud.entercar") : TEXT("hud.carlocked")), PromptY, FontBody, HeadScale, FLinearColor(1.f, 0.8f, 0.4f));
+		ShadowCenterText(CigText::Get(Level >= 4 ? TEXT("hud.entercar") : TEXT("hud.carlocked")), PromptY, FontBody, HeadScale, FLinearColor(1.f, 0.8f, 0.4f));
 	}
 	else if (PC->bCatFocused)
 	{
 		const FString CatName = GM->CatSys ? GM->CatSys->CatName : CigText::Get(TEXT("hud.cat"));
-		CenterText(CigText::Format(TEXT("hud.petcat"), *CatName), PromptY, FontBody, HeadScale, FLinearColor(1.f, 0.8f, 0.9f));
+		ShadowCenterText(CigText::Format(TEXT("hud.petcat"), *CatName), PromptY, FontBody, HeadScale, FLinearColor(1.f, 0.8f, 0.9f));
 	}
 	else if (PC->FocusedStation)
 	{
@@ -793,13 +806,16 @@ void ACigkofteHUD::DrawPrompt(ACigkofteGameMode* GM)
 			}
 			Prompt = CigText::Format(TEXT("hud.chopprompt"), GM->Inventory->ChopCombo, Needed, GM->Inventory->Stock[CigStockMarul], GM->Inventory->Garnish);
 		}
-		CenterText(Prompt, PromptY, FontBody, HeadScale,
+		ShadowCenterText(Prompt, PromptY, FontBody, HeadScale,
 			bStationLocked ? FLinearColor(0.72f, 0.72f, 0.76f) : FLinearColor(1.f, 1.f, 0.6f));
 	}
 
+	// The key row sits at the very bottom, over the shop floor. It was drawn at
+	// 0.62 grey, which the floor swallowed whole; it is the one line a new player
+	// needs to find, so it gets both the lighter tone and the shadow.
 	const bool bPad = PC && PC->bGamepadActive;
-	CenterText(CigText::Get(bPad ? TEXT("hud.controls.pad") : TEXT("hud.controls.keyboard")),
-		ScreenSize.Y - SX(34.f), FontBody, BodyScale * 0.9f, FLinearColor(0.62f, 0.62f, 0.62f));
+	ShadowCenterText(CigText::Get(bPad ? TEXT("hud.controls.pad") : TEXT("hud.controls.keyboard")),
+		ScreenSize.Y - SX(34.f), FontBody, BodyScale * 0.9f, FLinearColor(0.86f, 0.86f, 0.86f));
 }
 
 // ---------------------------------------------------------------- settings
