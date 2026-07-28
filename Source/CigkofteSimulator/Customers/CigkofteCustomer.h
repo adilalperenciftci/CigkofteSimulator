@@ -105,6 +105,11 @@ private:
 	bool bSkeletal = false;
 	UPROPERTY() TObjectPtr<class UAnimSequence> AnimIdle;
 	UPROPERTY() TObjectPtr<class UAnimSequence> AnimWalk;
+	// From MC_Sample, which is rigged to the same UE5 mannequin skeleton, so
+	// these load and play with no retargeting. Null without the pack.
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimSit;
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimHappy;
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimAngry;
 	// Which one is playing, so the same sequence is not restarted every frame.
 	UPROPERTY() TObjectPtr<class UAnimSequence> AnimPlaying;
 

@@ -357,12 +357,32 @@ void ACigkofteCustomer::TrySetupSkeletalBody(int32 Seed)
 	// furniture - but a person shaped like a person beats a cylinder with a
 	// sphere on it, and the skeleton is the one every animation pack targets.
 	const bool bSecond = (Seed % 2) != 0;
+
+	// MC_Sample first, and mesh and animation have to come from the same place.
+	//
+	// The listing says its animations are rigged to the UE5 mannequin, and the
+	// hierarchy may well match, but the sequences reference their own USkeleton
+	// asset (SKM_MCUE5v2_Skeleton). PlayAnimation across two different skeleton
+	// assets does not play - it fails quietly and leaves the mesh in bind pose,
+	// which would have shipped as customers standing frozen in the queue. So the
+	// body comes from whichever pack the animations come from.
+	bool bMocap = true;
 	USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, bSecond
-		? TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn.SKM_Quinn")
-		: TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny.SKM_Manny"));
+		? TEXT("/Game/MC_Sample/Demo/Characters/MCUE5v2/Meshes/SKM_MCUE5Fv2.SKM_MCUE5Fv2")
+		: TEXT("/Game/MC_Sample/Demo/Characters/MCUE5v2/Meshes/SKM_MCUE5v2.SKM_MCUE5v2"));
+
+	if (!Mesh)
+	{
+		// Without that pack, the UE5 mannequin and its own animations.
+		bMocap = false;
+		Mesh = LoadObject<USkeletalMesh>(nullptr, bSecond
+			? TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn.SKM_Quinn")
+			: TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny.SKM_Manny"));
+	}
+
 	if (!Mesh || !SkelBody)
 	{
-		return; // no pack: the primitives stay
+		return; // neither pack: the primitives stay
 	}
 
 	SkelBody->SetSkeletalMesh(Mesh);
@@ -373,9 +393,44 @@ void ACigkofteCustomer::TrySetupSkeletalBody(int32 Seed)
 	SkelBody->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
 	SkelBody->SetRelativeScale3D(FVector(HeightScale));
 
-	AnimIdle = LoadObject<UAnimSequence>(nullptr, bSecond
-		? TEXT("/Game/Characters/Mannequins/Animations/Quinn/MF_Idle.MF_Idle")
-		: TEXT("/Game/Characters/Mannequins/Animations/Manny/MM_Idle.MM_Idle"));
+	if (bMocap)
+	{
+		// Idle variety matters more than it sounds: six customers queueing on
+		// one idle move in lockstep, which reads as a bug rather than as a
+		// queue. Seed picks between three.
+		const int32 Which = VisualSeed % 3;
+		AnimIdle = LoadObject<UAnimSequence>(nullptr, Which == 1
+			? TEXT("/Game/MC_Sample/Animations/Idle/am_Stand_Idle_03_LookAround.am_Stand_Idle_03_LookAround")
+			: (Which == 2
+				? TEXT("/Game/MC_Sample/Animations/Idle/am_Stand_Idle_06_ScratchArm.am_Stand_Idle_06_ScratchArm")
+				: TEXT("/Game/MC_Sample/Animations/Idle/am_Stand_Conv_Talk_05_Generic.am_Stand_Conv_Talk_05_Generic")));
+
+		// NoRM is the in-place cut. The actor is moved by VInterpConstantTo in
+		// Tick, so the root-motion version would fight it and slide.
+		AnimWalk = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Swagger/am_Loco_Walk_Swagger_NoRM.am_Loco_Walk_Swagger_NoRM"));
+
+		// A piano performance: seated, hands forward, which at a table reads as
+		// someone leaning over their food. It is the closest thing the pack has
+		// to sitting and eating, and it replaces the stopgap that dropped the
+		// body 45cm and left the legs straight.
+		AnimSit = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Piano/am_SitPiano_Play_01.am_SitPiano_Play_01"));
+		AnimHappy = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Emotions/am_Stand_React_Excited_01.am_Stand_React_Excited_01"));
+		AnimAngry = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Emotions/am_Stand_Emotion_Frustrated_01_All.am_Stand_Emotion_Frustrated_01_All"));
+	}
+	else
+	{
+		// Mannequin fallback: locomotion only, no sit and no reactions.
+		AnimIdle = LoadObject<UAnimSequence>(nullptr, bSecond
+			? TEXT("/Game/Characters/Mannequins/Animations/Quinn/MF_Idle.MF_Idle")
+			: TEXT("/Game/Characters/Mannequins/Animations/Manny/MM_Idle.MM_Idle"));
+		AnimWalk = LoadObject<UAnimSequence>(nullptr, bSecond
+			? TEXT("/Game/Characters/Mannequins/Animations/Quinn/MF_Walk_Fwd.MF_Walk_Fwd")
+			: TEXT("/Game/Characters/Mannequins/Animations/Manny/MM_Walk_InPlace.MM_Walk_InPlace"));
+	}
 	// In place on purpose: the actor is moved by VInterpConstantTo in Tick, so a
 	// root-motion walk would fight it and slide.
 	AnimWalk = LoadObject<UAnimSequence>(nullptr, bSecond
@@ -402,21 +457,29 @@ void ACigkofteCustomer::UpdateSkeletalAnim(bool bWalking)
 	{
 		return;
 	}
-	// Sitting has no animation. The mannequin set ships idle, walk, run, jump,
-	// fall and land - nothing seated - and no general animation pack contains
-	// one either (docs/Art/ANIMATION_MAPPING.md lists this as a gap). Without
-	// something here the customer stands to attention at the table, which is
-	// worse than the primitive it replaced, because the primitive at least
-	// lowered itself and mimed eating.
-	//
-	// So the body drops to seat height and keeps playing idle. The legs stay
-	// straight and go through the chair; the table hides most of it at the
-	// distance this is seen from. It is a stopgap and is meant to be replaced
-	// by a real sit as soon as one is retargeted.
-	const float SeatDrop = bSeated ? -45.f * HeightScale : 0.f;
+	// A seated animation exists now (MC_Sample), so the body no longer has to be
+	// shoved downwards to fake one. The drop is kept only for the case where
+	// that pack is absent and the old stopgap is all there is - without it the
+	// customer stands to attention at the table.
+	const float SeatDrop = (bSeated && !AnimSit) ? -45.f * HeightScale : 0.f;
 	SkelBody->SetRelativeLocation(FVector(0.f, 0.f, SeatDrop));
 
 	UAnimSequence* Want = (bWalking && AnimWalk) ? AnimWalk : AnimIdle;
+	if (bSeated && AnimSit)
+	{
+		Want = AnimSit;
+	}
+	// The reaction plays where the customer is still standing at the counter,
+	// which is the moment it is about. Once they turn and walk off, walking
+	// wins - a customer stomping in frustration while gliding to the door reads
+	// as broken rather than as angry.
+	else if (bLeaving && !bWalking)
+	{
+		if (UAnimSequence* React = bHappy ? AnimHappy : AnimAngry)
+		{
+			Want = React;
+		}
+	}
 	if (!Want || Want == AnimPlaying)
 	{
 		return; // restarting the same sequence every frame would freeze frame 0

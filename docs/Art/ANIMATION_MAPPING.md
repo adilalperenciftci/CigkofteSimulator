@@ -10,9 +10,25 @@ apprentice are static primitives that slide between positions. The only skeletal
 mesh is the cat, and only when `Cat_Animation_Pack` is installed
 (`ACigCat::TrySetupSkeletalCat`, three sequences: idle, walk, sit).
 
-## Skeleton decision
+## Skeleton decision — revised once MC_Sample was actually installed
 
-**Target: the UE5 mannequin skeleton** (`Content/Characters`, already installed).
+**Customers run on MC_Sample's own skeleton** (`SKM_MCUE5v2_Skeleton`), with the
+UE5 mannequin as the fallback when that pack is absent.
+
+The listing says MC_Sample is "rigged to the standard UE5 Mannequin" and the
+bone hierarchy may well match, but every sequence in it references its own
+`USkeleton` asset. `PlayAnimation` across two different skeleton assets does not
+play — it fails silently and leaves the mesh in bind pose. Caught by querying a
+loaded sequence's `Skeleton` property before wiring anything, which is the only
+reason it did not ship as a queue of frozen customers.
+
+So body and animation come from the same pack, always. Two bodies
+(`SKM_MCUE5v2`, `SKM_MCUE5Fv2`) chosen by seed, and if MC_Sample is missing the
+code falls back to Manny/Quinn with mannequin locomotion and no sit or
+reactions.
+
+**Retarget target for anything new: the UE5 mannequin skeleton**
+(`Content/Characters`, already installed).
 
 It is what `Game Animation Sample`, `Animation Starter Pack` and most Fab and
 Mixamo animation packs ship against, so it is the one choice that avoids
@@ -32,16 +48,16 @@ be **in place**; root motion would fight the movement component.
 | State | Source | Root motion | Loop | Notes |
 |---|---|---|---|---|
 | WalkingToQueue | Game Animation Sample / Starter Pack walk | In place | Yes | Blend space with speed |
-| Waiting | Starter Pack idle + MC Sample idles | In place | Yes | Vary per customer so a queue is not six clones |
+| Waiting | **Done** — three MC_Sample idles by seed | In place | Yes | LookAround, ScratchArm, Conv_Talk. Six customers on one idle moved in lockstep and read as a bug. |
 | Ordering | Free Animation Library gesture | In place | No | Talk/point gesture |
 | WaitingForFood | Idle variants, impatience | In place | Yes | Check watch / phone — **gesture packs may not have these; see gaps** |
 | ReceivingFood | Finger Poses + reach | In place | No | Hand alignment matters, see below |
 | Paying | Reach gesture | In place | No | Cash or card hand-off |
-| Happy | Starter Pack reaction | In place | No | |
-| Angry | Starter Pack reaction | In place | No | |
+| Happy | **Done** — `am_Stand_React_Excited_01` | In place | No | Plays while still at the counter; walking wins once they turn to leave. |
+| Angry | **Done** — `am_Stand_Emotion_Frustrated_01_All` | In place | No | Same rule — stomping while gliding to the door reads as broken. |
 | WalkingToSeat | Same walk | In place | Yes | |
-| Sitting | **Gap — stopgap in place** | In place | No | Body drops 45cm and keeps playing idle. Legs stay straight and pass through the chair; the table hides most of it. Replace with a real sit. |
-| Eating | **Gap** | In place | Yes | Hand-to-mouth loop. Nothing at all right now — a seated customer just idles. |
+| Sitting | **Done** — `am_SitPiano_Play_01` | In place | Yes | A seated piano performance: seated, hands forward, which at a table reads as leaning over food. |
+| Eating | Covered by the sit loop | In place | Yes | No separate hand-to-mouth animation; the seated pose carries it for now. |
 | Leaving | Walk | In place | Yes | |
 
 ## Staff and player
