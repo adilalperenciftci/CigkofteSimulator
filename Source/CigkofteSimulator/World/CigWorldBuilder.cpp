@@ -22,6 +22,8 @@
 #include "Components/SkyAtmosphereComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/PlayerStart.h"
+#include "GameFramework/Pawn.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "Core/CigSpawnUtils.h"
 
@@ -201,11 +203,64 @@ ACigkofteStation* UCigWorldBuilder::FindStation(ECigStation Type) const
 
 void UCigWorldBuilder::SetStationLabelsDebug(bool bDebug)
 {
+	bStationLabelsDebug = bDebug;
 	for (const TPair<ECigStation, TWeakObjectPtr<ACigkofteStation>>& Pair : Stations)
 	{
 		if (ACigkofteStation* S = Pair.Value.Get())
 		{
 			S->SetLabelDebug(bDebug);
+		}
+	}
+	// Debug wants every name at once, including the far row - that is the whole
+	// point of the overhead mode. Restore them here rather than waiting for the
+	// next range tick to notice.
+	if (bDebug)
+	{
+		for (const TPair<ECigStation, TWeakObjectPtr<ACigkofteStation>>& Pair : Stations)
+		{
+			if (ACigkofteStation* S = Pair.Value.Get())
+			{
+				S->SetLabelVisible(true);
+			}
+		}
+	}
+}
+
+void UCigWorldBuilder::UpdateSystem(float DeltaSeconds)
+{
+	LabelRangeTimer += DeltaSeconds;
+	if (LabelRangeTimer >= LabelRangeInterval)
+	{
+		LabelRangeTimer = 0.f;
+		UpdateStationLabelRange();
+	}
+}
+
+void UCigWorldBuilder::UpdateStationLabelRange()
+{
+	if (bStationLabelsDebug)
+	{
+		return; // debug shows the lot
+	}
+
+	const UWorld* World = GetWorld();
+	const APawn* Pawn = World ? UGameplayStatics::GetPlayerPawn(World, 0) : nullptr;
+	if (!Pawn)
+	{
+		return;
+	}
+
+	// Squared distance, in 2D. Height is irrelevant here - the player is on the
+	// floor and so are the counters - and comparing squares avoids twenty square
+	// roots for a test whose answer is a bool.
+	const FVector Here = Pawn->GetActorLocation();
+	constexpr float RangeSq = LabelVisibleRange * LabelVisibleRange;
+
+	for (const TPair<ECigStation, TWeakObjectPtr<ACigkofteStation>>& Pair : Stations)
+	{
+		if (ACigkofteStation* S = Pair.Value.Get())
+		{
+			S->SetLabelVisible(FVector::DistSquared2D(Here, S->GetActorLocation()) <= RangeSq);
 		}
 	}
 }

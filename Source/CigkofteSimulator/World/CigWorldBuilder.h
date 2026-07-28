@@ -31,6 +31,7 @@ class UCigWorldBuilder : public UCigSystem
 
 public:
 	virtual void OnInit() override;
+	virtual void UpdateSystem(float DeltaSeconds) override;
 
 	void BuildWorld();
 
@@ -85,6 +86,16 @@ public:
 	// Switches every station label between signage and the old overhead debug
 	// text. Follows the debug HUD, so one key controls both.
 	void SetStationLabelsDebug(bool bDebug);
+
+	// Signage is hidden past this distance.
+	//
+	// The counters stand in rows 270uu apart in depth, so from anywhere back in
+	// the room the far row's names project on top of the near row's - "BULGUR"
+	// across the fridge, "BAHARAT" across "BULASIK". Legible while working at a
+	// counter, illegible in every wide shot, which is what a store page is made
+	// of. A label is there to name the thing you are standing at; at 700uu the
+	// nearest row is named and the back wall is quiet.
+	static constexpr float LabelVisibleRange = 700.f;
 
 	// A locked district: the barrier actors are destroyed on unlock and its
 	// delivery addresses join the address pool at that moment.
@@ -148,6 +159,14 @@ public:
 	void ReleaseSeat(int32 Index);
 
 private:
+	// Signage visibility is re-evaluated on a clock, not every frame: it is a
+	// distance test across twenty stations that nothing perceives at 60 Hz, and
+	// the label only has to catch up with a walking player.
+	float LabelRangeTimer = 0.f;
+	static constexpr float LabelRangeInterval = 0.25f;
+	bool bStationLabelsDebug = false;
+	void UpdateStationLabelRange();
+
 	void BuildKitchen();
 	void BuildFurniture();
 	void BuildSeatingArea();

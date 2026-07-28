@@ -50,6 +50,10 @@ public:
 	// from anywhere, which is what you want when you are checking a layout and
 	// not what you want in a screenshot.
 	void SetLabelDebug(bool bDebug);
+	// Shows or hides the signage. Driven by distance from CigWorldBuilder, which
+	// owns the reasoning; this end only does what it is told and skips the call
+	// when nothing would change.
+	void SetLabelVisible(bool bVisible);
 
 	ECigStation StationType = ECigStation::Bulgur;
 

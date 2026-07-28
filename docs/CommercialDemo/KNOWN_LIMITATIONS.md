@@ -5,13 +5,13 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Visual
 
-- **Station signage overlaps at shallow angles.** Each station draws its own name
-  in world space, and standing back to see the whole counter puts several of them
-  on top of one another — "BULGUR" lands across the fridge, "BAHARAT" across
-  "BULAŞIK". Legible when the player is working at a station, which is when it
-  matters, and wrong in every wide shot, which is what a store page is made of.
-  Found in the `CigTour` frames taken to check the lighting change, not by
-  anybody playing.
+- **Signage pops in and out at 700uu.** Fixed the overlap it replaced — the far
+  counter row's names no longer project across the near row in wide shots — but
+  the boundary is a hard visibility switch, not a fade. `UTextRenderComponent`
+  has no opacity to animate without a custom material, so a player walking the
+  length of the shop will see names appear rather than fade up. Chosen over
+  leaving the overlap, which was wrong in every screenshot; worth revisiting if
+  the pop reads badly in motion, which nobody has watched yet.
 
 ## Verification
 

@@ -226,6 +226,14 @@ void ACigkofteStation::SetLabelDebug(bool bDebug)
 	}
 }
 
+void ACigkofteStation::SetLabelVisible(bool bVisible)
+{
+	if (Label && Label->IsVisible() != bVisible)
+	{
+		Label->SetVisibility(bVisible);
+	}
+}
+
 void ACigkofteStation::UpdateTickState()
 {
 	// Kneading always ticks; the rest only while a pop is running.
