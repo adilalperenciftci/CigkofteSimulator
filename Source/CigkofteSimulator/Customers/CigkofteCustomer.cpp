@@ -427,15 +427,11 @@ void ACigkofteCustomer::TrySetupSkeletalBody(int32 Seed)
 		AnimIdle = LoadObject<UAnimSequence>(nullptr, bSecond
 			? TEXT("/Game/Characters/Mannequins/Animations/Quinn/MF_Idle.MF_Idle")
 			: TEXT("/Game/Characters/Mannequins/Animations/Manny/MM_Idle.MM_Idle"));
+		// In place for the same reason as above: Tick moves the actor.
 		AnimWalk = LoadObject<UAnimSequence>(nullptr, bSecond
 			? TEXT("/Game/Characters/Mannequins/Animations/Quinn/MF_Walk_Fwd.MF_Walk_Fwd")
 			: TEXT("/Game/Characters/Mannequins/Animations/Manny/MM_Walk_InPlace.MM_Walk_InPlace"));
 	}
-	// In place on purpose: the actor is moved by VInterpConstantTo in Tick, so a
-	// root-motion walk would fight it and slide.
-	AnimWalk = LoadObject<UAnimSequence>(nullptr, bSecond
-		? TEXT("/Game/Characters/Mannequins/Animations/Quinn/MF_Walk_Fwd.MF_Walk_Fwd")
-		: TEXT("/Game/Characters/Mannequins/Animations/Manny/MM_Walk_InPlace.MM_Walk_InPlace"));
 
 	// The primitives were the whole customer; they are now the fallback.
 	for (UStaticMeshComponent* Part : { Body.Get(), Head.Get(), LeftArm.Get(), RightArm.Get(),

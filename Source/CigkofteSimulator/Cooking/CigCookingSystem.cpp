@@ -563,11 +563,24 @@ void UCigCookingSystem::UpdateSystem(float DeltaSeconds)
 		GM->AddMessage(CigText::Get(TEXT("msg.cooking.spoiled.fridge")), FLinearColor(1.f, 0.4f, 0.3f));
 		FridgeDough = FCigDough();
 	}
+
+	// The decay above is silent to the world until the station is told. Without
+	// this the dough held its colour until the next keypress and then vanished at
+	// zero, instead of visibly going off.
+	VisualRefreshTimer += DeltaSeconds;
+	if (VisualRefreshTimer >= VisualRefreshInterval)
+	{
+		VisualRefreshTimer = 0.f;
+		UpdateDoughVisual();
+	}
 }
 
 FCigDoughVisual UCigCookingSystem::CurrentVisual() const
 {
-	const FCigRecipe& R = Recipe(CurrentRecipe);
+	// A finished batch is measured against the recipe it was made from, not the
+	// one currently selected at the board. Otherwise flipping the selection after
+	// kneading changed the colour of dough nobody had touched.
+	const FCigRecipe& R = Recipe(Dough.IsValid() ? Dough.Recipe : CurrentRecipe);
 	FCigDoughVisual V;
 
 	if (Dough.IsValid())

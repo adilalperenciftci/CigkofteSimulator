@@ -115,6 +115,7 @@ void UCigOrderSystem::ToggleTopping(ECigTopping T)
 		// A removed topping is thrown away, never put back
 		Wrap.ToppingMask &= ~Bit;
 		GM->AddMessage(CigText::Format(TEXT("msg.order.toppingremoved"), *CigToppingName(T)), FLinearColor(0.8f, 0.8f, 0.8f));
+		UpdateToppingVisuals();
 		return;
 	}
 
@@ -141,6 +142,10 @@ void UCigOrderSystem::ToggleTopping(ECigTopping T)
 
 	Wrap.ToppingMask |= Bit;
 	GM->AddMessage(CigText::Format(TEXT("msg.order.toppingadded"), *CigToppingName(T)), FLinearColor(0.7f, 1.f, 0.7f));
+	// The mask is what the visuals read, so it has to be pushed on the same
+	// keypress. Without this the player added a topping, saw the message, and saw
+	// nothing appear on the flatbread until some other action redrew the wrap.
+	UpdateToppingVisuals();
 }
 
 void UCigOrderSystem::ToggleAyran()

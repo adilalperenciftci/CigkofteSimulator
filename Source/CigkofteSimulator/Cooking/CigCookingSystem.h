@@ -106,6 +106,11 @@ public:
 
 private:
 	double LastKneadTime = -100.0;
+	// Freshness falls every frame, so the dough has to be redrawn on a clock and
+	// not only when the player touches it. Four times a second is under the eye's
+	// threshold for a slow fade and keeps FindStation off the per-frame path.
+	float VisualRefreshTimer = 0.f;
+	static constexpr float VisualRefreshInterval = 0.25f;
 
 	void FinishDough();
 	void UpdateDoughVisual();
