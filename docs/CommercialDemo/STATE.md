@@ -100,16 +100,56 @@ of what a reviewer has to read.
 
 ## Current task
 
-**None in flight.** Development packaging and the smoke test both pass; see
-below.
+**None in flight.** Stage 1 is complete: 1.1 through 1.7 are done, packaging and
+the smoke test pass, and the performance budget has measurements in it.
+
+## Stage 1, finished
+
+- **1.1 Dough that looks like what it is.** See below.
+- **1.2 Ingredient pouring.** A scoop in the ingredient's own colour lifts out of
+  the tub, tips and drops back. No animation asset: one sine for the lift, a
+  later curve for the tip, because a scoop that starts pouring on the way up is
+  pouring back into the tub it came from.
+- **1.3 Kneading progression.** Wet bulgur slumps and gathers into a ball as
+  cohesion rises, holding its volume. The rhythm window - a stroke 0.25-0.85 s
+  after the last is worth nearly twice a mistimed one - is finally visible: the
+  dough answers the stroke it was given, and a wasted one still moves it about a
+  third as far, because no movement at all reads as a dropped input.
+- **1.4 Chopping states.** The board carries a head that shrinks and a fragment
+  per stroke, swept when the garnish finishes. Pooled, and scattered from a fixed
+  table so pieces accumulate rather than appearing to move.
+- **1.5 Topping placement.** A table instead of index arithmetic: parsley is
+  scattered flecks, tomato two slices, molasses a drizzle down the bread.
+- **1.6 Readable recoverable failures.** The bowl now says what is wrong while it
+  can still be fixed, and whether it still can. See below.
+- **1.7 Deterministic tests.** Every derivation added here is pure and tested;
+  74 → 81.
 
 ## Next exact task
 
-**Stage 1.2** — ingredient pouring with procedural utensil motion. See `PLAN.md`.
+**Stage 2** — opening and closing routines, physical stock, storage rules,
+batch spoilage. See `PLAN.md`.
 
-Also open, and worth doing before more content: the performance baseline. Every
-row in `PERFORMANCE_BUDGET.md` is still TBD, so nothing on this branch has been
-measured against a budget.
+Before more content, two things are worth doing: the shop interior is the
+measured performance problem (74 FPS in the room the game is played in against
+88 across the whole route), and nobody has played this branch.
+
+## What the last three slices found
+
+Each of these was in the shipped build and none of them was found by playing.
+
+- **The isot target was uninitialised memory.** `TargetCounts` fills the array by
+  name and summed indices 0..3; the enum runs Bulgur, Isot, Salca, Su, Baharat,
+  so it read the isot slot nothing had written and skipped baharat. The number
+  the HUD showed came out different on every run - "İsot 0 / 6", "0 / 3", "0 / 2",
+  "0 / 1" across four captures of the same recipe. Found by a diagnosis test
+  failing on a mix that was on target by construction.
+- **The counters were knee-high.** A four-metre counter mesh measured against a
+  90cm cube fits at 0.22 scale. Height is now the binding measurement and the
+  model may overhang its footprint.
+- **The molasses drizzle ran off the bread.** Six pieces at 4.8 apart is a 24cm
+  run and it started at -13. Caught by the placement test on the day it was
+  written.
 
 ## Review fixes applied after the last push
 
