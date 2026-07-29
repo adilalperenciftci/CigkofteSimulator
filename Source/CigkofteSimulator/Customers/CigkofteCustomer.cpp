@@ -441,6 +441,13 @@ void ACigkofteCustomer::TrySetupSkeletalBody(int32 Seed)
 		// Named for a spellbook and shaped like rolling a wrap.
 		AnimWrap = LoadObject<UAnimSequence>(nullptr,
 			TEXT("/Game/MC_Sample/Animations/Spellbook/am_SpellBook_02_Read_Loop_01.am_SpellBook_02_Read_Loop_01"));
+
+		// Waiting badly. A milder clip than the one played on the way out, and
+		// deliberately a different one: a customer who stomps while queueing and
+		// then stomps again while leaving looks like a bug rather than like
+		// someone who was kept waiting and then left.
+		AnimImpatient = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Emotions/am_Stand_Emotion_Frustrated_01_StompFeet.am_Stand_Emotion_Frustrated_01_StompFeet"));
 	}
 	else
 	{
@@ -513,6 +520,15 @@ void ACigkofteCustomer::UpdateSkeletalAnim(bool bWalking)
 		{
 			Want = Job;
 		}
+	}
+
+	// Running out of patience while standing in the queue. Below a third is late
+	// enough that the player still has time to do something about it, which is
+	// the only point at which showing it is worth anything.
+	if (!bWalking && !bLeaving && bArrived && !bSeated && AnimImpatient
+		&& MaxPatience > 0.f && Patience / MaxPatience < 0.34f)
+	{
+		Want = AnimImpatient;
 	}
 
 	if (bSeated && AnimSit)

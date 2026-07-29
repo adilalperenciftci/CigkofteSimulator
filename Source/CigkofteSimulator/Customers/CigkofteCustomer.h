@@ -116,6 +116,11 @@ private:
 	UPROPERTY() TObjectPtr<class UAnimSequence> AnimSit;
 	UPROPERTY() TObjectPtr<class UAnimSequence> AnimHappy;
 	UPROPERTY() TObjectPtr<class UAnimSequence> AnimAngry;
+	// Queueing with patience running out. The last customer state that had no
+	// clip: until now a customer about to walk out looked exactly like one who
+	// had just arrived, and the patience bar over their head was the only thing
+	// saying otherwise.
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimImpatient;
 
 	// Working at a station. This class doubles as the apprentice NPC, which is
 	// the only body in the shop the player ever sees do the job - so these are
