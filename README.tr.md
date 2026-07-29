@@ -25,8 +25,10 @@ tarif.*
 | *Dükkân cephesi, tente ve caddeden gelen kuyruk* | *Yoğurma: sol tıkla harcı hazırla* |
 | ![Tablet — dükkân geliştirmeleri](docs/screenshots/04_tablet_dukkan.png) | ![Tablet — görevler](docs/screenshots/05_tablet_gorevler.png) |
 | *Dükkân geliştirmeleri* | *Günlük görevler, hikâye hedefleri, müdavimler* |
-| ![Doğrama tahtası](docs/screenshots/07_dograma.png) | ![Oturma alanı](docs/screenshots/06_salon.png) |
-| *Doğrama: bir garnitürün dört vuruşundan ikisi* | *Yerinde yiyen müşteriler masaya oturur* |
+| ![Doğrama tahtası](docs/screenshots/07_dograma.png) | ![Çırak iş başında](docs/screenshots/08_cirak.png) |
+| *Doğrama: bir garnitürün dört vuruşundan ikisi* | *Çırak, verdiğiniz işin tezgâhında çalışır* |
+| ![Oturma alanı](docs/screenshots/06_salon.png) | |
+| *Yerinde yiyen müşteriler masaya oturur* | |
 
 ## Oynanış
 

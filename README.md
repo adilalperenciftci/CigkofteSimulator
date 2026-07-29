@@ -31,8 +31,10 @@ order on the right and the recipe on the left.*
 | *The shop front, the awning and the queue coming off the street* | *Kneading: hold the rhythm with the left mouse button* |
 | ![Tablet — shop upgrades](docs/screenshots/04_tablet_dukkan.png) | ![Tablet — quests](docs/screenshots/05_tablet_gorevler.png) |
 | *Shop upgrades* | *Daily quests, story goals, regulars* |
-| ![The chopping board](docs/screenshots/07_dograma.png) | ![The seating area](docs/screenshots/06_salon.png) |
-| *Chopping, two strokes of four into a garnish* | *Customers who eat in take a table* |
+| ![The chopping board](docs/screenshots/07_dograma.png) | ![The apprentice at work](docs/screenshots/08_cirak.png) |
+| *Chopping, two strokes of four into a garnish* | *The apprentice works whichever station you assign them to* |
+| ![The seating area](docs/screenshots/06_salon.png) | |
+| *Customers who eat in take a table* | |
 
 ## Playing it
 

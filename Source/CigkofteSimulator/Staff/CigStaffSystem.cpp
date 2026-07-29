@@ -502,12 +502,44 @@ void UCigStaffSystem::DoWork()
 	}
 }
 
+// Which working animation a job reads as.
+//
+// The mapping is by motion, not by name: chopping and cleaning are both a pair
+// of hands worked over a surface in front of you, and the till and the packing
+// bench are both reaching and handing something over. Four clips cover five jobs
+// because two of the jobs look the same from across a shop, and pretending
+// otherwise would need animations nobody has.
+static ACigkofteCustomer::EWorkAnim WorkAnimForTask(ECigStaffTask Task)
+{
+	switch (Task)
+	{
+	case ECigStaffTask::Dograma:  return ACigkofteCustomer::EWorkAnim::Work;
+	case ECigStaffTask::Temizlik: return ACigkofteCustomer::EWorkAnim::Work;
+	case ECigStaffTask::Kasa:     return ACigkofteCustomer::EWorkAnim::Serve;
+	case ECigStaffTask::Paket:    return ACigkofteCustomer::EWorkAnim::Wrap;
+	case ECigStaffTask::Stok:     return ACigkofteCustomer::EWorkAnim::Reach;
+	default:                      return ACigkofteCustomer::EWorkAnim::None;
+	}
+}
+
 void UCigStaffSystem::UpdateSystem(float DeltaSeconds)
 {
 	const UCigDaySystem* Days = GM ? GM->Days.Get() : nullptr;
 	if (!Apprentice.bHired || !Days || !Days->IsPlaying())
 	{
 		return;
+	}
+
+	// What the apprentice looks like they are doing, from what they are doing.
+	//
+	// Pushed every tick rather than on assignment because the job can change from
+	// several places - the player cycling it, a specialism being earned, the
+	// morning reset - and a body still kneading after being moved to the till is
+	// worse than one that never animated at all. SetWorkAnim ignores a repeat, so
+	// this costs an enum compare.
+	if (ApprenticeNPC && IsValid(ApprenticeNPC))
+	{
+		ApprenticeNPC->SetWorkAnim(WorkAnimForTask(Apprentice.Task));
 	}
 
 	WorkTimer += DeltaSeconds;

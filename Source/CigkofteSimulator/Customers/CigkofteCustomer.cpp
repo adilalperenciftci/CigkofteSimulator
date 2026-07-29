@@ -420,6 +420,27 @@ void ACigkofteCustomer::TrySetupSkeletalBody(int32 Seed)
 			TEXT("/Game/MC_Sample/Animations/Emotions/am_Stand_React_Excited_01.am_Stand_React_Excited_01"));
 		AnimAngry = LoadObject<UAnimSequence>(nullptr,
 			TEXT("/Game/MC_Sample/Animations/Emotions/am_Stand_Emotion_Frustrated_01_All.am_Stand_Emotion_Frustrated_01_All"));
+
+		// The work set, chosen by what the motion is rather than by what the clip
+		// was named for. All four are already in the project and on this
+		// skeleton, so they cost nothing and need no retargeting.
+		//
+		// Drill held low: standing over a surface, both hands working something
+		// in front at waist height, repeating. That is kneading, and it is
+		// chopping, and it is the closest thing to either that any general
+		// animation pack contains - because no pack contains the real ones.
+		AnimWork = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Drill/am_StandDrillLow_01_Drill.am_StandDrillLow_01_Drill"));
+		// Reaching into a machine, which is the same shape as reaching into a tub.
+		AnimReach = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/VendingMachine/am_Vend_Start.am_Vend_Start"));
+		// Taking the item out and offering it forward: the hand-off.
+		AnimServe = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/VendingMachine/am_Vend_Success_GrabItem.am_Vend_Success_GrabItem"));
+		// Both hands held in front, working over something held between them.
+		// Named for a spellbook and shaped like rolling a wrap.
+		AnimWrap = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Spellbook/am_SpellBook_02_Read_Loop_01.am_SpellBook_02_Read_Loop_01"));
 	}
 	else
 	{
@@ -447,6 +468,19 @@ void ACigkofteCustomer::TrySetupSkeletalBody(int32 Seed)
 	UpdateSkeletalAnim(false);
 }
 
+void ACigkofteCustomer::SetWorkAnim(EWorkAnim InWork)
+{
+	if (WorkAnim == InWork)
+	{
+		return;
+	}
+	WorkAnim = InWork;
+	// Pushed straight through rather than waiting for the next movement update:
+	// the apprentice changes job while standing still, and the walking tick is
+	// the only other thing that would notice.
+	UpdateSkeletalAnim(false);
+}
+
 void ACigkofteCustomer::UpdateSkeletalAnim(bool bWalking)
 {
 	if (!bSkeletal || !SkelBody)
@@ -461,6 +495,26 @@ void ACigkofteCustomer::UpdateSkeletalAnim(bool bWalking)
 	SkelBody->SetRelativeLocation(FVector(0.f, 0.f, SeatDrop));
 
 	UAnimSequence* Want = (bWalking && AnimWalk) ? AnimWalk : AnimIdle;
+
+	// Work beats standing but loses to walking: an apprentice kneading while
+	// sliding across the shop is the same defect the reaction animations had.
+	if (!bWalking && WorkAnim != EWorkAnim::None)
+	{
+		UAnimSequence* Job = nullptr;
+		switch (WorkAnim)
+		{
+		case EWorkAnim::Work:  Job = AnimWork;  break;
+		case EWorkAnim::Reach: Job = AnimReach; break;
+		case EWorkAnim::Serve: Job = AnimServe; break;
+		case EWorkAnim::Wrap:  Job = AnimWrap;  break;
+		default: break;
+		}
+		if (Job)
+		{
+			Want = Job;
+		}
+	}
+
 	if (bSeated && AnimSit)
 	{
 		Want = AnimSit;

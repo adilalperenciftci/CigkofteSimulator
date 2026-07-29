@@ -62,17 +62,36 @@ be **in place**; root motion would fight the movement component.
 
 ## Staff and player
 
+Only the apprentice has a body here. The player is in first person, so the staff
+NPC is the one figure in the shop anybody ever sees do the job — which is why
+these are wired to `ECigStaffTask` and nowhere else.
+
 | State | Source | Notes |
 |---|---|---|
-| Idle | Starter Pack | At the counter |
-| AddingIngredient | **Gap** | Reach into a tub and pour |
-| Kneading | **Gap** | The signature motion of this game |
-| Chopping | **Gap** | Repeating downstroke |
-| BuildingWrap | **Gap** | Placing toppings |
-| Wrapping | **Gap** | Rolling the flatbread |
-| Packing | **Gap** | Bag or plate |
-| Serving | Reach + Finger Poses | Hand-off, shares with customer's ReceivingFood |
-| Cleaning | **Gap** | Wiping motion |
+| Idle | MC_Sample idles | At the counter |
+| Kneading | **Done** — `am_StandDrillLow_01_Drill` | Standing over a surface, both hands working something at waist height, repeating |
+| Chopping | **Done** — same clip | Same motion at this distance; see below |
+| Cleaning | **Done** — same clip | Also a pair of hands worked over a surface |
+| AddingIngredient / restock | **Done** — `am_Vend_Start` | Reaching into a machine is the shape of reaching into a tub |
+| Serving | **Done** — `am_Vend_Success_GrabItem` | Taking the item out and offering it forward |
+| Wrapping / packing | **Done** — `am_SpellBook_02_Read_Loop_01` | Both hands in front, working over something held between them |
+| BuildingWrap | Covered by the wrap loop | No separate topping-placing motion |
+
+### Why these clips
+
+All four were already in the project, on the right skeleton, licensed with
+MC_Sample. Nothing was downloaded and nothing needed retargeting.
+
+They are chosen by **what the motion is**, not by what the clip was named for. A
+drill held low and a knife worked on a board are the same silhouette from across
+a shop; a vending machine and an ingredient tub are both something you reach into
+and take from. Four clips cover five jobs because two of the jobs genuinely look
+alike, and splitting them would need animations that do not exist.
+
+This is option 2 from the list below — retarget an approximate clip — chosen over
+option 3 because the apprentice is watched from several metres away across a
+counter, where the difference between an approximate motion and an authored one
+is smaller than the difference between an approximate motion and none.
 
 ## The cat
 
@@ -83,10 +102,14 @@ assuming these need authoring.
 
 ## The gaps, stated plainly
 
-Nine of the staff states and two customer states have no source. This is not a
-research failure — **no general animation pack contains kneading çiğköfte,
-rolling a dürüm or portioning bulgur.** They are specific to this game and will
-not appear by downloading more packs.
+**No general animation pack contains kneading çiğköfte, rolling a dürüm or
+portioning bulgur.** They are specific to this game and will not appear by
+downloading more packs — which is the finding, not a research failure. What
+exists are motions of the right shape, and the staff table above is now filled
+from them.
+
+Still genuinely missing: the two customer states, WaitingForFood impatience
+(checking a watch or a phone) and a distinct ReceivingFood reach.
 
 Realistic options, cheapest first:
 

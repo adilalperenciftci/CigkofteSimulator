@@ -12,6 +12,8 @@
 #include "Events/CigEventSystem.h"
 #include "Delivery/CigDeliverySystem.h"
 #include "Cat/CigCatSystem.h"
+#include "Staff/CigStaffSystem.h"
+#include "Customers/CigkofteCustomer.h"
 #include "Cat/CigCat.h"
 #include "Save/CigSaveSubsystem.h"
 #include "World/CigWorldBuilder.h"
@@ -744,7 +746,17 @@ void UCigCheatManager::ShotStep()
 		Shot(TEXT("03_yogurma"));
 		break;
 
-	case 9: // the chopping board, part-way through a garnish
+	case 9: // hire, so there is a body in the shop doing the job
+		// The apprentice is the only figure the player ever sees work: the
+		// player themselves is in first person. Without one hired, every
+		// working animation in the build is unreachable from a screenshot.
+		if (Mode->Staff && !Mode->Staff->Apprentice.bHired)
+		{
+			Mode->Staff->Hire();
+		}
+		break;
+
+	case 10: // the chopping board, part-way through a garnish
 		// Two strokes in, so the board carries a part-cut head and the pieces
 		// taken off it. An untouched board shows only the head, which says
 		// nothing about what chopping looks like.
@@ -756,33 +768,48 @@ void UCigCheatManager::ShotStep()
 		Place(FVector(380.f, 700.f, 130.f), 10.f, -22.f);
 		break;
 
-	case 10:
+	case 11:
 		Shot(TEXT("07_dograma"));
 		break;
 
-	case 11: // tablet: shop upgrades
+	case 12: // the apprentice, working
+		// Framed off the NPC rather than from a fixed spot: the staff system
+		// moves them to whichever station their job is at, so a hardcoded camera
+		// finds an empty counter about four times in five.
+		if (Mode->Staff && Mode->Staff->ApprenticeNPC)
+		{
+			const FVector NPC = Mode->Staff->ApprenticeNPC->GetActorLocation();
+			Place(NPC + FVector(-190.f, -120.f, 130.f), 32.f, -8.f);
+		}
+		break;
+
+	case 13:
+		Shot(TEXT("08_cirak"));
+		break;
+
+	case 14: // tablet: shop upgrades
 		Mode->bTabletOpen = true;
 		Mode->TabletTab = ECigTabletTab::Dukkan;
 		break;
 
-	case 12:
+	case 15:
 		Shot(TEXT("04_tablet_dukkan"));
 		break;
 
-	case 13:
+	case 16:
 		Mode->TabletTab = ECigTabletTab::Gorevler;
 		break;
 
-	case 14:
+	case 17:
 		Shot(TEXT("05_tablet_gorevler"));
 		break;
 
-	case 15:
+	case 18:
 		Mode->bTabletOpen = false;
 		Place(FVector(-100.f, 700.f, 110.f), 135.f, -10.f);
 		break;
 
-	case 16:
+	case 19:
 		Shot(TEXT("06_salon"));
 		break;
 
