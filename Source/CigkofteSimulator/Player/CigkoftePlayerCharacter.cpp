@@ -9,6 +9,8 @@
 #include "Cat/CigCat.h"
 #include "Cat/CigCatSystem.h"
 #include "Delivery/CigDeliverySystem.h"
+#include "Inventory/CigInventorySystem.h"
+#include "Inventory/CigStockCrate.h"
 #include "Progression/CigProgressionSystem.h"
 #include "Progression/CigSkillSystem.h"
 #include "Vehicles/CigCar.h"
@@ -474,6 +476,17 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 				Mode->CatSys->Pet();
 			}
 		}
+		else if (FocusedCrate && Mode->Inventory)
+		{
+			// Unloading is work, not service: it goes through whenever the
+			// stations do, so the morning's deliveries can be put away before
+			// the door opens.
+			const UCigDaySystem* Days = Mode->Days.Get();
+			if (Days && Days->CanWork())
+			{
+				Mode->Inventory->UnloadCrate(FocusedCrate);
+			}
+		}
 		else
 		{
 			Mode->HandleInteract(FocusedStation);
@@ -555,7 +568,12 @@ void ACigkoftePlayerCharacter::UpdateFocus()
 	{
 		FocusedStation->SetHighlighted(false);
 	}
+	if (FocusedCrate)
+	{
+		FocusedCrate->SetHighlighted(false);
+	}
 	FocusedStation = nullptr;
+	FocusedCrate = nullptr;
 	bCarFocused = false;
 	bCatFocused = false;
 	if (!Camera || bDriving)
@@ -584,6 +602,11 @@ void ACigkoftePlayerCharacter::UpdateFocus()
 		if (Cast<ACigCat>(Hit.GetActor()))
 		{
 			bCatFocused = true;
+		}
+		FocusedCrate = Cast<ACigStockCrate>(Hit.GetActor());
+		if (FocusedCrate)
+		{
+			FocusedCrate->SetHighlighted(true);
 		}
 	}
 }

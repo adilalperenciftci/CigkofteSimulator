@@ -5,6 +5,7 @@
 #include "Game/CigDaySystem.h"
 #include "Cooking/CigCookingSystem.h"
 #include "Cooking/CigMixDiagnosis.h"
+#include "Inventory/CigStockCrate.h"
 #include "Orders/CigOrderSystem.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Customers/CigkofteCustomer.h"
@@ -845,6 +846,14 @@ void ACigkofteHUD::DrawPrompt(ACigkofteGameMode* GM)
 	{
 		const FString CatName = GM->CatSys ? GM->CatSys->CatName : CigText::Get(TEXT("hud.cat"));
 		ShadowCenterText(CigText::Format(TEXT("hud.petcat"), *CatName), PromptY, FontBody, HeadScale, FLinearColor(1.f, 0.8f, 0.9f));
+	}
+	else if (PC->FocusedCrate)
+	{
+		// A crate wins over a station because the player has walked away from the
+		// counter to reach it. Its own label already says what is inside; this
+		// says what pressing the key will do.
+		ShadowCenterText(PC->FocusedCrate->GetPromptText(), PromptY, FontBody, HeadScale,
+			FLinearColor(0.7f, 1.f, 0.75f));
 	}
 	else if (PC->FocusedStation)
 	{

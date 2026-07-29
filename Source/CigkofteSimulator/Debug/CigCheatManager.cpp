@@ -21,7 +21,9 @@
 #include "Core/CigRandomSubsystem.h"
 #include "Core/CigBalance.h"
 #include "Inventory/CigStorage.h"
+#include "Inventory/CigStockCrate.h"
 #include "UI/CigTabletData.h"
+#include "Core/CigText.h"
 #include "Core/CigLog.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/GameInstance.h"
@@ -699,6 +701,14 @@ void UCigCheatManager::ShotStep()
 	switch (ShotIndex++)
 	{
 	case 0: // show the shop stocked and upgraded
+		// English, because these pictures are read on GitHub.
+		//
+		// The repository is English throughout and every screenshot in it was a
+		// Turkish HUD, so the one part of the README a visitor cannot skim was the
+		// part doing the explaining. The game still ships Turkish first - this
+		// changes the shot, not the default. Station signs stay as they are: isot
+		// and salça are what the ingredients are called.
+		CigText::SetLanguage(1);
 		Mode->StartFirstDayIfIntro();
 		// A day now begins in preparation. Every one of these callers wants
 		// the shop trading - a screenshot of an empty queue, a benchmark of
@@ -715,6 +725,18 @@ void UCigCheatManager::ShotStep()
 		// the one at the top of the README. A hero shot is a choice, not a die
 		// roll - the weather layers stay in the game and out of the pictures.
 		if (Mode->Events) { Mode->Events->TumOlaylariBitir(); }
+		// A delivery standing by the door for the whole tour. Queued with no time
+		// left rather than ordered: a real order takes the supplier's delivery
+		// time, which is longer than this entire run.
+		if (Mode->Inventory)
+		{
+			FCigPendingOrder Kasa;
+			Kasa.Item = CigStockMarul;
+			Kasa.Amount = 9;
+			Kasa.Quality = 1.f;
+			Kasa.TimeLeft = 0.f;
+			Mode->Inventory->PendingOrders.Add(Kasa);
+		}
 		break;
 
 	case 1: // called early so the customers have time to walk in
@@ -857,6 +879,35 @@ void UCigCheatManager::ShotStep()
 
 	case 21:
 		Shot(TEXT("06_salon"));
+		break;
+
+	case 22: // the delivery, framed off the crate itself
+		// Pointed at the actor rather than at where the actor is supposed to be.
+		// Two attempts at guessing this from the shop layout produced frames with
+		// no crate in them, one of which was hiding a real bug - the crate was at
+		// the world origin - and one of which was simply the wrong direction.
+		//
+		// Standing 200 units off it and looking straight at it produced a frame of
+		// the street: the shop front is open, so a short lens that close to the
+		// counter looks out over it and past the crate entirely. Pulled back into
+		// the room instead, wide enough that the counter run and the crate are both
+		// in shot - the picture is meant to show a delivery blocking the place it
+		// arrived in, which needs the place in it too.
+		if (Mode->Inventory && Mode->Inventory->Crates.Num() > 0)
+		{
+			if (const ACigStockCrate* Kasa = Mode->Inventory->Crates[0].Get())
+			{
+				const FVector K = Kasa->GetActorLocation();
+				const FVector Cam(-120.f, -680.f, 190.f);
+				const FVector D = K - Cam;
+				Place(Cam, FMath::RadiansToDegrees(FMath::Atan2(D.Y, D.X)),
+					FMath::RadiansToDegrees(FMath::Atan2(D.Z + 20.f, D.Size2D())));
+			}
+		}
+		break;
+
+	case 23:
+		Shot(TEXT("10_teslimat"));
 		break;
 
 	default:

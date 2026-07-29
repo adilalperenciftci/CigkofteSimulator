@@ -734,3 +734,8 @@ msg.inventory.nofridgeroom,"Buzdolabında yer yok — {0} sığmıyor","No room 
 msg.inventory.noshelfroom,"Rafta yer yok — {0} sığmıyor","No room on the shelf — {0} will not fit"
 msg.inventory.partial,"Sadece {0} {1} sığdı","Only {0} {1} would fit"
 tablet.stock.cold,"Buzdolabı {0}/{1}","Fridge {0}/{1}"
+prompt.crate,"[E] {0} x{1} kaldır","[E] Put away {0} x{1}"
+msg.inventory.cratearrived,"Teslimat geldi: {0} {1} — kapının yanında","Delivery arrived: {0} {1} — by the door"
+msg.inventory.crateunloaded,"{0} {1} kilere kaldırıldı","{0} {1} put away"
+msg.inventory.cratenoroom,"{0} için yer yok — kasa bekliyor","No room for {0} — the crate waits"
+msg.inventory.crateovernight,"Dışarıda kalan {0} birim gece kilere kaldırıldı","{0} units left out were put away overnight"

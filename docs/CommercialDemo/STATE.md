@@ -100,8 +100,34 @@ of what a reviewer has to read.
 
 ## Current task
 
-**None in flight.** Stage 1 is complete: 1.1 through 1.7 are done, packaging and
-the smoke test pass, and the performance budget has measurements in it.
+**None in flight.** Stage 1 is complete, and Stage 2.1 and 2.2 with it: packaging
+and the smoke test pass, and the performance budget has measurements in it.
+
+## Stage 2.1 and 2.2, finished
+
+- **2.1 A day with a shape.** `ECigPhase` splits the day into Intro, Opening,
+  Playing, Closing, Summary and GameOver, and `CanWork()` is what the systems ask
+  instead of `IsPlaying()`. Preparation and cleaning now have somewhere to happen
+  without summoning customers into an empty shop.
+- **2.1 Storage rules.** `CigStorage` gives the dry shelf a per-item limit and the
+  fridge one shared pool, so the paid `BuyukBuzdolabi` upgrade has its first
+  plannable effect and an order can be refused for want of room rather than money.
+  Pinned against `Stock.csv` after the first capacity number - 40, chosen without
+  reading the CSV - started the game two units over its own limit.
+- **2.2 Physical stock.** A delivery arrives as an `ACigStockCrate` standing in the
+  shop, labelled with what is in it, and becomes stock only when the player unloads
+  it with E. Capacity is checked on unload as well as on order, so a part-load
+  leaves the remainder on the crate rather than overflowing the fridge; perishables
+  wilt visibly while they stand there, and whatever is still out at close is put
+  away overnight at the quality it has by then. Stock no longer teleports.
+
+Three positioning bugs, all found by looking rather than reasoning: the crate stood
+at the world origin because the mesh was the root component and `Setup`'s relative
+location *is* the actor location; the first row of spots was 44 degrees off the axis
+a player at the counter looks down, so the delivery arrived outside the field of
+view of the room it arrived in; and the label rendered inside the box, because a
+child's relative location is multiplied by its parent's scale and the body is
+scaled to 0.4 in Z - only the "9" of "Marul x9" poked out of the end.
 
 ## Stage 1, finished
 
@@ -127,12 +153,23 @@ the smoke test pass, and the performance budget has measurements in it.
 
 ## Next exact task
 
-**Stage 2** — opening and closing routines, physical stock, storage rules,
-batch spoilage. See `PLAN.md`.
+**The English text that is not English.** The game has a language setting, and 46
+strings ignore it: they were written with `LOCTEXT` while the rest of the project
+uses `CigText` and `Config/Text/Strings.csv`, and no `.po` or `.locres` data has
+ever existed to translate them. Thirty-seven are in `CigTabletData.cpp`. Alongside
+them, `PopularityTitle()`, the recipe and supplier tables and every `SEVIYE %d`
+label are hardcoded Turkish literals that never reach the text system at all.
 
-Before more content, two things are worth doing: the shop interior is the
-measured performance problem (74 FPS in the room the game is played in against
-88 across the whole route), and nobody has played this branch.
+This is visible from outside: the README is English and its screenshots are the
+game explaining itself, so the untranslated rows are exactly the part a visitor
+cannot skim. `CigShots` now takes its pictures in English, which is what exposed
+the gap.
+
+Then **Stage 2.3** — batch spoilage. See `PLAN.md`.
+
+Two older items still stand: the shop interior is the measured performance problem
+(74 FPS in the room the game is played in against 88 across the whole route), and
+nobody has played this branch.
 
 ## What the last three slices found
 
@@ -478,12 +515,18 @@ by hand before each build.
 
 ## Last test result
 
-`Automation RunTests Cigkofte` — **69 passed, 0 failed**, exit code 0.
+`Automation RunTests Cigkofte` — **89 passed, 0 failed**, exit code 0.
 
 Test groups added on this branch: `Cigkofte.Sale`, `Cigkofte.Reviews`,
-`Cigkofte.SaveMigration`. Still missing from the commercial-demo test standard:
-`FoodVisualState`, `InventoryBatches`, `Placement`, `Localization`,
-`DataValidation` — all belong to stages not yet started.
+`Cigkofte.SaveMigration`, `Cigkofte.DoughVisual`, `Cigkofte.MixDiagnosis`,
+`Cigkofte.ToppingVisual`, `Cigkofte.Storage`, `Cigkofte.Crate`. Still missing from
+the commercial-demo test standard: `InventoryBatches` (Stage 2.3), `Localization`
+and `DataValidation`.
+
+`Cigkofte.Crate` covers the four cases a delivery has now that it is an object:
+it fits, it half-fits and the crate keeps the rest, a second press against a full
+shelf moves nothing, and nobody came to get it before closing. The fifth pins the
+point of the feature — the timer running out must not move the numbers.
 
 ## Blockers
 

@@ -13,6 +13,8 @@
 #include "Core/CigRandomSubsystem.h"
 #include "Core/CigBalance.h"
 #include "Inventory/CigStorage.h"
+#include "Inventory/CigStockCrate.h"
+#include "Core/CigSpawnUtils.h"
 #include "Player/CigkoftePlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -177,14 +179,158 @@ void UCigInventorySystem::UpdateSystem(float DeltaSeconds)
 		PendingOrders[i].TimeLeft -= DeltaSeconds;
 		if (PendingOrders[i].TimeLeft <= 0.f)
 		{
-			Add(PendingOrders[i].Item, PendingOrders[i].Amount, PendingOrders[i].Quality);
-			if (GM)
-			{
-				GM->AddMessage(CigText::Format(TEXT("msg.inventory.arrived"), PendingOrders[i].Amount, *CigStockName(PendingOrders[i].Item)), FLinearColor(0.4f, 1.f, 0.4f));
-			}
+			// A delivery arrives as a crate by the door, not as a number in the
+			// pantry. Stock used to teleport - the timer ran out and the count
+			// went up wherever the player happened to be standing - which made
+			// the supplier tab a vending machine with a delay on it.
+			SpawnCrate(PendingOrders[i]);
 			PendingOrders.RemoveAt(i);
 		}
 	}
+
+	// Crates lose quality while they stand about. Only perishables care, and only
+	// while the shop is running: a crate does not wilt during the summary screen.
+	const UCigDaySystem* Days = GM ? GM->Days.Get() : nullptr;
+	if (Days && Days->CanWork())
+	{
+		for (int32 i = Crates.Num() - 1; i >= 0; --i)
+		{
+			if (ACigStockCrate* C = Crates[i].Get())
+			{
+				C->AgeBy(DeltaSeconds);
+			}
+			else
+			{
+				Crates.RemoveAt(i);
+			}
+		}
+	}
+}
+
+void UCigInventorySystem::OnDayEnd(int32 Day)
+{
+	// Whatever is still standing about gets put away overnight, at the quality it
+	// has by then.
+	//
+	// Not lost, and not free either. Destroying a paid delivery for being ignored
+	// is a harsher rule than this game plays anywhere else, and leaving crates on
+	// the floor would need them in the save file - a schema change for a state
+	// that lasts one day. The player already paid the price in the quality the
+	// crate lost while it sat there, which is the number the sale reads.
+	int32 Kalan = 0;
+	for (int32 i = Crates.Num() - 1; i >= 0; --i)
+	{
+		if (ACigStockCrate* C = Crates[i].Get())
+		{
+			if (C->Amount > 0)
+			{
+				// Past capacity here, because the alternative is deleting it. A
+				// shop that over-fills its fridge overnight is a smaller lie
+				// than a delivery that evaporates.
+				Add(C->Item, C->Amount, C->Quality);
+				Kalan += C->Amount;
+			}
+			C->Destroy();
+		}
+	}
+	Crates.Empty();
+
+	if (Kalan > 0 && GM)
+	{
+		GM->AddMessage(CigText::Format(TEXT("msg.inventory.crateovernight"), Kalan), FLinearColor(1.f, 0.8f, 0.4f));
+	}
+}
+
+void UCigInventorySystem::SpawnCrate(const FCigPendingOrder& Order)
+{
+	UWorld* World = GetWorld();
+	if (!World || !GM)
+	{
+		return;
+	}
+
+	// Just inside the doorway, two to a side, with the middle left clear.
+	//
+	// The first version put them along the wall at y=-620, which is 44 degrees off
+	// the axis a player standing at the counter is looking down - so a delivery
+	// arrived outside the field of view of the room it arrived in, and the
+	// screenshot of the shop front did not contain it. A crate nobody can see is
+	// not in the way, which was the entire point of having one.
+	//
+	// Wrapped rather than clamped, so a fifth crate starts the row again instead
+	// of piling up on the fourth.
+	static const FVector Spots[] = {
+		FVector(-560.f, -330.f, 0.f),
+		FVector(-560.f,  330.f, 0.f),
+		FVector(-560.f, -180.f, 0.f),
+		FVector(-560.f,  180.f, 0.f),
+	};
+	const FVector Where = Spots[Crates.Num() % UE_ARRAY_COUNT(Spots)];
+
+	ACigStockCrate* Crate = World->SpawnActor<ACigStockCrate>(Where, FRotator::ZeroRotator, CigAlwaysSpawnParams());
+	if (!Crate)
+	{
+		// Without a crate the delivery would simply vanish, which is worse than
+		// teleporting it: the player paid for it.
+		Add(Order.Item, Order.Amount, Order.Quality);
+		return;
+	}
+
+	Crate->Setup(Order.Item, Order.Amount, Order.Quality);
+	Crates.Add(Crate);
+	GM->AddMessage(CigText::Format(TEXT("msg.inventory.cratearrived"), Order.Amount, *CigStockName(Order.Item)),
+		FLinearColor(0.4f, 1.f, 0.4f));
+}
+
+int32 UCigInventorySystem::UnloadCrate(ACigStockCrate* Crate)
+{
+	if (!Crate || Crate->Amount <= 0)
+	{
+		return 0;
+	}
+
+	const bool bBigFridge = GM && GM->Economy && GM->Economy->HasUpgrade(ECigUpgrade::BuyukBuzdolabi);
+	const int32 Room = CigStorage::RoomFor(Stock, Crate->Item, bBigFridge);
+	const int32 Moved = FMath::Min(Room, Crate->Amount);
+
+	if (Moved <= 0)
+	{
+		// The crate stays where it is. Refusing to unload into a full fridge is
+		// the storage rule doing its job, and the crate standing there is the
+		// reminder - so the message says why rather than just failing quietly.
+		if (GM)
+		{
+			GM->AddMessage(CigText::Format(TEXT("msg.inventory.cratenoroom"), *CigStockName(Crate->Item)),
+				FLinearColor(1.f, 0.6f, 0.2f));
+		}
+		return 0;
+	}
+
+	Add(Crate->Item, Moved, Crate->Quality);
+	Crate->Amount -= Moved;
+
+	if (GM)
+	{
+		GM->AddMessage(CigText::Format(TEXT("msg.inventory.crateunloaded"), Moved, *CigStockName(Crate->Item)),
+			FLinearColor(0.4f, 1.f, 0.4f));
+		// The crate/container sound, which is what Pot already is - a new one
+		// would need an asset and this is the right noise for it.
+		GM->PlaySound(ECigSound::Pot);
+	}
+
+	// A part-unloaded crate keeps standing there with the remainder on its label,
+	// which is the honest state: the shop took what fits and still owes itself
+	// the rest.
+	if (Crate->Amount <= 0)
+	{
+		Crates.Remove(Crate);
+		Crate->Destroy();
+	}
+	else
+	{
+		Crate->Setup(Crate->Item, Crate->Amount, Crate->Quality);
+	}
+	return Moved;
 }
 
 void UCigInventorySystem::ChopPress()
