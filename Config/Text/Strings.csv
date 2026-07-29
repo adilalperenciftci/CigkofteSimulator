@@ -713,3 +713,13 @@ dlg.mood.angry.2,"Rezalet, hiç beğenmedim.","Awful. I did not like it one bit.
 dlg.regular.repeatmistake,Yine mi? Geçen sefer de böyle olmuştu...,Again? It went the same way last time...
 dlg.trait.hygiene,"Şu tezgahın hali ne böyle, iğrenç!",Look at the state of that counter. Disgusting!
 dlg.trait.price,Bu fiyata bu mu? Pahalı geldi.,This is what that price buys? Too expensive.
+mix.nobulgur,"Bulgur yok — önce bulgur ekle","No bulgur — add bulgur first"
+mix.toolittle.su,"Su az — biraz su ekle","Not enough water — add some"
+mix.toomuch.su,"Su fazla — bulgurla dengele","Too much water — balance it with bulgur"
+mix.toolittle.salca,"Salça az — biraz salça ekle","Not enough paste — add some"
+mix.toomuch.salca,"Salça fazla — bulgurla dengele","Too much paste — balance it with bulgur"
+mix.toolittle.baharat,"Baharat az — biraz baharat ekle","Not enough spice — add some"
+mix.toomuch.baharat,"Baharat fazla — bulgurla dengele","Too much spice — balance it with bulgur"
+mix.toolittle.isot,"İsot az — bu tarif daha acı olmalı","Not enough isot — this recipe wants more heat"
+mix.toomuch.isot,"İsot fazla — bulgurla seyrelt","Too much isot — dilute it with bulgur"
+mix.unfixable,"Kase doldu — düzeltmek için boşalt (G)","The bowl is full — dump it to start over (G)"

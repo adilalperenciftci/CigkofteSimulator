@@ -4,6 +4,7 @@
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigDaySystem.h"
 #include "Cooking/CigCookingSystem.h"
+#include "Cooking/CigMixDiagnosis.h"
 #include "Orders/CigOrderSystem.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Customers/CigkofteCustomer.h"
@@ -486,10 +487,19 @@ void ACigkofteHUD::DrawBowlPanel(ACigkofteGameMode* GM)
 	const float X = SX(24.f);
 	const float W = SX(470.f);
 
+	// The mix diagnosis is needed before the panel is sized, because it adds
+	// rows to it. Computed once and used twice rather than derived again below.
+	const bool bDiagnose = !Cook->Dough.IsValid();
+	const FCigMixDiagnosis Tani = bDiagnose
+		? CigMix::Diagnose(Cook->Bowl, R.RatioSu, R.RatioSalca, R.RatioBaharat,
+			R.IsotMinFrac, R.IsotMaxFrac, Cook->BowlTotal(), UCigCookingSystem::BowlCapacity)
+		: FCigMixDiagnosis();
+
 	// Height by row count: title + target + 5 ingredients + kneading + dough(2) + stock summary
 	int32 RowCount = 8;
 	if (Cook->Dough.IsValid()) { RowCount += 2; }
 	if (Cook->FridgeDough.IsValid()) { RowCount += 1; }
+	if (Tani.IsProblem()) { RowCount += Tani.bFixableByAdding ? 1 : 2; }
 	const float H = LineHeight(FontBody, HeadScale) * 1.25f + BodyLH * (RowCount + 1.2f) + SX(20.f);
 	float Y = ScreenSize.Y - H - SX(24.f);
 	const float PanelTop = Y;
@@ -508,6 +518,27 @@ void ACigkofteHUD::DrawBowlPanel(ACigkofteGameMode* GM)
 		const bool bOk = Cook->Bowl[i] >= Target[i];
 		Row(CigText::Format(TEXT("hud.scoop"), *CigIngredientName(Ing), Cook->Bowl[i], Target[i]),
 			bOk ? GGood : GWhite, TX + BodyLH, Y, FontBody, BodyScale, 1.08f);
+	}
+
+	// What is wrong with the mix, while it can still be put right.
+	//
+	// The bowl was judged silently: the ratio error reached the player at the
+	// till, minutes later, as a smaller payment and a worse review. The counts
+	// above tell a careful reader what to add next; they do not say that the
+	// batch about to be kneaded is already ruined. Only shown once a batch is
+	// not on the counter, because a bowl behind a finished batch is not the
+	// thing the player is working on.
+	if (Tani.IsProblem())
+	{
+		// Amber while it is recoverable, red once the bowl is too full to
+		// dilute - the colour is the difference between "fix this" and "start
+		// over", which is the whole point of saying it at all.
+		Row(CigText::Get(CigMix::TextKey(Tani.Problem)),
+			Tani.bFixableByAdding ? GOrange : GBad, TX, Y, FontBody, BodyScale, 1.1f);
+		if (!Tani.bFixableByAdding)
+		{
+			Row(CigText::Get(TEXT("mix.unfixable")), GBad, TX, Y, FontBody, BodyScale, 1.1f);
+		}
 	}
 
 	// Kneading
