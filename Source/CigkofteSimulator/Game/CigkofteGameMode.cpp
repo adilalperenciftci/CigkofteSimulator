@@ -341,6 +341,17 @@ void ACigkofteGameMode::HandleInteract(ACigkofteStation* Station)
 		}
 		// Anything else is preparation and falls through to the normal handling.
 	}
+	else if (Days->Phase == ECigPhase::Closing)
+	{
+		// The counter is the door at both ends of the day: it opens the shop in
+		// the morning and closes the books at night. Everything else is cleaning
+		// and falls through.
+		if (Station && Station->StationType == ECigStation::Servis)
+		{
+			Days->FinishClosing();
+			return;
+		}
+	}
 	else if (Days->Phase != ECigPhase::Playing)
 	{
 		return;

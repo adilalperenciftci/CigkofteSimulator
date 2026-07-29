@@ -397,6 +397,13 @@ void ACigkofteHUD::DrawStatusPanel(ACigkofteGameMode* GM)
 	{
 		Row(CigText::Get(TEXT("hud.prep")), GOrange, TX, Y, FontBody, BodyScale, 1.05f);
 	}
+	else if (Days->Phase == ECigPhase::Closing)
+	{
+		// This clock does count down and the player can spend it, so it is shown
+		// - and in the warning colour, because the window is short by design.
+		Row(CigText::Format(TEXT("hud.closing"), FMath::CeilToInt(Days->ClosingLeft())),
+			GOrange, TX, Y, FontBody, BodyScale, 1.05f);
+	}
 	else
 	{
 		Row(CigText::Format(TEXT("hud.timeleft"), FMath::CeilToInt(FMath::Max(0.f, Days->TimeLeft))), GDim, TX, Y, FontBody, BodyScale, 1.05f);
@@ -843,12 +850,18 @@ void ACigkofteHUD::DrawPrompt(ACigkofteGameMode* GM)
 		FString Prompt = PC->FocusedStation->GetPromptText();
 		// During preparation the service counter is the door, so its prompt says
 		// so rather than offering to serve a queue that has not been let in.
-		if (GM->Days && GM->Days->Phase == ECigPhase::Opening && T == ECigStation::Servis)
+		if (GM->Days && T == ECigStation::Servis && GM->Days->Phase == ECigPhase::Opening)
 		{
 			ShadowCenterText(CigText::Get(TEXT("prompt.servis.open")), PromptY, FontBody, HeadScale,
 				FLinearColor(1.f, 0.85f, 0.4f));
 			ShadowCenterText(CigText::Get(TEXT("hud.prep.hint")), PromptY + LineHeight(FontBody, HeadScale) * 1.2f,
 				FontBody, BodyScale, GDim);
+			return;
+		}
+		if (GM->Days && T == ECigStation::Servis && GM->Days->Phase == ECigPhase::Closing)
+		{
+			ShadowCenterText(CigText::Get(TEXT("prompt.servis.close")), PromptY, FontBody, HeadScale,
+				FLinearColor(1.f, 0.85f, 0.4f));
 			return;
 		}
 		if (bStationLocked)

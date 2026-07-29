@@ -16,6 +16,14 @@ enum class ECigPhase : uint8
 	// it is the reason this phase is not simply free time.
 	Opening,
 	Playing,
+	// After the last customer, before the books. A short window with the door
+	// shut and the stations still working, for the mess the day left.
+	//
+	// Deliberately short rather than open-ended. Cleaning already competes with
+	// serving during a shift, which is the same problem preparation had; giving
+	// it unlimited time afterwards would not fix that, it would make hygiene
+	// free. A window forces the choice of which mess is worth the minute.
+	Closing,
 	Summary,
 	GameOver
 };
@@ -42,11 +50,30 @@ public:
 	// service, and the distinction matters everywhere the two were the same
 	// question before: dough ages while it is being prepared, hands get dirty
 	// kneading at half eight, and none of it summons a customer.
-	bool CanWork() const { return Phase == ECigPhase::Opening || Phase == ECigPhase::Playing; }
+	bool CanWork() const
+	{
+		return Phase == ECigPhase::Opening || Phase == ECigPhase::Playing || Phase == ECigPhase::Closing;
+	}
 
 	// Ends preparation and lets the queue in. Nothing forces it - a shop with an
 	// empty counter can open, and that is the player's call to make.
 	void OpenShop();
+
+	// Ends the closing window early and goes to the books. The window runs out
+	// on its own if the player would rather keep scrubbing.
+	void FinishClosing();
+
+	// How long the closing window lasts. Enough for two or three jobs out of the
+	// six kinds of mess the shop accumulates, which is the point.
+	static constexpr float ClosingLength = 45.f;
+
+	// Seconds left in the closing window, zero at any other time. A reader
+	// rather than opening PhaseTimer up: that field also runs the summary, and
+	// the HUD has no business knowing which phase it is counting.
+	float ClosingLeft() const
+	{
+		return Phase == ECigPhase::Closing ? FMath::Max(0.f, PhaseTimer) : 0.f;
+	}
 	float DayProgress() const { return 1.f - TimeLeft / FMath::Max(DayLength, 1.f); }
 
 	ECigPhase Phase = ECigPhase::Intro;

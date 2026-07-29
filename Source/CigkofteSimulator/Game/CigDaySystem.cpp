@@ -3,6 +3,7 @@
 #include "Game/CigkofteGameMode.h"
 #include "World/CigWorldBuilder.h"
 #include "Economy/CigEconomySystem.h"
+#include "Customers/CigCustomerSystem.h"
 #include "Core/CigLog.h"
 
 void UCigDaySystem::UpdateSystem(float DeltaSeconds)
@@ -16,6 +17,26 @@ void UCigDaySystem::UpdateSystem(float DeltaSeconds)
 			GM->WorldBuilder->UpdateSun(DayProgress());
 		}
 		if (TimeLeft <= 0.f)
+		{
+			// The clock running out shuts the door, not the books. The takings
+			// are counted after the closing window, so anything cleaned in it
+			// counts towards tomorrow.
+			Phase = ECigPhase::Closing;
+			PhaseTimer = ClosingLength;
+			if (GM)
+			{
+				if (GM->Customers)
+				{
+					GM->Customers->SendEveryoneHome();
+				}
+				GM->AddMessage(CigText::Get(TEXT("msg.day.closing")), FLinearColor(0.9f, 0.75f, 0.4f));
+			}
+		}
+		break;
+
+	case ECigPhase::Closing:
+		PhaseTimer -= DeltaSeconds;
+		if (PhaseTimer <= 0.f)
 		{
 			EndDay();
 		}
@@ -55,6 +76,15 @@ void UCigDaySystem::StartDay(bool bAdvanceDay)
 		GM->BroadcastDayStart(Day);
 	}
 	UE_LOG(LogCig, Log, TEXT("Gün %d hazırlık"), Day);
+}
+
+void UCigDaySystem::FinishClosing()
+{
+	if (Phase != ECigPhase::Closing)
+	{
+		return;
+	}
+	EndDay();
 }
 
 void UCigDaySystem::OpenShop()

@@ -727,3 +727,6 @@ msg.day.prep,"Gün {0} — hazırlık. Dükkânı açmak için servis bankosuna 
 hud.prep,"HAZIRLIK","PREPARING"
 hud.prep.hint,"Harcı hazırla, garnitür doğra — sonra servis bankosunda dükkânı aç","Prepare the mix, chop garnish — then open the shop at the service counter"
 prompt.servis.open,"[E] Dükkânı aç","[E] Open the shop"
+msg.day.closing,"Kapanış — temizliği yetiştir, sonra bankodan günü kapat","Closing — clean what you can, then close up at the counter"
+hud.closing,"KAPANIŞ {0} sn","CLOSING {0}s"
+prompt.servis.close,"[E] Günü kapat","[E] Close for the day"

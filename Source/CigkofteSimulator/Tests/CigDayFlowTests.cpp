@@ -330,8 +330,19 @@ bool FCigFullDayFlowTest::RunTest(const FString& /*Parameters*/)
 
 	const int32 ParaSatisSonrasi = Eco->Money;
 
-	// --- The day closes ---------------------------------------------------
-	Days->EndDay();
+	// --- The shop shuts, then the books close -----------------------------
+	// Two moments, not one. The clock running out empties the shop and opens a
+	// window for the mess; the takings are counted after it, so anything cleaned
+	// in that window counts towards tomorrow.
+	Days->TimeLeft = 0.f;
+	Days->UpdateSystem(0.016f);
+	TestFalse(TEXT("Süre bitince servis fazı kapanmalı"), Days->IsPlaying());
+	TestTrue(TEXT("Kapanışta hâlâ çalışılabilmeli"), Days->CanWork());
+	TestTrue(TEXT("Kapanış penceresi sayaç göstermeli"), Days->ClosingLeft() > 0.f);
+
+	Days->FinishClosing();
+	TestEqual(TEXT("Kapanış bitince özet fazına geçilmeli"), Days->Phase, ECigPhase::Summary);
+	TestEqual(TEXT("Özet fazında kapanış sayacı sıfır olmalı"), Days->ClosingLeft(), 0.f);
 
 	TestTrue(TEXT("Gün sonu kira kesmeli"), Days->LastRent > 0);
 
