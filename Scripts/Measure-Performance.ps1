@@ -230,24 +230,48 @@ if ($eventsIdx -ge 0 -and $frameIdx -ge 0) {
     }
 
     if ($marks.Count -gt 0) {
-        Write-Host ''
-        Write-Host ("  {0,-30} {1,9} {2,9} {3,9} {4,7}" -f 'durak (ms)', 'ort', 'p99', 'en kotu', 'kare')
-        for ($k = 0; $k -lt $marks.Count; $k++) {
-            $from = $marks[$k].Row
-            $to = if ($k + 1 -lt $marks.Count) { $marks[$k + 1].Row - 1 } else { $fileLines.Count - 1 }
+        # Frame time per stop says which view is expensive. The columns beside it
+        # say why, which is the question that follows immediately and used to
+        # need a second pass over the file by hand.
+        $perStop = 'RenderThreadTime', 'GPUTime', 'DrawCall/ShadowDepths',
+                   'DrawCall/Basepass', 'DrawCall/BeginOcclusionTests', 'RHI/DrawCalls'
+        $stopCols = @($perStop | Where-Object { [Array]::IndexOf($header, $_) -ge 0 })
 
-            $vals = [System.Collections.Generic.List[double]]::new()
+        Write-Host ''
+        $head = "  {0,-10} {1,8} {2,8} {3,8}" -f 'durak', 'kare ms', 'p99', 'kare'
+        foreach ($c in $stopCols) { $head += "{0,12}" -f ($c -replace '^.*/', '') }
+        Write-Host $head
+
+        foreach ($idx in 0..($marks.Count - 1)) {
+            $from = $marks[$idx].Row
+            $to = if ($idx + 1 -lt $marks.Count) { $marks[$idx + 1].Row - 1 } else { $fileLines.Count - 1 }
+
+            # One pass over the slice collecting every column, rather than one
+            # pass per column: the capture is a few thousand rows wide and the
+            # naive version re-split every line seven times.
+            $series = @{}
+            foreach ($c in @('FrameTime') + $stopCols) { $series[$c] = [System.Collections.Generic.List[double]]::new() }
+            $colIdx = @{}
+            foreach ($c in @('FrameTime') + $stopCols) { $colIdx[$c] = [Array]::IndexOf($header, $c) }
+
             for ($i = $from; $i -le $to; $i++) {
                 $parts = $fileLines[$i] -split ','
-                if ($parts.Count -le $frameIdx) { continue }
-                $d = 0.0
-                if ([double]::TryParse($parts[$frameIdx], $floatStyle, $invariant, [ref]$d)) { $vals.Add($d) }
+                foreach ($c in @('FrameTime') + $stopCols) {
+                    $ci = $colIdx[$c]
+                    if ($ci -lt 0 -or $parts.Count -le $ci) { continue }
+                    $d = 0.0
+                    if ([double]::TryParse($parts[$ci], $floatStyle, $invariant, [ref]$d)) { $series[$c].Add($d) }
+                }
             }
 
-            $s = Get-Stat -Values $vals.ToArray()
-            if ($s) {
-                Write-Host ("  {0,-30} {1,9} {2,9} {3,9} {4,7}" -f $marks[$k].Name, $s.Avg, $s.P99, $s.Max, $s.Count)
+            $s = Get-Stat -Values $series['FrameTime'].ToArray()
+            if (-not $s) { continue }
+            $line = "  {0,-10} {1,8} {2,8} {3,8}" -f $marks[$idx].Name, $s.Avg, $s.P99, $s.Count
+            foreach ($c in $stopCols) {
+                $cs = Get-Stat -Values $series[$c].ToArray()
+                $line += "{0,12}" -f $(if ($cs) { $cs.Avg } else { '-' })
             }
+            Write-Host $line
         }
     }
 }

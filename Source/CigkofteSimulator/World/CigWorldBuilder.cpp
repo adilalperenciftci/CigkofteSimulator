@@ -642,11 +642,18 @@ void UCigWorldBuilder::SpawnLights()
 				PC->SetLightColor(FLinearColor(1.f, 0.78f, 0.52f));
 				PC->SetAttenuationRadius(1250.f);
 				PC->SetIntensity(9000.f);
-				// The one point light that keeps its shadows. It is directly
-				// over the surface the player works at, where a hand and a bowl
-				// casting onto the counter is the whole reason the light is
-				// there. Its radius stops short of the walls, so it shadows the
-				// counter and not the room.
+				// This one used to keep its shadows, on the argument that a bowl
+				// casting onto the counter is the reason the light is there.
+				// The argument was fine and the measurement beat it.
+				//
+				// Per viewpoint, the shop interior was spending 495 draw calls a
+				// frame on shadow depths against the street's 59 - in the one
+				// room the whole game is played in. A movable point light draws
+				// six cube faces for every primitive in its radius, and at 1250
+				// this radius holds the counters, the walls and the furniture.
+				// Switching the small props off it first moved 523 to 495 and
+				// the frame time not at all, which is what pointed here.
+				PC->SetCastShadows(false);
 			}
 		}
 	}

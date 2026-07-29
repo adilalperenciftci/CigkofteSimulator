@@ -138,11 +138,52 @@ at the seating stop against three slow frames, and two at the shop against the
 same three — the counts and the hitches do not line up, so the interior cost is
 steady-state work and not first-sight shader compilation.
 
+## The shop interior, and one attempt that failed
+
+Per-stop slicing said the two indoor views cost 13.4 ms against 10 outdoors, and
+the scene columns said why: the shop was drawing **523 shadow depth calls a
+frame** against the street's 53.
+
+**First attempt: stop the small props casting.** Tubs, dough, scoops, chop
+fragments, topping pieces and the signage. Reasonable on the face of it — a
+movable point light renders six cube faces per primitive in its radius, and the
+counter light's radius is full of small objects.
+
+It did nothing. 523 → 495 shadow calls, and the frame went 13.44 → 13.48 ms,
+which is noise. The props were not the cost. What that ruled out was useful: if
+removing eighty small primitives moves the number by five percent, the cost is
+the large ones, and the only thing making them cast six times over is the light.
+
+**Second attempt: the counter key light stops casting.** It was the one point
+light still doing so, kept on the argument that a bowl casting onto the counter
+is the reason the light is there. The argument was fine; the measurement beat it.
+
+| | before | small props | key light off |
+|---|---:|---:|---:|
+| dukkan frame | 13.44 ms | 13.48 ms | **11.11 ms** |
+| dukkan shadow calls | 522.9 | 495.0 | **402.7** |
+| oturma frame | 13.36 ms | 13.72 ms | **9.69 ms** |
+| oturma shadow calls | 256.4 | 252.7 | **147.2** |
+| GPU memory peak | 1930 MB | 1934 MB | **1807 MB** |
+
+The shop is 17% faster and the seating area 27%. In the room the game is played
+in that is 74 → 90 FPS; in the seating area 75 → 103. GPU memory came down 123 MB
+with the shadow maps.
+
+Checked in a screenshot: the sun still shadows the interior, the counters still
+have shape, and the warm light still tints the counter without casting. What is
+lost is the pool of shade under each tub, which nobody was looking at.
+
+The small-prop change is kept even though it bought nothing measurable. Signage
+casting shadows was never intentional, and a pea of lettuce casting one is not
+either — but it is recorded here as what it was, which is a failed optimisation
+rather than a win.
+
 ## Still open
 
-- **The shop interior is the next thing to optimise**, and it is now identified
-  rather than guessed at. The whole-route average flatters it: 88 FPS across the
-  route, 74 FPS in the room the game is played in, with a 1% low of 41 FPS there.
+- The shop interior is still the most expensive view at 11.11 ms, but it is now
+  inside the 16.67 budget with room. The render thread across the route is 10.5 ms
+  against its own 8 ms target — the next thing, if there is a next thing here.
 - Load time and shipping build size have no numbers yet.
 - No minimum-spec machine has been tested. Everything above is one developer
   machine at 1080p, and the GPU budget in particular is that card's budget.

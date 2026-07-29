@@ -112,6 +112,26 @@ ACigkofteStation::ACigkofteStation()
 	Label->SetHorizontalAlignment(EHTA_Center);
 	Label->SetWorldSize(26.f);
 	Label->SetTextRenderColor(FColor::White);
+
+	// Nothing small on a counter casts a shadow.
+	//
+	// Measured per viewpoint: the shop interior was spending 523 draw calls a
+	// frame on shadow depths against the street's 53, and it is the one room the
+	// whole game is played in. The counter key light is a movable point light,
+	// which renders six cube faces for every primitive in its radius, and the
+	// radius is full of tubs, dough, scoops and signage.
+	//
+	// The counter itself keeps its shadow - that is the shape the room is read
+	// by. A tub's shadow on the counter it is standing on is not something
+	// anybody looks at, and the signage casting at all was never intentional.
+	for (UPrimitiveComponent* Small : { (UPrimitiveComponent*)Top, (UPrimitiveComponent*)Dough,
+		(UPrimitiveComponent*)Scoop, (UPrimitiveComponent*)Label })
+	{
+		if (Small)
+		{
+			Small->SetCastShadow(false);
+		}
+	}
 }
 
 void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, const FString& LabelText, float LabelYaw)
@@ -287,6 +307,7 @@ void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, cons
 			Piece->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			Piece->SetStaticMesh(i == 0 ? Cube : Sphere);
 			Piece->SetVisibility(false);
+			Piece->SetCastShadow(false); // same reasoning as the tubs
 			if (Mat)
 			{
 				// Lettuce green, and the cut pieces a shade lighter than the

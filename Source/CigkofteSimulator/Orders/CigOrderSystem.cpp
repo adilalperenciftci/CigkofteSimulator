@@ -446,6 +446,10 @@ void UCigOrderSystem::UpdateToppingVisuals()
 				UStaticMeshComponent* SC = A->GetStaticMeshComponent();
 				SC->SetMobility(EComponentMobility::Movable);
 				SC->SetStaticMesh(Sphere);
+				// A pea of lettuce does not cast. Up to 42 of these sit inside
+				// the counter light's radius, and a movable point light draws six
+				// cube faces for each of them.
+				SC->SetCastShadow(false);
 				A->SetActorEnableCollision(false);
 				if (Mat)
 				{
