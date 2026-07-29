@@ -12,6 +12,7 @@
 #include "World/CigkofteStation.h"
 #include "Core/CigRandomSubsystem.h"
 #include "Core/CigBalance.h"
+#include "Inventory/CigStorage.h"
 #include "Player/CigkoftePlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -48,6 +49,27 @@ void UCigInventorySystem::Add(int32 Item, int32 Amount, float Quality)
 	const float OldTotal = (float)Stock[Item];
 	StockQuality[Item] = (StockQuality[Item] * OldTotal + Quality * Amount) / FMath::Max(1.f, OldTotal + Amount);
 	Stock[Item] += Amount;
+}
+
+int32 UCigInventorySystem::PendingAmountFor(int32 Item) const
+{
+	// Cold goods share one pool, so an inbound crate of tomatoes takes room from
+	// a crate of lettuce. Anything cold counts against anything cold; dry goods
+	// only count against themselves.
+	const bool bCold = CigStorage::ClassOf(Item) == ECigStorageClass::Cold;
+
+	int32 Sum = 0;
+	for (const FCigPendingOrder& O : PendingOrders)
+	{
+		const bool bMatches = bCold
+			? CigStorage::ClassOf(O.Item) == ECigStorageClass::Cold
+			: O.Item == Item;
+		if (bMatches)
+		{
+			Sum += O.Amount;
+		}
+	}
+	return Sum;
 }
 
 float UCigInventorySystem::AverageIngredientQuality() const
@@ -91,6 +113,24 @@ void UCigInventorySystem::OrderStock(int32 Item)
 		return;
 	}
 
+	// Room before money. Paying for a delivery that has nowhere to go is the
+	// worst version of this rule, and checking capacity first is also the order
+	// the player thinks in: is there space, then can I afford it.
+	//
+	// Counted against what is already on the way as well as what is on the
+	// shelf. Two orders placed back to back would otherwise both pass the check
+	// and both arrive, which is the shape of every capacity bug.
+	const int32 Ordered = CigBalance::Stock(Item).OrderAmount;
+	const int32 Room = CigStorage::RoomFor(Stock, Item, Eco->HasUpgrade(ECigUpgrade::BuyukBuzdolabi))
+		- PendingAmountFor(Item);
+	if (Room <= 0)
+	{
+		const bool bCold = CigStorage::ClassOf(Item) == ECigStorageClass::Cold;
+		GM->AddMessage(CigText::Format(bCold ? TEXT("msg.inventory.nofridgeroom") : TEXT("msg.inventory.noshelfroom"),
+			*CigStockName(Item)), FLinearColor(1.f, 0.6f, 0.2f));
+		return;
+	}
+
 	const int32 Cost = OrderCost(Item);
 	if (!Eco->TrySpend(Cost))
 	{
@@ -100,7 +140,15 @@ void UCigInventorySystem::OrderStock(int32 Item)
 
 	FCigPendingOrder O;
 	O.Item = Item;
-	O.Amount = CigBalance::Stock(Item).OrderAmount;
+	// A part-load rather than a refusal. Once the fridge is tight this is the
+	// common case, and turning it away would cost the player the delivery as
+	// well as the space they did have.
+	O.Amount = FMath::Min(Ordered, Room);
+	if (O.Amount < Ordered)
+	{
+		GM->AddMessage(CigText::Format(TEXT("msg.inventory.partial"), O.Amount, *CigStockName(Item)),
+			FLinearColor(1.f, 0.8f, 0.4f));
+	}
 	O.Supplier = Eco->CurrentSupplier;
 	O.Quality = Eco->SupplierQuality() * Eco->IngredientTierQualityMult();
 	O.TimeLeft = Eco->SupplierDeliverTime();

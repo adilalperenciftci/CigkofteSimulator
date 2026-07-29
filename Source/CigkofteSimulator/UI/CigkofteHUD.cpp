@@ -176,9 +176,12 @@ void ACigkofteHUD::DrawHUD()
 		DrawEnergyBar(GM);
 		DrawTutorial(GM);
 		DrawPrompt(GM);
-		if (TabletAlpha > 0.02f)
-		{
-		}
+		// The tablet is not drawn here. It is a UMG widget put on the viewport by
+		// RefreshTabletWidget, and this is where it used to be drawn on Canvas -
+		// the empty `if (TabletAlpha > 0.02f) {}` left behind by that move has
+		// been in the file since the first commit, reading like a draw call
+		// somebody forgot to write. TabletAlpha and TabletSlide are still
+		// interpolated above because the widget reads them.
 	}
 
 	if (GM->bSettingsOpen)

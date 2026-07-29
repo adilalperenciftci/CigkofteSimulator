@@ -36,6 +36,11 @@ public:
 	// Average quality multiplier of main ingredients 0-4 (roughly 0.7 - 1.35).
 	float AverageIngredientQuality() const;
 
+	// How much of this item - or, for cold goods, of the cold pool - is already
+	// on its way. Capacity is checked against the shelf plus this, or two orders
+	// placed back to back both pass and both arrive.
+	int32 PendingAmountFor(int32 Item) const;
+
 	// --- Chopping ---
 	void ChopPress();
 

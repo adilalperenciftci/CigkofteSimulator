@@ -4,6 +4,7 @@
 #include "Core/CigUpgrades.h"
 #include "Core/CigkofteTypes.h"
 #include "Inventory/CigInventorySystem.h"
+#include "Inventory/CigStorage.h"
 #include "Economy/CigEconomySystem.h"
 #include "Economy/CigPricingSystem.h"
 #include "Economy/CigInspectionSystem.h"
@@ -104,15 +105,37 @@ namespace CigTablet
 			{
 				break;
 			}
+			// The fridge, first and once. Cold goods share one volume, so the
+			// number that decides whether an order will fit belongs above the
+			// list rather than repeated against every perishable in it.
+			const bool bBigFridge = GM->Economy && GM->Economy->HasUpgrade(ECigUpgrade::BuyukBuzdolabi);
+			const int32 ColdUsed = CigStorage::ColdUsed(Inv->Stock);
+			const int32 ColdCap = CigStorage::ColdCapacity(bBigFridge);
+			Rows.Add(MakeRow(
+				CigText::Format(TEXT("tablet.stock.cold"), ColdUsed, ColdCap),
+				FString(),
+				ColdUsed >= ColdCap ? FLinearColor(1.f, 0.5f, 0.3f) : CigUI::Dim));
+
 			for (int32 i = 0; i < CigStockCount; ++i)
 			{
 				const int32 Have = Inv->Stock[i];
 				// Low stock shifts to red so the player sees it without reading the list.
-				const FLinearColor C = Have <= 0 ? FLinearColor(1.f, 0.4f, 0.35f)
+				FLinearColor C = Have <= 0 ? FLinearColor(1.f, 0.4f, 0.35f)
 					: (Have < 5 ? FLinearColor(1.f, 0.8f, 0.35f) : CigUI::White);
+
+				// A full shelf reads differently from an empty one: amber for
+				// "cannot order more" rather than the red that means "run out".
+				const int32 Room = CigStorage::RoomFor(Inv->Stock, i, bBigFridge) - Inv->PendingAmountFor(i);
+				const bool bFull = Room <= 0;
+				if (bFull && Have > 0)
+				{
+					C = FLinearColor(0.65f, 0.65f, 0.7f);
+				}
+
 				Rows.Add(MakeRow(
 					FString::Printf(TEXT("%d) %s"), i + 1, *CigStockName(i)),
-					FString::Printf(TEXT("%d  ·  %d TL"), Have, Inv->OrderCost(i)),
+					bFull ? FString::Printf(TEXT("%d  ·  DOLU"), Have)
+						  : FString::Printf(TEXT("%d  ·  %d TL"), Have, Inv->OrderCost(i)),
 					C, true));
 			}
 			break;

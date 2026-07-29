@@ -20,6 +20,7 @@
 #include "Core/CigUpgrades.h"
 #include "Core/CigRandomSubsystem.h"
 #include "Core/CigBalance.h"
+#include "Inventory/CigStorage.h"
 #include "UI/CigTabletData.h"
 #include "Core/CigLog.h"
 #include "Kismet/GameplayStatics.h"
@@ -298,9 +299,17 @@ void UCigCheatManager::RefillStock()
 	{
 		if (Mode->Inventory)
 		{
+			// Filled to what the shop can actually hold, not to a flat 30.
+			//
+			// Thirty of everything is 300 cold units against a 60 capacity, and
+			// the tablet duly read "Buzdolabı 300/40" with every perishable
+			// marked full - a debug command producing a state the game's own
+			// rules forbid, which then looks like the rule is broken.
+			const bool bBigFridge = Mode->Economy && Mode->Economy->HasUpgrade(ECigUpgrade::BuyukBuzdolabi);
 			for (int32 i = 0; i < CigStockCount; ++i)
 			{
-				Mode->Inventory->Stock[i] = 30;
+				const int32 Room = CigStorage::RoomFor(Mode->Inventory->Stock, i, bBigFridge);
+				Mode->Inventory->Stock[i] += FMath::Min(Room, FMath::Max(0, 30 - Mode->Inventory->Stock[i]));
 			}
 			Mode->AddMessage(TEXT("[DEBUG] Stoklar dolduruldu"));
 		}
@@ -807,29 +816,46 @@ void UCigCheatManager::ShotStep()
 		Shot(TEXT("08_cirak"));
 		break;
 
-	case 14: // tablet: shop upgrades
+	case 14: // tablet: stock, where the fridge line lives
+		// The flag alone does nothing visible. The tablet is a UMG widget
+		// and RefreshTabletWidget is what puts it on the viewport, so
+		// setting bTabletOpen by hand - which this helper has always done -
+		// produced a screenshot of the room with no tablet in it. Both
+		// "tablet" pictures in the README were that.
 		Mode->bTabletOpen = true;
-		Mode->TabletTab = ECigTabletTab::Dukkan;
+		Mode->TabletTab = ECigTabletTab::Stok;
+		Mode->RefreshTabletWidget();
 		break;
 
 	case 15:
-		Shot(TEXT("04_tablet_dukkan"));
+		Shot(TEXT("09_tablet_stok"));
 		break;
 
-	case 16:
-		Mode->TabletTab = ECigTabletTab::Gorevler;
+	case 16: // tablet: shop upgrades
+		Mode->TabletTab = ECigTabletTab::Dukkan;
+		Mode->RefreshTabletWidget();
 		break;
 
 	case 17:
-		Shot(TEXT("05_tablet_gorevler"));
+		Shot(TEXT("04_tablet_dukkan"));
 		break;
 
 	case 18:
-		Mode->bTabletOpen = false;
-		Place(FVector(-100.f, 700.f, 110.f), 135.f, -10.f);
+		Mode->TabletTab = ECigTabletTab::Gorevler;
+		Mode->RefreshTabletWidget();
 		break;
 
 	case 19:
+		Shot(TEXT("05_tablet_gorevler"));
+		break;
+
+	case 20:
+		Mode->bTabletOpen = false;
+		Mode->RefreshTabletWidget();
+		Place(FVector(-100.f, 700.f, 110.f), 135.f, -10.f);
+		break;
+
+	case 21:
 		Shot(TEXT("06_salon"));
 		break;
 
