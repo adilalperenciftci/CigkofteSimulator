@@ -7,6 +7,14 @@
 enum class ECigPhase : uint8
 {
 	Intro,
+	// Before the door opens. The shop exists, the stations work, and nobody is
+	// waiting - so the batch that gets served at nine was made at half eight.
+	//
+	// The clock does not run here and neither does the queue. What limits it is
+	// energy: kneading and chopping cost the same as they do during service, so
+	// a morning spent preparing is a shift spent tired. That is the trade, and
+	// it is the reason this phase is not simply free time.
+	Opening,
 	Playing,
 	Summary,
 	GameOver
@@ -27,7 +35,18 @@ public:
 	void RegisterSale(int32 Amount) { DayEarnings += Amount; DayServed++; }
 	void RegisterMissed() { DayMissed++; }
 
+	// The shop is open: the clock runs, customers arrive, deliveries are due.
 	bool IsPlaying() const { return Phase == ECigPhase::Playing; }
+
+	// The player may use the stations. True through preparation as well as
+	// service, and the distinction matters everywhere the two were the same
+	// question before: dough ages while it is being prepared, hands get dirty
+	// kneading at half eight, and none of it summons a customer.
+	bool CanWork() const { return Phase == ECigPhase::Opening || Phase == ECigPhase::Playing; }
+
+	// Ends preparation and lets the queue in. Nothing forces it - a shop with an
+	// empty counter can open, and that is the player's call to make.
+	void OpenShop();
 	float DayProgress() const { return 1.f - TimeLeft / FMath::Max(DayLength, 1.f); }
 
 	ECigPhase Phase = ECigPhase::Intro;

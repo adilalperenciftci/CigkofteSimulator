@@ -327,7 +327,21 @@ void ACigkofteGameMode::HandleInteract(ACigkofteStation* Station)
 		}
 		return;
 	}
-	if (Days->Phase != ECigPhase::Playing)
+	// Preparation. Every station works, and the service counter is the door: you
+	// step up to it and open the shop. No new key for it - the counter is where
+	// a shopkeeper stands to open, and during service it is where they serve,
+	// which is the same context-by-state pattern every other station already
+	// follows.
+	if (Days->Phase == ECigPhase::Opening)
+	{
+		if (Station && Station->StationType == ECigStation::Servis)
+		{
+			Days->OpenShop();
+			return;
+		}
+		// Anything else is preparation and falls through to the normal handling.
+	}
+	else if (Days->Phase != ECigPhase::Playing)
 	{
 		return;
 	}
@@ -490,7 +504,8 @@ void ACigkofteGameMode::KneadPress()
 		Days->StartDay(false);
 		return;
 	}
-	if (Days->Phase == ECigPhase::Playing && Cooking)
+	// Kneading is the whole point of the preparation phase.
+	if (Days->CanWork() && Cooking)
 	{
 		Cooking->KneadPress();
 	}

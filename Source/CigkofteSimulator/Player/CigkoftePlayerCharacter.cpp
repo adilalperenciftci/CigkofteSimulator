@@ -615,7 +615,7 @@ void ACigkoftePlayerCharacter::UpdateEnergy(float DeltaSeconds)
 {
 	ACigkofteGameMode* Mode = GM();
 	const UCigDaySystem* Days = Mode ? Mode->Days.Get() : nullptr;
-	if (!Days || !Days->IsPlaying())
+	if (!Days || !Days->CanWork())
 	{
 		return;
 	}

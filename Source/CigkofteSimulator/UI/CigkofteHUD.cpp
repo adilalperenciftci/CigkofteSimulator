@@ -156,7 +156,10 @@ void ACigkofteHUD::DrawHUD()
 	TabletAlpha = FMath::FInterpTo(TabletAlpha, GM->bTabletOpen ? 1.f : 0.f, Dt, 10.f);
 	TabletSlide = FMath::FInterpTo(TabletSlide, GM->bTabletOpen ? 0.f : 1.f, Dt, 10.f);
 
-	if (GM->Days->Phase == ECigPhase::Playing)
+	// The working HUD is drawn through preparation as well as service: the
+	// player is using the same stations, and hiding the bowl panel would leave
+	// them kneading blind.
+	if (GM->Days->CanWork())
 	{
 		DrawStatusPanel(GM);
 		DrawMessages(GM);
@@ -198,7 +201,7 @@ void ACigkofteHUD::DrawHUD()
 void ACigkofteHUD::DrawWeatherOverlay(ACigkofteGameMode* GM)
 {
 	UCigWorldBuilder* WB = GM->WorldBuilder.Get();
-	if (!WB || !GM->Days || GM->Days->Phase != ECigPhase::Playing)
+	if (!WB || !GM->Days || !GM->Days->CanWork())
 	{
 		return;
 	}
@@ -388,7 +391,16 @@ void ACigkofteHUD::DrawStatusPanel(ACigkofteGameMode* GM)
 	const float MoneyScale = HeadScale * (1.f + 0.25f * MoneyPop);
 	Text(CigText::Format(TEXT("hud.money"), Eco->Money), Eco->Money >= 0 ? GGold : FLinearColor::Red, TX, Y, FontBody, MoneyScale);
 	Y += LineHeight(FontBody, HeadScale) * 1.05f;
-	Row(CigText::Format(TEXT("hud.timeleft"), FMath::CeilToInt(FMath::Max(0.f, Days->TimeLeft))), GDim, TX, Y, FontBody, BodyScale, 1.05f);
+	// A clock the player cannot spend is worse than no clock: during preparation
+	// it counts nothing down and reading it as pressure is exactly wrong.
+	if (Days->Phase == ECigPhase::Opening)
+	{
+		Row(CigText::Get(TEXT("hud.prep")), GOrange, TX, Y, FontBody, BodyScale, 1.05f);
+	}
+	else
+	{
+		Row(CigText::Format(TEXT("hud.timeleft"), FMath::CeilToInt(FMath::Max(0.f, Days->TimeLeft))), GDim, TX, Y, FontBody, BodyScale, 1.05f);
+	}
 
 	// Level and XP
 	{
@@ -829,6 +841,16 @@ void ACigkofteHUD::DrawPrompt(ACigkofteGameMode* GM)
 		const ECigStation T = PC->FocusedStation->StationType;
 		const bool bStationLocked = PC->FocusedStation->IsLocked();
 		FString Prompt = PC->FocusedStation->GetPromptText();
+		// During preparation the service counter is the door, so its prompt says
+		// so rather than offering to serve a queue that has not been let in.
+		if (GM->Days && GM->Days->Phase == ECigPhase::Opening && T == ECigStation::Servis)
+		{
+			ShadowCenterText(CigText::Get(TEXT("prompt.servis.open")), PromptY, FontBody, HeadScale,
+				FLinearColor(1.f, 0.85f, 0.4f));
+			ShadowCenterText(CigText::Get(TEXT("hud.prep.hint")), PromptY + LineHeight(FontBody, HeadScale) * 1.2f,
+				FontBody, BodyScale, GDim);
+			return;
+		}
 		if (bStationLocked)
 		{
 			// Locked station: only the "unlocks at level N" text, dimmed.

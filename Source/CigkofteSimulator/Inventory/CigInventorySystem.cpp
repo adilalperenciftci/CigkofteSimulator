@@ -142,7 +142,7 @@ void UCigInventorySystem::UpdateSystem(float DeltaSeconds)
 void UCigInventorySystem::ChopPress()
 {
 	const UCigDaySystem* Days = GM ? GM->Days.Get() : nullptr;
-	if (!Days || !Days->IsPlaying())
+	if (!Days || !Days->CanWork())
 	{
 		return;
 	}

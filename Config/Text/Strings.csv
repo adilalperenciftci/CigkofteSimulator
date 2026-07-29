@@ -723,3 +723,7 @@ mix.toomuch.baharat,"Baharat fazla — bulgurla dengele","Too much spice — bal
 mix.toolittle.isot,"İsot az — bu tarif daha acı olmalı","Not enough isot — this recipe wants more heat"
 mix.toomuch.isot,"İsot fazla — bulgurla seyrelt","Too much isot — dilute it with bulgur"
 mix.unfixable,"Kase doldu — düzeltmek için boşalt (G)","The bowl is full — dump it to start over (G)"
+msg.day.prep,"Gün {0} — hazırlık. Dükkânı açmak için servis bankosuna git.","Day {0} — preparation. Step up to the service counter to open."
+hud.prep,"HAZIRLIK","PREPARING"
+hud.prep.hint,"Harcı hazırla, garnitür doğra — sonra servis bankosunda dükkânı aç","Prepare the mix, chop garnish — then open the shop at the service counter"
+prompt.servis.open,"[E] Dükkânı aç","[E] Open the shop"

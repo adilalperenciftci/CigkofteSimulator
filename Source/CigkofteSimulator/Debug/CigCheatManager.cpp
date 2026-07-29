@@ -105,6 +105,11 @@ void UCigCheatManager::StartDayNow()
 	if (ACigkofteGameMode* Mode = GM())
 	{
 		Mode->StartFirstDayIfIntro();
+		// A day now begins in preparation. Every one of these callers wants
+		// the shop trading - a screenshot of an empty queue, a benchmark of
+		// an idle room and a demo reel of nobody arriving are all the wrong
+		// thing - so they open it themselves.
+		if (Mode->Days) { Mode->Days->OpenShop(); }
 	}
 }
 
@@ -452,6 +457,11 @@ void UCigCheatManager::TourStep()
 	{
 	case 0: // start the day, unlock every district, fill the stock
 		Mode->StartFirstDayIfIntro();
+		// A day now begins in preparation. Every one of these callers wants
+		// the shop trading - a screenshot of an empty queue, a benchmark of
+		// an idle room and a demo reel of nobody arriving are all the wrong
+		// thing - so they open it themselves.
+		if (Mode->Days) { Mode->Days->OpenShop(); }
 		if (Mode->Economy) { Mode->Economy->Money = 12000; }
 		if (Mode->Progression) { Mode->Progression->AddXP(3600); }
 		RefillStock();
@@ -587,6 +597,11 @@ void UCigCheatManager::BenchStep()
 			Rng->SeedWith(CigBenchSeed);
 		}
 		Mode->StartFirstDayIfIntro();
+		// A day now begins in preparation. Every one of these callers wants
+		// the shop trading - a screenshot of an empty queue, a benchmark of
+		// an idle room and a demo reel of nobody arriving are all the wrong
+		// thing - so they open it themselves.
+		if (Mode->Days) { Mode->Days->OpenShop(); }
 		if (Mode->Economy) { Mode->Economy->Money = 12000; }
 		if (Mode->Progression) { Mode->Progression->AddXP(3600); }
 		RefillStock();
@@ -676,6 +691,11 @@ void UCigCheatManager::ShotStep()
 	{
 	case 0: // show the shop stocked and upgraded
 		Mode->StartFirstDayIfIntro();
+		// A day now begins in preparation. Every one of these callers wants
+		// the shop trading - a screenshot of an empty queue, a benchmark of
+		// an idle room and a demo reel of nobody arriving are all the wrong
+		// thing - so they open it themselves.
+		if (Mode->Days) { Mode->Days->OpenShop(); }
 		if (Mode->Economy) { Mode->Economy->Money = 5400; }
 		if (Mode->Progression) { Mode->Progression->AddXP(900); Mode->Progression->Rep = 82.f; }
 		RefillStock();

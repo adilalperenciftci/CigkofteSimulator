@@ -548,7 +548,7 @@ float UCigCookingSystem::FreshnessDecayMult(bool bInFridge) const
 void UCigCookingSystem::UpdateSystem(float DeltaSeconds)
 {
 	const UCigDaySystem* Days = GM ? GM->Days.Get() : nullptr;
-	if (!Days || !Days->IsPlaying())
+	if (!Days || !Days->CanWork())
 	{
 		return;
 	}

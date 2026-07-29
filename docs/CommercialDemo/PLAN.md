@@ -133,8 +133,16 @@ uninitialised stack memory.
 
 Depends on Stage 1 for the preparation loop it wraps around.
 
-- 2.1 Opening routine, 2.2 physical stock, 2.3 storage rules,
-  2.4 batch spoilage, 2.5 closing routine
+- 2.1 Opening routine — **done.** A day starts in `ECigPhase::Opening`: the
+  stations work, the clock does not run and the queue stays out. The player opens
+  the shop at the service counter, which is the door during preparation and the
+  hand-off during service. What limits preparation is energy, not a timer:
+  kneading and chopping cost the same as they do at noon, so a morning spent
+  preparing is a shift spent tired. Dough ages from the moment it is made, so
+  preparing everything as early as possible is not free either.
+- 2.4 Batch spoilage — **already there.** Freshness decays per recipe, the fridge
+  slows it, and Stage 1.3 made it visible on the counter.
+- 2.2 physical stock, 2.3 storage rules, 2.5 closing routine
 
 ## Stage 3 — shop customization and build mode
 

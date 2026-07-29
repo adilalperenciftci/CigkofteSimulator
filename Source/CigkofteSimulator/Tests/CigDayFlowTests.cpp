@@ -144,11 +144,23 @@ bool FCigFullDayFlowTest::RunTest(const FString& /*Parameters*/)
 		return false;
 	}
 
-	// --- The day opens ---------------------------------------------------
+	// --- The morning, then the door ---------------------------------------
+	// A day now starts in preparation and is opened by hand. The distinction is
+	// the whole of Stage 2.1 and it is worth walking rather than skipping: the
+	// stations have to work before the shop opens, and the queue has to stay out
+	// until it does.
 	Days->StartDay(false);
-	TestTrue(TEXT("Gün açılışı oynanır faza geçmeli"), Days->IsPlaying());
+	TestFalse(TEXT("Gün hazırlıkta başlamalı, serviste değil"), Days->IsPlaying());
+	TestTrue(TEXT("Hazırlıkta istasyonlar çalışabilmeli"), Days->CanWork());
 	TestEqual(TEXT("Gün açılışı günün hasılatını sıfırlamalı"), Days->DayEarnings, 0);
 	TestEqual(TEXT("Gün açılışı günün servis sayısını sıfırlamalı"), Days->DayServed, 0);
+
+	// Preparing is real work: a batch kneaded now is a batch that ages before it
+	// is sold. This walks the same path the player does rather than setting the
+	// phase by hand.
+	Days->OpenShop();
+	TestTrue(TEXT("Dükkân açılınca servis fazına geçmeli"), Days->IsPlaying());
+	TestTrue(TEXT("Serviste de çalışılabilmeli"), Days->CanWork());
 
 	// --- A customer orders first ------------------------------------------
 	// The order comes before the cooking, exactly as it does at the counter:
