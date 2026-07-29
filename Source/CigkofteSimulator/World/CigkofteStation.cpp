@@ -33,6 +33,31 @@ static bool StationKeepsTop(ECigStation Type)
 	}
 }
 
+// The stations furnished with the four-metre bakery counter.
+//
+// Kept as its own list rather than reusing StationKeepsTop, which happens to
+// contain five of them: they are different questions. One asks whether the
+// coloured tub survives, the other whether the model is a counter that has to
+// stand at counter height. Merging them would have left the kneading and
+// chopping benches knee-high next to their neighbours, which is what the first
+// version of this did.
+static bool StationIsCounterRun(ECigStation Type)
+{
+	switch (Type)
+	{
+	case ECigStation::Bulgur:
+	case ECigStation::Isot:
+	case ECigStation::Salca:
+	case ECigStation::Su:
+	case ECigStation::Baharat:
+	case ECigStation::Yogurma:
+	case ECigStation::Dograma:
+		return true;
+	default:
+		return false;
+	}
+}
+
 namespace
 {
 	UStaticMesh* CigLoadPrimitiveMesh(const TCHAR* Path)
@@ -288,7 +313,11 @@ void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, cons
 
 	// Last, so everything above still describes the box the layout reserved.
 	// Without the pack this does nothing and the coloured primitives stand.
-	ApplyStationMesh(MeshForStation(StationType), BaseScale);
+	// The counters get the overhang; nothing else does. Two and a half boxes of
+	// length puts SM_BakeryCounter02 at 210 against 250 between stations - a row
+	// of counters with a gap, which is what a kitchen looks like.
+	const float Overhang = StationIsCounterRun(StationType) ? 2.5f : 1.f;
+	ApplyStationMesh(MeshForStation(StationType), BaseScale, Overhang);
 
 	UpdateTickState();
 }
@@ -501,7 +530,7 @@ UStaticMesh* ACigkofteStation::MeshForStation(ECigStation Type)
 	}
 }
 
-void ACigkofteStation::ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseScale)
+void ACigkofteStation::ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseScale, float FootprintOverhang)
 {
 	if (!Mesh || !Visual)
 	{
@@ -520,10 +549,26 @@ void ACigkofteStation::ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseSc
 	const FVector RawSize = B.BoxExtent * 2.f;
 	const FVector TargetBox = 100.f * BaseScale.GetAbs(); // the cube is 100uu a side
 
-	auto FitInto = [&TargetBox](float SizeX, float SizeY, float SizeZ)
+	// Height is a hard limit; the footprint may be allowed to overhang.
+	//
+	// The ingredient stations are the case that forced this. Their box is a 90cm
+	// cube and SM_BakeryCounter02 is a four-metre counter, 172 high - so fitting
+	// inside the box on every axis put the counter at 0.22 scale, 39cm tall, and
+	// furnished the shop with knee-high units the player reaches down into.
+	//
+	// A counter's height is the measurement that has to be right: it is what the
+	// player stands at. Its length is what a shop varies.
+	//
+	// Granted per station rather than to everything, and the first version did
+	// grant it to everything: the flat panels - the menu board, the sign - are
+	// authored lying down, so their mesh height is a thickness of two units. The
+	// rule could not tell that from a counter that is short for its box, and it
+	// inflated a 45cm sign into a three-metre one.
+	const float Overhang = FMath::Max(FootprintOverhang, 1.f);
+	auto FitInto = [&TargetBox, Overhang](float SizeX, float SizeY, float SizeZ)
 	{
-		return FMath::Min3(TargetBox.X / FMath::Max(SizeX, 1.f),
-			TargetBox.Y / FMath::Max(SizeY, 1.f),
+		return FMath::Min3(TargetBox.X * Overhang / FMath::Max(SizeX, 1.f),
+			TargetBox.Y * Overhang / FMath::Max(SizeY, 1.f),
 			TargetBox.Z / FMath::Max(SizeZ, 1.f));
 	};
 

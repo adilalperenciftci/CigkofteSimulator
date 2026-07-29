@@ -5,14 +5,12 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Visual
 
-- **The ingredient counters are stubs.** `SM_BakeryCounter02` is a four-metre
-  bakery counter and the ingredient stations measure it against a 90cm cube, so
-  it comes out at 0.22 scale — 90 wide and 39 high, a low cabinet rather than a
-  counter. It reads acceptably because the coloured tub sits on top and that is
-  what the player aims at, but the shop is furnished with knee-high units. The
-  quarter-turn fix does not reach this: the box is cubic, so both orientations
-  fit the same. It needs either a shorter mesh or stations that share one counter
-  run.
+- **The counters overhang their interaction boxes.** Fixed the knee-high units
+  they replaced — the counters now stand at 90cm — but they do it by letting the
+  model run to 210cm inside a 90cm box. Where the player can stand and interact
+  is unchanged, which is the point, and it means the visible counter and the
+  volume it answers to are no longer the same shape. Fine while the stations are
+  250 apart; it would need revisiting if a layout ever put two closer than that.
 
 - **Signage pops in and out at 700uu.** Fixed the overlap it replaced — the far
   counter row's names no longer project across the near row in wide shots — but

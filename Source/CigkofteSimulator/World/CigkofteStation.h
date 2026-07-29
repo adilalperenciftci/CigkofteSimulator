@@ -136,5 +136,8 @@ private:
 	// Fits the model inside the collision box the layout was built around and
 	// hides the primitives. No-op without a mesh, which is what keeps the shop
 	// standing on a machine that does not have the pack.
-	void ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseScale);
+	// Overhang: how far the model may run past its footprint while still being
+	// bounded exactly by the box's height. 1 means "fit inside the box", which is
+	// right for everything that is not a counter.
+	void ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseScale, float FootprintOverhang);
 };

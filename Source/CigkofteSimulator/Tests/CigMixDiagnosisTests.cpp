@@ -54,7 +54,25 @@ bool FCigMixOnTargetSaysNothing::RunTest(const FString&)
 		Hedef[(int32)ECigIngredient::Salca], Hedef[(int32)ECigIngredient::Baharat],
 		Hedef[(int32)ECigIngredient::Isot]);
 
-	TestFalse(TEXT("Hedefi tutturan karışım uyarı almamalı"), D.IsProblem());
+	// The failure message carries the bowl, which is how this test earned itself:
+	// it failed on a mix that is on target by construction, and the numbers said
+	// the isot target was 6 in one run and 1 in another. TargetCounts was summing
+	// array indices 0..3 while filling the array by name, so it read the
+	// uninitialised isot slot and skipped baharat. The number the HUD showed the
+	// player was uninitialised stack memory.
+	TestFalse(FString::Printf(TEXT("Hedefi tutturan karışım uyarı almamalı (sorun=%d şiddet=%.2f, kase=%d/%d/%d/%d/%d)"),
+		(int32)D.Problem, D.Severity,
+		Hedef[(int32)ECigIngredient::Bulgur], Hedef[(int32)ECigIngredient::Su],
+		Hedef[(int32)ECigIngredient::Salca], Hedef[(int32)ECigIngredient::Baharat],
+		Hedef[(int32)ECigIngredient::Isot]), D.IsProblem());
+
+	// Pinned directly as well, because the diagnosis test above only catches it
+	// while the threshold happens to be tight enough to notice.
+	TestTrue(TEXT("İsot hedefi tarifin bandının içinde olmalı"),
+		(float)Hedef[(int32)ECigIngredient::Isot] /
+			(float)(Hedef[(int32)ECigIngredient::Bulgur] + Hedef[(int32)ECigIngredient::Su] +
+				Hedef[(int32)ECigIngredient::Salca] + Hedef[(int32)ECigIngredient::Baharat] +
+				Hedef[(int32)ECigIngredient::Isot]) <= R.IsotMaxFrac + 0.01f);
 
 	// An empty bowl is not a fault. It is where every batch starts.
 	TestFalse(TEXT("Boş kase sorun sayılmamalı"), Bak(0, 0, 0, 0, 0).IsProblem());

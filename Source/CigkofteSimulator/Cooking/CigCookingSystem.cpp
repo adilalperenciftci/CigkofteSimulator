@@ -130,9 +130,21 @@ void UCigCookingSystem::TargetCounts(const FCigRecipe& R, int32 OutCounts[(int32
 	OutCounts[(int32)ECigIngredient::Salca] = FMath::Max(1, FMath::RoundToInt(BulgurBase * R.RatioSalca));
 	OutCounts[(int32)ECigIngredient::Baharat] = FMath::Max(1, FMath::RoundToInt(BulgurBase * R.RatioBaharat));
 
-	// Isot: the count that lands in the middle of the recipe's range
+	// Isot: the count that lands in the middle of the recipe's range.
+	//
+	// The four others are summed by name. Summing indices 0..3 looks equivalent
+	// and is not: the enum runs Bulgur, Isot, Salca, Su, Baharat, so index 1 is
+	// isot - the one slot nothing has written yet - and index 4, Baharat, is left
+	// out. The isot target shown to the player was therefore derived from
+	// uninitialised stack memory, and came out as a different number on every
+	// run: the screenshot pass caught "İsot 0 / 6", "0 / 3", "0 / 2" and "0 / 1"
+	// across four captures of the same recipe before a test pinned it.
 	const float MidFrac = (R.IsotMinFrac + R.IsotMaxFrac) * 0.5f;
-	const int32 Others = OutCounts[0] + OutCounts[1] + OutCounts[2] + OutCounts[3];
+	const int32 Others =
+		OutCounts[(int32)ECigIngredient::Bulgur] +
+		OutCounts[(int32)ECigIngredient::Su] +
+		OutCounts[(int32)ECigIngredient::Salca] +
+		OutCounts[(int32)ECigIngredient::Baharat];
 	OutCounts[(int32)ECigIngredient::Isot] = FMath::Clamp(FMath::RoundToInt(MidFrac * Others / (1.f - MidFrac)), 1, 6);
 }
 
