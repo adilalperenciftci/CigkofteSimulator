@@ -103,6 +103,17 @@ void UCigCheatManager::CigSetSeed(int32 Seed)
 	}
 }
 
+void UCigCheatManager::CigLang(int32 Language)
+{
+	ACigkofteGameMode* Mode = GM();
+	if (!Mode)
+	{
+		return;
+	}
+	Mode->Settings.Language = FMath::Clamp(Language, 0, CigText::LanguageCount() - 1);
+	Mode->ApplySettings();
+}
+
 void UCigCheatManager::StartDayNow()
 {
 	if (ACigkofteGameMode* Mode = GM())

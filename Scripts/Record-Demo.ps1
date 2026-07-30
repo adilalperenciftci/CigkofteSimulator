@@ -74,7 +74,10 @@ $gameArgs = @(
     # makes those frames equal lengths of game time, so a slow frame does not
     # become a long frame in the finished video and read as a stutter.
     '-benchmark', "-fps=$Fps",
-    "-ExecCmds=`"r.DumpingMovie -1, CigBench $dwell`""
+    # English, because this clip sits at the top of an English README. CigLang
+    # goes through the settings path, which also rebuilds the world's signage -
+    # setting the language alone leaves the station signs in the other language.
+    "-ExecCmds=`"CigLang 1, r.DumpingMovie -1, CigBench $dwell`""
 )
 
 if ($DryRun) {

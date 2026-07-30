@@ -305,13 +305,20 @@ inline FString CigSpiceName(ECigSpice S)
 	}
 }
 
+// The heat, without diacritics, for text drawn in the world.
+//
+// UTextRenderComponent's font has no dotted capital I or cedilla, so "COK ACILI"
+// over a customer's head is the Turkish spelled the way the font can render it -
+// which is also why the locked-station sign says SEVIYE rather than SEVİYE. The
+// English column needs no such compromise; this is a separate row from
+// spice.* rather than a separate mechanism, so a translator sees both.
 inline FString CigSpiceNameAscii(ECigSpice S)
 {
 	switch (S)
 	{
-	case ECigSpice::AzAci:  return TEXT("AZ ACILI");
-	case ECigSpice::Orta:   return TEXT("ORTA ACILI");
-	case ECigSpice::CokAci: return TEXT("COK ACILI");
+	case ECigSpice::AzAci:  return CigText::Get(TEXT("spice.mild.ascii"));
+	case ECigSpice::Orta:   return CigText::Get(TEXT("spice.medium.ascii"));
+	case ECigSpice::CokAci: return CigText::Get(TEXT("spice.hot.ascii"));
 	default:                return TEXT("?");
 	}
 }

@@ -45,6 +45,11 @@ public:
 	UFUNCTION(Exec) void CigSeed();
 	UFUNCTION(Exec) void CigSetSeed(int32 Seed);
 
+	// `CigLang 0|1` switches language the way the settings menu does - including
+	// rebuilding the world's signage, which a bare CigText::SetLanguage does not.
+	// The capture scripts use it so a recording is in one language throughout.
+	UFUNCTION(Exec) void CigLang(int32 Language);
+
 	// Re-reads Config/Balance/*.csv, for balance experiments without a restart.
 	UFUNCTION(Exec) void CigReloadBalance();
 

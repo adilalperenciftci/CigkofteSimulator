@@ -841,3 +841,28 @@ review.critic.author,LezzetRehberi (Eleştirmen),FlavourGuide (Critic)
 msg.review.criticvisited,Meğer gizli eleştirmen ağırlamışsın! Yorumu yayında.,You were hosting a secret critic. Their review is live.
 level.stationopen,AÇILDI: {0},OPEN: {0}
 level.opened,AÇILDI,OPEN
+spice.mild.ascii,AZ ACILI,MILD
+spice.medium.ascii,ORTA ACILI,MEDIUM
+spice.hot.ascii,COK ACILI,HOT
+station.bulgur,BULGUR,BULGUR
+station.isot,ISOT,ISOT
+station.salca,SALCA,TOMATO PASTE
+station.su,SU,WATER
+station.baharat,BAHARAT,SPICES
+station.yogurma,YOGURMA,KNEADING
+station.dograma,DOGRAMA,CHOPPING
+station.lavabo,LAVABO,SINK
+station.cop,COP,BIN
+station.lavas,LAVAS,FLATBREAD
+station.paketleme,PAKETLEME,PACKING
+station.buzdolabi,BUZDOLABI,FRIDGE
+station.temizlik,TEMIZLIK,CLEANING
+station.bulasik,BULASIK,DISHES
+station.cay,CAY,TEA
+station.mama,MAMA,CAT BOWL
+station.tarif,TARIF,RECIPES
+station.yanurun,YAN URUN,SIDES
+station.eldiven,ELDIVEN,GLOVES
+station.isotplus,ISOT+,ISOT+
+station.reklam,REKLAM,ADVERT
+station.servis,SERVIS,COUNTER

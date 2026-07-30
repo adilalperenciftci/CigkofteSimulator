@@ -322,9 +322,9 @@ void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, cons
 		SetChopState(0, 4);
 	}
 
-	LabelBaseText = LabelText;
+	LabelKey = LabelText;
 	LabelTopZ = TopZ;
-	Label->SetText(FText::FromString(LabelText));
+	Label->SetText(FText::FromString(ResolvedLabel()));
 	Label->SetRelativeScale3D(FVector(1.f) / BaseScale);
 	Label->SetWorldRotation(FRotator(0.f, LabelYaw, 0.f));
 	SetLabelDebug(false);
@@ -519,11 +519,17 @@ void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 	}
 }
 
+FString ACigkofteStation::ResolvedLabel() const
+{
+	const FString Value = CigText::Get(*LabelKey);
+	return Value == LabelKey ? LabelKey : Value;
+}
+
 void ACigkofteStation::RefreshLockLabel()
 {
 	if (Label)
 	{
-		Label->SetText(FText::FromString(bLocked ? CigText::Format(TEXT("level.locked"), LockLevel) : LabelBaseText));
+		Label->SetText(FText::FromString(bLocked ? CigText::Format(TEXT("level.locked"), LockLevel) : ResolvedLabel()));
 		Label->SetTextRenderColor(bLocked ? FColor(150, 150, 155) : FColor::White);
 	}
 }

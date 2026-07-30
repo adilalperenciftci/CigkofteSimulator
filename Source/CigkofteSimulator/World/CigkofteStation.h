@@ -52,6 +52,10 @@ public:
 	// moving the lock.
 	void RefreshLockLabel();
 
+	// The signage text for the current language, or the key itself if the table
+	// has no row for it.
+	FString ResolvedLabel() const;
+
 	bool IsLocked() const { return bLocked; }
 	int32 GetLockLevel() const { return LockLevel; }
 
@@ -129,7 +133,13 @@ private:
 	int32 LockLevel = 1;
 	FLinearColor TopColor = FLinearColor::White;
 	FVector TopBaseScale = FVector::OneVector;
-	FString LabelBaseText;
+	// The label's text key, not its text.
+	//
+	// Resolved on every rewrite rather than stored, because the station's sign has
+	// to follow a language change and Setup runs once at world build. Falls back to
+	// treating the key as literal text, so anything not in the table still shows
+	// what it was given.
+	FString LabelKey;
 	// Kept so the label can be repositioned later without re-deriving it.
 	float LabelTopZ = 100.f;
 	bool bLabelDebug = false;

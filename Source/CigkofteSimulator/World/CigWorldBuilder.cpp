@@ -408,37 +408,37 @@ void UCigWorldBuilder::BuildKitchen()
 	}
 
 	// Ingredient stations (back area)
-	SpawnStation(ECigStation::Bulgur, FVector(600.f, -500.f, 0.f), CigIngredientColor(ECigIngredient::Bulgur), TEXT("BULGUR"), 180.f);
-	SpawnStation(ECigStation::Isot, FVector(600.f, -250.f, 0.f), CigIngredientColor(ECigIngredient::Isot), TEXT("ISOT"), 180.f);
-	SpawnStation(ECigStation::Salca, FVector(600.f, 0.f, 0.f), CigIngredientColor(ECigIngredient::Salca), TEXT("SALCA"), 180.f);
-	SpawnStation(ECigStation::Su, FVector(600.f, 250.f, 0.f), CigIngredientColor(ECigIngredient::Su), TEXT("SU"), 180.f);
-	SpawnStation(ECigStation::Baharat, FVector(600.f, 500.f, 0.f), CigIngredientColor(ECigIngredient::Baharat), TEXT("BAHARAT"), 180.f);
+	SpawnStation(ECigStation::Bulgur, FVector(600.f, -500.f, 0.f), CigIngredientColor(ECigIngredient::Bulgur), TEXT("station.bulgur"), 180.f);
+	SpawnStation(ECigStation::Isot, FVector(600.f, -250.f, 0.f), CigIngredientColor(ECigIngredient::Isot), TEXT("station.isot"), 180.f);
+	SpawnStation(ECigStation::Salca, FVector(600.f, 0.f, 0.f), CigIngredientColor(ECigIngredient::Salca), TEXT("station.salca"), 180.f);
+	SpawnStation(ECigStation::Su, FVector(600.f, 250.f, 0.f), CigIngredientColor(ECigIngredient::Su), TEXT("station.su"), 180.f);
+	SpawnStation(ECigStation::Baharat, FVector(600.f, 500.f, 0.f), CigIngredientColor(ECigIngredient::Baharat), TEXT("station.baharat"), 180.f);
 
-	SpawnStation(ECigStation::Yogurma, FVector(250.f, -650.f, 0.f), FLinearColor(0.72f, 0.72f, 0.76f), TEXT("YOGURMA"), 180.f);
-	SpawnStation(ECigStation::Dograma, FVector(600.f, 750.f, 0.f), FLinearColor(0.25f, 0.65f, 0.20f), TEXT("DOGRAMA"), 180.f);
-	SpawnStation(ECigStation::Lavabo, FVector(250.f, 650.f, 0.f), FLinearColor(0.85f, 0.90f, 0.95f), TEXT("LAVABO"), 180.f);
-	SpawnStation(ECigStation::Cop, FVector(250.f, 950.f, 0.f), FLinearColor(0.15f, 0.15f, 0.17f), TEXT("COP"), 180.f);
+	SpawnStation(ECigStation::Yogurma, FVector(250.f, -650.f, 0.f), FLinearColor(0.72f, 0.72f, 0.76f), TEXT("station.yogurma"), 180.f);
+	SpawnStation(ECigStation::Dograma, FVector(600.f, 750.f, 0.f), FLinearColor(0.25f, 0.65f, 0.20f), TEXT("station.dograma"), 180.f);
+	SpawnStation(ECigStation::Lavabo, FVector(250.f, 650.f, 0.f), FLinearColor(0.85f, 0.90f, 0.95f), TEXT("station.lavabo"), 180.f);
+	SpawnStation(ECigStation::Cop, FVector(250.f, 950.f, 0.f), FLinearColor(0.15f, 0.15f, 0.17f), TEXT("station.cop"), 180.f);
 
 	// Wrap assembly line (close to serving)
-	SpawnStation(ECigStation::Lavas, FVector(-350.f, -250.f, 0.f), FLinearColor(0.93f, 0.88f, 0.72f), TEXT("LAVAS"), 180.f);
-	SpawnStation(ECigStation::Paketleme, FVector(-350.f, 250.f, 0.f), FLinearColor(0.65f, 0.50f, 0.30f), TEXT("PAKETLEME"), 180.f);
+	SpawnStation(ECigStation::Lavas, FVector(-350.f, -250.f, 0.f), FLinearColor(0.93f, 0.88f, 0.72f), TEXT("station.lavas"), 180.f);
+	SpawnStation(ECigStation::Paketleme, FVector(-350.f, 250.f, 0.f), FLinearColor(0.65f, 0.50f, 0.30f), TEXT("station.paketleme"), 180.f);
 
 	// Shop-running stations
-	SpawnStation(ECigStation::Buzdolabi, FVector(870.f, -650.f, 0.f), FLinearColor(0.80f, 0.85f, 0.92f), TEXT("BUZDOLABI"), 180.f);
-	SpawnStation(ECigStation::Temizlik, FVector(870.f, 650.f, 0.f), FLinearColor(0.30f, 0.75f, 0.75f), TEXT("TEMIZLIK"), 180.f);
-	SpawnStation(ECigStation::Bulasik, FVector(250.f, 350.f, 0.f), FLinearColor(0.55f, 0.65f, 0.75f), TEXT("BULASIK"), 180.f);
-	SpawnStation(ECigStation::Cay, FVector(870.f, 950.f, 0.f), FLinearColor(0.72f, 0.30f, 0.12f), TEXT("CAY"), 180.f);
-	SpawnStation(ECigStation::MamaKabi, FVector(-200.f, 1100.f, 0.f), FLinearColor(0.85f, 0.60f, 0.70f), TEXT("MAMA"), 180.f);
-	SpawnStation(ECigStation::Tarif, FVector(870.f, -950.f, 0.f), FLinearColor(0.55f, 0.42f, 0.75f), TEXT("TARIF"), 180.f);
-	SpawnStation(ECigStation::YanUrun, FVector(-350.f, 650.f, 0.f), FLinearColor(0.90f, 0.65f, 0.25f), TEXT("YAN URUN"), 180.f);
+	SpawnStation(ECigStation::Buzdolabi, FVector(870.f, -650.f, 0.f), FLinearColor(0.80f, 0.85f, 0.92f), TEXT("station.buzdolabi"), 180.f);
+	SpawnStation(ECigStation::Temizlik, FVector(870.f, 650.f, 0.f), FLinearColor(0.30f, 0.75f, 0.75f), TEXT("station.temizlik"), 180.f);
+	SpawnStation(ECigStation::Bulasik, FVector(250.f, 350.f, 0.f), FLinearColor(0.55f, 0.65f, 0.75f), TEXT("station.bulasik"), 180.f);
+	SpawnStation(ECigStation::Cay, FVector(870.f, 950.f, 0.f), FLinearColor(0.72f, 0.30f, 0.12f), TEXT("station.cay"), 180.f);
+	SpawnStation(ECigStation::MamaKabi, FVector(-200.f, 1100.f, 0.f), FLinearColor(0.85f, 0.60f, 0.70f), TEXT("station.mama"), 180.f);
+	SpawnStation(ECigStation::Tarif, FVector(870.f, -950.f, 0.f), FLinearColor(0.55f, 0.42f, 0.75f), TEXT("station.tarif"), 180.f);
+	SpawnStation(ECigStation::YanUrun, FVector(-350.f, 650.f, 0.f), FLinearColor(0.90f, 0.65f, 0.25f), TEXT("station.yanurun"), 180.f);
 
 	// Shop counter for upgrades - back wall
-	SpawnStation(ECigStation::Eldiven, FVector(870.f, -350.f, 0.f), FLinearColor(0.9f, 0.55f, 0.1f), TEXT("ELDIVEN"), 180.f);
-	SpawnStation(ECigStation::IsotPlus, FVector(870.f, 0.f, 0.f), FLinearColor(0.6f, 0.1f, 0.1f), TEXT("ISOT+"), 180.f);
-	SpawnStation(ECigStation::Reklam, FVector(870.f, 350.f, 0.f), FLinearColor(0.2f, 0.6f, 0.9f), TEXT("REKLAM"), 180.f);
+	SpawnStation(ECigStation::Eldiven, FVector(870.f, -350.f, 0.f), FLinearColor(0.9f, 0.55f, 0.1f), TEXT("station.eldiven"), 180.f);
+	SpawnStation(ECigStation::IsotPlus, FVector(870.f, 0.f, 0.f), FLinearColor(0.6f, 0.1f, 0.1f), TEXT("station.isotplus"), 180.f);
+	SpawnStation(ECigStation::Reklam, FVector(870.f, 350.f, 0.f), FLinearColor(0.2f, 0.6f, 0.9f), TEXT("station.reklam"), 180.f);
 
 	// Service counter
-	SpawnStation(ECigStation::Servis, FVector(-600.f, 0.f, 0.f), FLinearColor(0.50f, 0.30f, 0.15f), TEXT("SERVIS"), 0.f);
+	SpawnStation(ECigStation::Servis, FVector(-600.f, 0.f, 0.f), FLinearColor(0.50f, 0.30f, 0.15f), TEXT("station.servis"), 0.f);
 }
 
 void UCigWorldBuilder::BuildFurniture()
