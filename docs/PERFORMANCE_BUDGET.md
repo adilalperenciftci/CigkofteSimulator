@@ -51,7 +51,7 @@ minimum-spec figures.
 | Texture streaming pool | — | — | 10.9 MB avg / 23.0 MB peak | |
 | Shader hitches | 0 critical hitches in play | — | not measurable here | the capture starts after the world is built |
 | Load time | main-flow target to be set | — | **3.9 s to a playable shop** | measured, Development |
-| Shipping build size | release target to be set | — | **Development 2282 MB**; Shipping not yet built | content is 1430 MB of it |
+| Shipping build size | release target to be set | — | **1902 MB archived, ~1673 MB downloaded** | content is 1430 MB of it |
 
 ## What the numbers said, and what was done about it
 
@@ -262,11 +262,81 @@ Measured on the Development package, which carries 374 MB of debug symbols and a
 The world is built from code into `/Engine/Maps/Entry`, so there is one map load
 and it includes constructing the shop and the city: 0.76 s for all of it.
 
-Content is 1430 MB and is the only part a Shipping build keeps at full size. It
-comes from the asset packs - the bazaar scene, the mannequins, the cat pack, the
-supermarket and the modular building set - not from anything authored here. A
-Shipping figure is still not measured; the number a player would download is
-somewhere near 1.5 GB, and until that build is made this row says Development.
+Shipping has now been packaged. It archives at **1902 MB in 48 files**:
+
+| | Development | Shipping |
+| --- | --- | --- |
+| Archive | 2282 MB | **1902 MB** |
+| Cooked content (`.ucas`) | 1430 MB | 1430 MB |
+| Debug symbols (`.pdb`) | 374 MB | 229 MB |
+| Executable | 331 MB | 169 MB |
+| Engine DLLs | 96 MB | 57 MB |
+
+Content is identical between the two and is three quarters of the Shipping
+archive. It comes from the asset packs - the bazaar scene, the mannequins, the cat
+pack, the supermarket and the modular building set - not from anything authored
+here, so it is the only row with real headroom in it and none of that headroom is
+free.
+
+The 229 MB of symbols do not reach a player: `Create-ReleaseArchive.ps1` leaves
+them out of the zip and `Archive-Symbols.ps1` packs them separately for
+symbolicating crashes. That was not true until now - the release script zipped the
+build directory whole, while `Verify-Release.ps1` treats a `.pdb` as a forbidden
+artefact and throws on one, so the two halves of the release path contradicted
+each other and the download carried 12% of dead weight. **The number a player
+downloads is about 1673 MB.**
+
+## What a Shipping build can and cannot be told
+
+Two things about the release configuration turned up the first time one was built,
+and both had been invisible because only Development had ever been packaged.
+
+**It produces no log.** Logging is compiled out of Shipping, and every one of the
+smoke test's checks was of the form "the log did not complain about this". The
+first Shipping package was reported as `hic baslamadi` - never started - about a
+build that had started perfectly well and run for its full twenty-five seconds.
+So the configuration a player runs had never been verified by the only automated
+check this project has for a packaged game, while Development was verified on
+every single package.
+
+Enabling `bUseLoggingInShipping` does not work here. UBT refuses it outright
+because the setting differs from `UnrealGame`'s and the two share build products;
+forcing it with `bOverrideBuildEnvironment` then fails at link time with
+unresolved `LogSerialization` and `LogJson` symbols, because the project's own
+modules get compiled with logging on while the installed engine's Shipping
+binaries were built without it and export nothing to link against. Short of
+building the engine from source, a Shipping build here cannot log.
+
+The fix belongs in the test, not the engine. The smoke test now separates the
+checks that need a log from the checks that do not:
+
+| Check | Needs a log | Runs in Shipping |
+| --- | --- | --- |
+| Process still alive at timeout | no | **yes** |
+| Cook coverage from the container | no | **yes** |
+| Text table, balance data, audio, mesh, fatal errors | yes | no, and it says so |
+
+The cook-coverage check reads the `.utoc` and asks the cooked data what is in it;
+it never needed the game to run. The process check is new and is worth having in
+both configurations: a game that crashes three seconds in has exited by the time
+the timeout comes round, and its exit code says so. The configuration is passed in
+by the caller rather than guessed from the staged files, because guessing it wrong
+turns a good build into a failed smoke test or the reverse.
+
+Result: `surec ayakta OK`, `cook kapsami OK`, and an explicit line saying the
+log-based checks could not run. That is less verification than Development gets,
+and saying so is the point.
+
+**Cheats are compiled out too.** `UE_WITH_CHEAT_MANAGER` is `(1 && !UE_BUILD_SHIPPING)`,
+so `CigBench`, `CigShots` and `CigLang` do not exist in Shipping - and
+`Measure-Performance.ps1` and `Record-Demo.ps1` both drive the game through them.
+**Every performance figure in this document is a Development measurement.** That is
+the pessimistic direction: Development carries checks and assertions that Shipping
+does not, so the shipped game is not slower than the numbers here. It is not the
+same game, though, and this is not the same as having measured it. Putting the
+benchmark commands into Shipping would fix the harness by shipping a
+camera-teleporting debug console to players, which is a product decision and not
+one to make quietly.
 
 
 ## Still open
@@ -276,7 +346,8 @@ somewhere near 1.5 GB, and until that build is made this row says Development.
 - The render-thread target was chased twice and is not reachable through
   render-thread work; the row needs replacing with a counter that measures work.
   See above.
-- Shipping build size has no number: only Development has been packaged.
+- Shipping has been packaged and smoke-tested, but never *performance* measured:
+  the harness drives the game through cheat commands that Shipping compiles out.
 - No minimum-spec machine has been tested. Everything above is one developer
   machine at 1080p, and the GPU budget in particular is that card's budget.
 - Shader hitches are invisible to this route by construction: the capture starts

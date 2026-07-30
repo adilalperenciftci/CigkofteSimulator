@@ -73,6 +73,6 @@ Write-Output "Paketleme başarılı: $($exe.FullName)"
 # none of it cooked. Content is verified by the same smoke test PackageDemo.ps1
 # runs, never by a weaker local copy.
 if (-not $SkipSmokeTest) {
-    & (Join-Path $PSScriptRoot 'SmokeTest-PackagedBuild.ps1') -PackageDirectory $output -EngineRoot $engine
+    & (Join-Path $PSScriptRoot 'SmokeTest-PackagedBuild.ps1') -PackageDirectory $output -EngineRoot $engine -Configuration $Configuration
     if ($LASTEXITCODE -ne 0) { throw "Paket smoke testi başarısız (exit $LASTEXITCODE)." }
 }

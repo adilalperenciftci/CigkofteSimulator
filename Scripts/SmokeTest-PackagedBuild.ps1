@@ -23,6 +23,12 @@ param(
     [string]$EngineRoot,
     [ValidateRange(5, 600)]
     [int]$TimeoutSeconds = 25,
+    # Shipping has no log, and that is a property of the configuration rather
+    # than a fault in the build. Passed in by the caller rather than sniffed off
+    # the staged files: the caller already knows, and guessing it wrong turns a
+    # good build into a failed smoke test or the reverse.
+    [ValidateSet('Development', 'Shipping')]
+    [string]$Configuration = 'Development',
     [switch]$DryRun
 )
 
@@ -57,6 +63,14 @@ $proc = Start-Process $exe.FullName -PassThru -WindowStyle Hidden `
     -ArgumentList '-nullrhi', '-unattended', '-nosplash', '-nosound', '-log'
 Start-Sleep -Seconds $TimeoutSeconds
 
+# Did it survive the run, and if not, how did it go?
+#
+# This is the only check available to a build that cannot write a log, and it is
+# worth having in either case: a game that crashes three seconds after start has
+# exited by now, with a code that says so.
+$exitedEarly = $proc.HasExited
+$earlyExitCode = if ($exitedEarly) { $proc.ExitCode } else { 0 }
+
 # Kill the tree and wait for it, rather than the launcher handle alone.
 #
 # A bare .Kill() on the Start-Process handle left the game running: the next
@@ -79,12 +93,25 @@ if (Get-Process -Name 'CigkofteSimulator*' -ErrorAction SilentlyContinue) {
     exit 1
 }
 
-if (-not (Test-Path $stagedLog)) {
+$haveLog = Test-Path $stagedLog
+if (-not $haveLog -and $Configuration -ne 'Shipping') {
     Write-Error "Paketli yapi log uretmedi: $stagedLog - hic baslamadi."
     exit 1
 }
+if (-not $haveLog) {
+    # Shipping compiles logging out, so the six checks below - every one of which
+    # is "the log did not complain" - have nothing to read. This is not a build
+    # that failed to start; it is a build that cannot say anything, and the first
+    # Shipping package of this project was reported as "hic baslamadi" for exactly
+    # that reason while running perfectly well.
+    #
+    # What survives: the container check, which asks the cooked data what is in it
+    # and never needed the game to run, and the fact that the process was still
+    # alive when the timeout came round.
+    Write-Host '  log yok (Shipping): log tabanli kontroller atlaniyor' -ForegroundColor Yellow
+}
 
-$lines = Get-Content $stagedLog
+$lines = if ($haveLog) { Get-Content $stagedLog } else { @() }
 $csvCount = (Get-ChildItem (Join-Path $RepoRoot 'Config\Balance\*.csv')).Count
 
 # Read the cooked container and count what each declared directory produced.
@@ -133,6 +160,10 @@ else {
 
 # Each check names the symptom the player would see, not the internal fault.
 $checks = @(
+    @{ Name = 'surec ayakta';    Ok = (-not $exitedEarly)
+       Fail = "oyun $TimeoutSeconds sn dolmadan kapandi (cikis kodu $earlyExitCode) - baslangicta cokuyor" }
+)
+if ($haveLog) { $checks += @(
     @{ Name = 'metin tablosu';   Ok = -not (@($lines) -match 'Strings\.csv okunama')
        Fail = 'Strings.csv yuklenmedi - arayuzde ham anahtarlar gorunur' }
     @{ Name = 'denge verisi';    Ok = (@($lines) -match 'Denge dosyası uygulandı').Count -ge $csvCount
@@ -141,10 +172,12 @@ $checks = @(
        Fail = 'ses varliklari cook edilmemis - oyun tamamen sessiz' }
     @{ Name = 'mesh varliklari'; Ok = -not (@($lines) -match 'Mesh bulunamadi')
        Fail = 'mesh varliklari cook edilmemis - dukkan ilkel kutulardan gorunur' }
-    @{ Name = 'cook kapsami';    Ok = ($emptyDirs.Count -eq 0)
-       Fail = "hicbir sey uretmeyen cook girdisi: $($emptyDirs -join ', ')" }
     @{ Name = 'olumcul hata';    Ok = -not (@($lines) -match 'LogCig: Error|Fatal error|Assertion failed|Unhandled Exception')
        Fail = 'baslangicta hata var' }
+) }
+$checks += @(
+    @{ Name = 'cook kapsami';    Ok = ($emptyDirs.Count -eq 0)
+       Fail = "hicbir sey uretmeyen cook girdisi: $($emptyDirs -join ', ')" }
 )
 
 $smokeFailed = $false
@@ -163,7 +196,12 @@ if ($smokeFailed) {
     exit 1
 }
 
-Write-Host 'Smoke test passed.' -ForegroundColor Green
+if ($haveLog) {
+    Write-Host 'Smoke test passed.' -ForegroundColor Green
+}
+else {
+    Write-Host 'Smoke test passed (Shipping: surec + cook kapsami; log tabanli kontroller yapilamadi).' -ForegroundColor Green
+}
 Write-Host 'Still needs a human: launch it, switch language, load a save, navigate with a gamepad.'
 # Explicit, because callers read $LASTEXITCODE. Falling off the end would leave
 # it holding whatever UnrealPak.exe last returned.
