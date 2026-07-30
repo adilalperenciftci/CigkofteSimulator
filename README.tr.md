@@ -19,6 +19,10 @@ ile kaydedildi; o gün fareyi kimin tuttuğuna göre değil, her seferinde aynı
 *Bulgur, isot, salça, su, baharat — her biri ayrı ölçülür; sağda sipariş, solda
 tarif.*
 
+> Ekran görüntüleri İngilizce arayüzle alınmıştır, çünkü aynı görseller İngilizce
+> README'de de kullanılıyor. Oyunun varsayılan dili Türkçedir; dil ayardan
+> değiştirilir.
+
 | | |
 | --- | --- |
 | ![Dükkân cephesi ve cadde](docs/screenshots/01_servis.png) | ![Yoğurma tezgâhı](docs/screenshots/03_yogurma.png) |
@@ -27,8 +31,10 @@ tarif.*
 | *Dükkân geliştirmeleri* | *Günlük görevler, hikâye hedefleri, müdavimler* |
 | ![Doğrama tahtası](docs/screenshots/07_dograma.png) | ![Çırak iş başında](docs/screenshots/08_cirak.png) |
 | *Doğrama: bir garnitürün dört vuruşundan ikisi* | *Çırak, verdiğiniz işin tezgâhında çalışır* |
-| ![Oturma alanı](docs/screenshots/06_salon.png) | |
-| *Yerinde yiyen müşteriler masaya oturur* | |
+| ![Oturma alanı](docs/screenshots/06_salon.png) | ![Dükkânda bekleyen teslimat](docs/screenshots/10_teslimat.png) |
+| *Yerinde yiyen müşteriler masaya oturur* | *Teslimat kasa olarak gelir ve siz boşaltana kadar orada durur* |
+| ![Tablet — stok ve buzdolabı](docs/screenshots/09_tablet_stok.png) | |
+| *Stok ve bütün soğuk ürünlerin paylaştığı tek hacim* | |
 
 ## Oynanış
 

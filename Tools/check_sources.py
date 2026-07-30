@@ -746,6 +746,29 @@ def check_config_secrets() -> None:
     print(f"  config: {len(GIZLI_CONFIG_ALANLARI)} gizli alan kuralı tutuyor")
 
 
+def check_no_loctext() -> None:
+    """LOCTEXT/NSLOCTEXT kullanımı yasak.
+
+    Bu proje oyuncuya görünen metni CigText + Config/Text/Strings.csv üzerinden
+    okur; LOCTEXT ise derlenmiş .locres verisine bağlıdır ve bu depoda hiç .po
+    veya .locres olmadı. Yani LOCTEXT ile yazılmış her metin, dil ayarı ne olursa
+    olsun kalıcı olarak Türkçe kalıyordu — 46 metin tam olarak bu durumdaydı ve
+    çevrilmiş görünmeleri sorunu uzun süre gizledi. Geri dönmesin diye kural.
+    """
+    sayac = 0
+    for path in sorted(list(SOURCE.rglob("*.cpp")) + list(SOURCE.rglob("*.h"))):
+        for no, satir in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+            s = satir.strip()
+            if s.startswith("//") or s.startswith("*"):
+                continue  # yorumda anlatmak serbest
+            if "LOCTEXT(" in s or "LOCTEXT_NAMESPACE" in s:
+                rel = path.relative_to(ROOT).as_posix()
+                fail(f"{rel}:{no}: LOCTEXT kullanılmış — oyuncuya görünen metin "
+                     f"Config/Text/Strings.csv anahtarı ve CigText::Get ile yazılır.")
+            sayac += 1
+    print(f"  yerelleştirme: {sayac} satırda LOCTEXT yok")
+
+
 def main() -> int:
     print("Cigkofte kaynak kontrolu")
     check_sources()
@@ -758,6 +781,7 @@ def main() -> int:
     check_cooked_assets()
     check_repo_files()
     check_config_secrets()
+    check_no_loctext()
 
     if problems:
         print(f"\n{len(problems)} sorun bulundu:\n")

@@ -145,10 +145,8 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 		const bool bIndirim = PC && (PC->IsInputKeyDown(EKeys::LeftShift) || PC->IsInputKeyDown(EKeys::RightShift));
 
 		Pricing->FiyatDegistir(Urun, bIndirim ? -UCigPricingSystem::CarpanAdimi : UCigPricingSystem::CarpanAdimi);
-		AddMessage(FText::Format(
-			NSLOCTEXT("CigTablet", "FiyatGuncellendi", "{0}: {1} TL"),
-			FText::FromString(CigBalance::Pricing(Urun).Label),
-			FText::AsNumber(Pricing->Fiyat(Urun))).ToString(),
+		AddMessage(CigText::Format(TEXT("tablet.pricechanged"),
+			*CigBalance::Pricing(Urun).Label, Pricing->Fiyat(Urun)),
 			FLinearColor(0.8f, 0.9f, 1.f));
 		break;
 	}
@@ -160,7 +158,7 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 			if (Cooking->IsRecipeUnlocked(Idx))
 			{
 				Cooking->CurrentRecipe = Idx;
-				AddMessage(CigText::Format(TEXT("msg.ui.recipeselected"), UCigCookingSystem::Recipe(Idx).Name), FLinearColor(0.8f, 0.7f, 1.f));
+				AddMessage(CigText::Format(TEXT("msg.ui.recipeselected"), *UCigCookingSystem::RecipeName(Idx)), FLinearColor(0.8f, 0.7f, 1.f));
 			}
 			else
 			{
@@ -219,7 +217,7 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 		if (Economy && Idx >= 0 && Idx < CigSupplierCount)
 		{
 			Economy->CurrentSupplier = Idx;
-			AddMessage(CigText::Format(TEXT("msg.ui.supplierselected"), UCigEconomySystem::Supplier(Idx).Name), FLinearColor(0.7f, 0.9f, 1.f));
+			AddMessage(CigText::Format(TEXT("msg.ui.supplierselected"), *UCigEconomySystem::SupplierName(Idx)), FLinearColor(0.7f, 0.9f, 1.f));
 		}
 		else if (Economy && Idx == CigSupplierCount)
 		{
@@ -488,6 +486,16 @@ void ACigkofteGameMode::ApplySettings()
 {
 	// Language: UI text is read from the new language on the next draw.
 	CigText::SetLanguage(Settings.Language);
+
+	// The world's text is not redrawn from a template every frame - a locked
+	// station's sign is set once, when the lock is applied - so changing the
+	// language left "SEVIYE 6" standing over a shop whose HUD had switched to
+	// English. Re-applying the current level rebuilds the signs against the
+	// language that is now selected.
+	if (WorldBuilder && Progression)
+	{
+		WorldBuilder->RefreshUnlocks(Progression->Level, /*bAnnounce=*/false);
+	}
 
 	// Audio
 	if (UCigAudioSubsystem* Audio = GetGameInstance() ? GetGameInstance()->GetSubsystem<UCigAudioSubsystem>() : nullptr)

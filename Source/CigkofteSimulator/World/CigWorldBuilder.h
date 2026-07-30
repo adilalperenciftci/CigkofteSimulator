@@ -107,6 +107,11 @@ public:
 		int32 PedCount = 0;      // pedestrians to bring to life on unlock
 		float PedRadius = 1600.f;
 		TArray<TWeakObjectPtr<AActor>> GateActors;
+		// The "LEVEL N" line on the barrier sign, kept separately from the rest of
+		// the gate. Its wording is written once at build time, so a language change
+		// has to come back and rewrite it - the sign is the only piece of world text
+		// that is a template rather than a name.
+		TWeakObjectPtr<AActor> GateLevelSign;
 		TArray<FCigAddress> PendingAddresses;
 	};
 	TArray<FCigDistrictState> Districts;

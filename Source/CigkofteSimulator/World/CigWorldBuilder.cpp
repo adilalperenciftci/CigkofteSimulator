@@ -7,6 +7,7 @@
 #include "Vehicles/CigCar.h"
 #include "Cat/CigCat.h"
 #include "World/CigMeshLibrary.h"
+#include "Core/CigText.h"
 #include "Core/CigLog.h"
 #include "Core/CigUpgrades.h"
 #include "Engine/StaticMeshActor.h"
@@ -985,9 +986,10 @@ void UCigWorldBuilder::BuildGate(FCigDistrictState& D, const FVector& Loc, bool 
 		D.GateActors.Add(Board);
 	}
 	if (AActor* T1 = SpawnWorldText(Loc + FVector(bHorizontal ? (Loc.Y > 0.f ? -14.f : 14.f) : 14.f, 0.f, 470.f),
-		FString::Printf(TEXT("SEVIYE %d"), Def.Level), 62.f, FColor(255, 200, 60), SignYaw))
+		CigText::Format(TEXT("level.locked"), Def.Level), 62.f, FColor(255, 200, 60), SignYaw))
 	{
 		D.GateActors.Add(T1);
+		D.GateLevelSign = T1;
 	}
 	if (AActor* T2 = SpawnWorldText(Loc + FVector(bHorizontal ? (Loc.Y > 0.f ? -14.f : 14.f) : 14.f, 0.f, 390.f),
 		Def.Name, 40.f, FColor(220, 220, 230), SignYaw))
@@ -1461,9 +1463,9 @@ void UCigWorldBuilder::RefreshUnlocks(int32 Level, bool bAnnounce)
 			const FString OpenName = CigStationUnlockName(Pair.Key);
 			if (GM && !OpenName.IsEmpty())
 			{
-				GM->AddMessage(FString::Printf(TEXT("AÇILDI: %s"), *OpenName), FLinearColor(0.45f, 1.f, 0.55f));
+				GM->AddMessage(CigText::Format(TEXT("level.stationopen"), *OpenName), FLinearColor(0.45f, 1.f, 0.55f));
 			}
-			SpawnFloatText(S->GetActorLocation() + FVector(0.f, 0.f, 210.f), TEXT("AÇILDI"), FColor(120, 255, 140), 40.f);
+			SpawnFloatText(S->GetActorLocation() + FVector(0.f, 0.f, 210.f), CigText::Get(TEXT("level.opened")), FColor(120, 255, 140), 40.f);
 		}
 	}
 
@@ -1473,6 +1475,17 @@ void UCigWorldBuilder::RefreshUnlocks(int32 Level, bool bAnnounce)
 		const FCigDistrictDef& Def = CigDistrictDef(D.Id);
 		if (D.bOpen || Level < Def.Level)
 		{
+			// Still shut. Its sign says "LEVEL N", which is the one piece of world
+			// text built from a template, so it is also the one piece that goes
+			// stale when the language changes - and this function is called on a
+			// settings change for exactly that reason.
+			if (AActor* Sign = D.GateLevelSign.Get())
+			{
+				if (UTextRenderComponent* T = Sign->FindComponentByClass<UTextRenderComponent>())
+				{
+					T->SetText(FText::FromString(CigText::Format(TEXT("level.locked"), Def.Level)));
+				}
+			}
 			continue;
 		}
 		D.bOpen = true;

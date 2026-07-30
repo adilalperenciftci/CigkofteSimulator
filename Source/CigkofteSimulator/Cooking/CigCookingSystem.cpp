@@ -23,9 +23,10 @@
 
 namespace
 {
-	// Names and descriptions stay in code (localization is a separate job), but
-	// the balance numbers are overridden from Config/CigRecipes.json when it
-	// exists, so ratios, prices and unlocks can be tuned without a rebuild.
+	// The names and blurbs here are the fallback for RecipeName/RecipeDesc, which
+	// prefer Config/Text/Strings.csv; the balance numbers are overridden from
+	// Config/CigRecipes.json when it exists, so ratios, prices and unlocks can be
+	// tuned without a rebuild.
 	// JSON shape: [{ "index": 0, "priceMult": 1.2, "unlockLevel": 1, ... }, ...]
 	void ApplyRecipeOverridesFromJson(TArray<FCigRecipe>& Table)
 	{
@@ -122,6 +123,35 @@ const FCigRecipe& UCigCookingSystem::Recipe(int32 Index)
 	return Table[FMath::Clamp(Index, 0, Table.Num() - 1)];
 }
 
+namespace
+{
+	const TCHAR* GRecipeKeys[CigRecipeCount] = {
+		TEXT("klasik"), TEXT("ekonomik"), TEXT("adiyaman"), TEXT("cokacili"),
+		TEXT("evyapimi"), TEXT("premium"), TEXT("ustaisi"), TEXT("gizli")
+	};
+
+	FString RecipeText(int32 Index, const TCHAR* Suffix, const TCHAR* Fallback)
+	{
+		const int32 i = FMath::Clamp(Index, 0, CigRecipeCount - 1);
+		const FString Key = FString::Printf(TEXT("recipe.%s.%s"), GRecipeKeys[i], Suffix);
+		const FString Value = CigText::Get(*Key);
+		// An unknown key comes back as the key, which is how a missing translation
+		// falls through to the table instead of putting "recipe.gizli.name" on the
+		// bowl.
+		return Value == Key ? FString(Fallback) : Value;
+	}
+}
+
+FString UCigCookingSystem::RecipeName(int32 Index)
+{
+	return RecipeText(Index, TEXT("name"), Recipe(Index).Name);
+}
+
+FString UCigCookingSystem::RecipeDesc(int32 Index)
+{
+	return RecipeText(Index, TEXT("desc"), Recipe(Index).Desc);
+}
+
 void UCigCookingSystem::TargetCounts(const FCigRecipe& R, int32 OutCounts[(int32)ECigIngredient::COUNT])
 {
 	constexpr int32 BulgurBase = 5;
@@ -200,7 +230,7 @@ void UCigCookingSystem::CycleRecipe()
 			const FCigRecipe& R = Recipe(CurrentRecipe);
 			if (GM)
 			{
-				GM->AddMessage(CigText::Format(TEXT("msg.cooking.recipecycled"), R.Name, R.Desc, R.PriceMult), FLinearColor(0.8f, 0.7f, 1.f));
+				GM->AddMessage(CigText::Format(TEXT("msg.cooking.recipecycled"), *RecipeName(Dough.Recipe), *RecipeDesc(Dough.Recipe), R.PriceMult), FLinearColor(0.8f, 0.7f, 1.f));
 			}
 			return;
 		}
@@ -438,7 +468,7 @@ void UCigCookingSystem::FinishDough()
 	if (GM)
 	{
 		GM->AddMessage(CigText::Format(TEXT("msg.cooking.finished"),
-			*CigQualityName(Dough.Quality), *CigSpiceName(Dough.Spice), Recipe(Dough.Recipe).Name), FLinearColor(0.4f, 1.f, 0.4f));
+			*CigQualityName(Dough.Quality), *CigSpiceName(Dough.Spice), *RecipeName(Dough.Recipe)), FLinearColor(0.4f, 1.f, 0.4f));
 		GM->PlaySound(ECigSound::Success);
 	Bus().DoughPrepared.Broadcast(Dough.Quality);
 		if (GM->WorldBuilder)

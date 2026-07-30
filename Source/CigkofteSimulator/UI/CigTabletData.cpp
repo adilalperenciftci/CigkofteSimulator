@@ -22,7 +22,6 @@
 #include "Cat/CigCatSystem.h"
 #include "Progression/CigProgressionSystem.h"
 
-#define LOCTEXT_NAMESPACE "CigTablet"
 
 namespace
 {
@@ -149,26 +148,22 @@ namespace CigTablet
 			{
 				const bool bGecerli = Den->RuhsatGecerli();
 				Rows.Add(MakeRow(
-					LOCTEXT("RuhsatSatiri", "0) Ruhsat ve vergi levhası").ToString(),
+					CigText::Get(TEXT("tablet.licence")),
 					bGecerli
-						? FText::Format(LOCTEXT("RuhsatGecerli", "{0} gün geçerli  ·  yenile {1} TL"),
-							FText::AsNumber(Den->RuhsatKalanGun()), FText::AsNumber(Den->RuhsatUcreti())).ToString()
-						: FText::Format(LOCTEXT("RuhsatSuresiz", "SÜRESİ DOLDU  ·  yenile {0} TL"),
-							FText::AsNumber(Den->RuhsatUcreti())).ToString(),
+						? CigText::Format(TEXT("tablet.licence.valid"), Den->RuhsatKalanGun(), Den->RuhsatUcreti())
+						: CigText::Format(TEXT("tablet.licence.expired"), Den->RuhsatUcreti()),
 					bGecerli ? CigUI::White : CigUI::Bad, true));
 
 				if (Den->BekleyenCeza > 0)
 				{
 					Rows.Add(MakeRow(
-						LOCTEXT("RusvetSatiri", "9) Müfettişe rüşvet ver").ToString(),
-						FText::Format(LOCTEXT("RusvetTutar", "{0} TL  ·  riskli"),
-							FText::AsNumber(FMath::RoundToInt(Den->BekleyenCeza * 0.6f))).ToString(),
+						CigText::Get(TEXT("tablet.bribe")),
+						CigText::Format(TEXT("tablet.bribe.amount"), FMath::RoundToInt(Den->BekleyenCeza * 0.6f)),
 						CigUI::Bad, true));
 				}
 				if (Den->KapaliMi())
 				{
-					Rows.Add(MakeRow(LOCTEXT("KapaliSatiri", "Dükkân belediye kararıyla kapalı").ToString(),
-						FString(), CigUI::Bad));
+					Rows.Add(MakeRow(CigText::Get(TEXT("tablet.shopclosed")), FString(), CigUI::Bad));
 				}
 			}
 
@@ -184,7 +179,8 @@ namespace CigTablet
 				Rows.Add(MakeRow(
 					FString::Printf(TEXT("%d) %s"), i + 1, *CigBalance::UpgradeName(i)),
 					bOwned ? CigText::Get(TEXT("tablet.owned"))
-					       : FString::Printf(TEXT("%d TL  (Sv.%d)"), D.Cost, D.MinLevel),
+					       : FString::Printf(TEXT("%d TL  (%s)"), D.Cost,
+					           *CigText::Format(TEXT("tablet.levelshort"), D.MinLevel)),
 					bOwned ? CigUI::Good : CigUI::White, !bOwned));
 			}
 			break;
@@ -243,7 +239,8 @@ namespace CigTablet
 				const bool bCurrent = Cook->CurrentRecipe == i;
 
 				Rows.Add(MakeRow(
-					FString::Printf(TEXT("%d) %s%s"), i + 1, bCurrent ? TEXT("> ") : TEXT("  "), R.Name),
+					FString::Printf(TEXT("%d) %s%s"), i + 1, bCurrent ? TEXT("> ") : TEXT("  "),
+						*UCigCookingSystem::RecipeName(i)),
 					bUnlocked ? CigText::Format(TEXT("tablet.salesmult"), R.PriceMult)
 					          : (R.UnlockLevel >= 99 ? CigText::Get(TEXT("tablet.locked.story"))
 					                                 : CigText::Format(TEXT("tablet.levelshort"), R.UnlockLevel)),
@@ -260,7 +257,7 @@ namespace CigTablet
 				}
 				else
 				{
-					Rows.Add(MakeRow(FString::Printf(TEXT("     %s"), R.Desc), FString(), CigUI::Dim));
+					Rows.Add(MakeRow(FString::Printf(TEXT("     %s"), *UCigCookingSystem::RecipeDesc(i)), FString(), CigUI::Dim));
 				}
 			}
 			break;
@@ -276,14 +273,12 @@ namespace CigTablet
 
 			const float RakipCarpan = Fiyat->RakipOrtalamaCarpani();
 			Rows.Add(MakeRow(
-				LOCTEXT("FiyatRakipBasligi", "Rakip ortalaması").ToString(),
-				FText::Format(LOCTEXT("FiyatRakipDeger", "liste x{0}"),
-					FText::AsNumber(RakipCarpan)).ToString(),
+				CigText::Get(TEXT("tablet.price.rivalavg")),
+				CigText::Format(TEXT("tablet.price.rivalvalue"), RakipCarpan),
 				CigUI::Dim));
 			Rows.Add(MakeRow(
-				LOCTEXT("FiyatMahalleBasligi", "Mahalle gelir düzeyi").ToString(),
-				FText::Format(LOCTEXT("FiyatMahalleDeger", "x{0}"),
-					FText::AsNumber(Fiyat->MahalleGeliri())).ToString(),
+				CigText::Get(TEXT("tablet.price.income")),
+				CigText::Format(TEXT("tablet.price.incomevalue"), Fiyat->MahalleGeliri()),
 				CigUI::Dim));
 
 			for (int32 i = 0; i < CigUrunCount; ++i)
@@ -298,16 +293,11 @@ namespace CigTablet
 
 				Rows.Add(MakeRow(
 					FString::Printf(TEXT("%d) %s"), i + 1, *Row.Label),
-					FText::Format(LOCTEXT("FiyatSatiri", "{0} TL  (liste {1} - x{2})"),
-						FText::AsNumber(Fiyat->Fiyat(i)),
-						FText::AsNumber(Row.TabanFiyat),
-						FText::AsNumber(Carpan)).ToString(),
+					CigText::Format(TEXT("tablet.price.row"), Fiyat->Fiyat(i), Row.TabanFiyat, Carpan),
 					Renk, true));
 			}
 
-			Rows.Add(MakeRow(
-				LOCTEXT("FiyatIpucu", "Rakam tuşu fiyatı artırır, Shift ile düşürür.").ToString(),
-				FString(), CigUI::Dim));
+			Rows.Add(MakeRow(CigText::Get(TEXT("tablet.price.hint")), FString(), CigUI::Dim));
 			break;
 		}
 
@@ -323,7 +313,8 @@ namespace CigTablet
 				const FCigSupplier& S = UCigEconomySystem::Supplier(i);
 				const bool bCurrent = Eco->CurrentSupplier == i;
 				Rows.Add(MakeRow(
-					FString::Printf(TEXT("%d) %s%s"), i + 1, bCurrent ? TEXT("> ") : TEXT("  "), S.Name),
+					FString::Printf(TEXT("%d) %s%s"), i + 1, bCurrent ? TEXT("> ") : TEXT("  "),
+						*UCigEconomySystem::SupplierName(i)),
 					CigText::Format(TEXT("tablet.pricemult"), S.PriceMult * (1.f - Eco->RelationDiscount(i))),
 					bCurrent ? CigUI::Gold : CigUI::White, true));
 
@@ -373,28 +364,25 @@ namespace CigTablet
 		{
 			if (const UCigSocialSystem* Sos = GM->Social.Get())
 			{
-				Rows.Add(MakeHeader(FText::Format(LOCTEXT("SosyalBaslik", "Sosyal medya - {0} takipçi"),
-					FText::AsNumber(Sos->Takipci)).ToString()));
+				Rows.Add(MakeHeader(CigText::Format(TEXT("tablet.social.header"), Sos->Takipci)));
 				Rows.Add(MakeRow(
-					LOCTEXT("SosyalTanitim", "1) Ürün tanıtımı paylaş").ToString(),
-					FText::Format(LOCTEXT("SosyalHak", "{0} gönderi hakkı"),
-						FText::AsNumber(Sos->KalanGonderi)).ToString(),
+					CigText::Get(TEXT("tablet.social.promo")),
+					CigText::Format(TEXT("tablet.social.posts"), Sos->KalanGonderi),
 					Sos->KalanGonderi > 0 ? CigUI::White : CigUI::Dim, Sos->KalanGonderi > 0));
 				Rows.Add(MakeRow(
-					LOCTEXT("SosyalKampanya", "2) Kampanya duyur").ToString(),
-					Sos->bKampanyaAktif ? LOCTEXT("SosyalKampanyaAktif", "bugün yayında").ToString()
-					                    : LOCTEXT("SosyalKampanyaUcret", "150 TL").ToString(),
+					CigText::Get(TEXT("tablet.social.campaign")),
+					CigText::Get(Sos->bKampanyaAktif ? TEXT("tablet.social.campaignlive")
+					                                : TEXT("tablet.social.campaigncost")),
 					Sos->bKampanyaAktif ? CigUI::Good : CigUI::White, !Sos->bKampanyaAktif));
 
 				// The reply options only appear while a poor review is actually
 				// waiting; offering them otherwise would be three dead keys.
 				if (Sos->YanitBekleyenVar())
 				{
-					Rows.Add(MakeRow(LOCTEXT("SosyalYanitBasligi", "Kötü yoruma yanıt:").ToString(),
-						FString(), CigUI::Bad));
-					Rows.Add(MakeRow(LOCTEXT("SosyalSavun", "7) Savun").ToString(), FString(), CigUI::White, true));
-					Rows.Add(MakeRow(LOCTEXT("SosyalOzur", "8) Özür dile").ToString(), FString(), CigUI::White, true));
-					Rows.Add(MakeRow(LOCTEXT("SosyalGormezden", "9) Görmezden gel").ToString(), FString(), CigUI::Dim, true));
+					Rows.Add(MakeRow(CigText::Get(TEXT("tablet.social.replyheader")), FString(), CigUI::Bad));
+					Rows.Add(MakeRow(CigText::Get(TEXT("tablet.social.defend")), FString(), CigUI::White, true));
+					Rows.Add(MakeRow(CigText::Get(TEXT("tablet.social.apologise")), FString(), CigUI::White, true));
+					Rows.Add(MakeRow(CigText::Get(TEXT("tablet.social.ignore")), FString(), CigUI::Dim, true));
 				}
 			}
 
@@ -438,24 +426,24 @@ namespace CigTablet
 				const FCigTopluSiparis& T = Ev->TopluSiparis;
 				if (T.bTeklifVar)
 				{
-					Rows.Add(MakeHeader(LOCTEXT("TopluBaslik", "Toplu sipariş teklifi").ToString()));
+					Rows.Add(MakeHeader(CigText::Get(TEXT("tablet.bulk.header"))));
 					Rows.Add(MakeRow(
-						FText::Format(LOCTEXT("TopluTeklif", "{0}. güne {1} dürüm"),
-							FText::AsNumber(T.TeslimGunu), FText::AsNumber(T.IstenenAdet)).ToString(),
-						FText::Format(LOCTEXT("TopluOdul", "{0} TL"), FText::AsNumber(T.Odul)).ToString(),
+						// Day first in Turkish, count first in English. This is the
+						// row that shows why the templates take ordered arguments
+						// rather than printf specifiers.
+						CigText::Format(TEXT("tablet.bulk.offer"), T.TeslimGunu, T.IstenenAdet),
+						CigText::Format(TEXT("tablet.bulk.reward"), T.Odul),
 						CigUI::Gold));
-					Rows.Add(MakeRow(LOCTEXT("TopluKabul", "1) Kabul et").ToString(), FString(), CigUI::Good, true));
-					Rows.Add(MakeRow(LOCTEXT("TopluRet", "2) Reddet").ToString(), FString(), CigUI::Dim, true));
+					Rows.Add(MakeRow(CigText::Get(TEXT("tablet.bulk.accept")), FString(), CigUI::Good, true));
+					Rows.Add(MakeRow(CigText::Get(TEXT("tablet.bulk.reject")), FString(), CigUI::Dim, true));
 				}
 				else if (T.bKabulEdildi)
 				{
 					const UCigProgressionSystem* Pr = GM->Progression.Get();
 					const int32 Yapilan = Pr ? Pr->TotalServed - T.BaslangicServis : 0;
-					Rows.Add(MakeHeader(LOCTEXT("TopluAktifBaslik", "Toplu sipariş").ToString()));
+					Rows.Add(MakeHeader(CigText::Get(TEXT("tablet.bulk.activeheader"))));
 					Rows.Add(MakeBarRow(
-						FText::Format(LOCTEXT("TopluIlerleme", "{0}/{1} dürüm  ·  teslim {2}. gün"),
-							FText::AsNumber(Yapilan), FText::AsNumber(T.IstenenAdet),
-							FText::AsNumber(T.TeslimGunu)).ToString(),
+						CigText::Format(TEXT("tablet.bulk.progress"), Yapilan, T.IstenenAdet, T.TeslimGunu),
 						T.IstenenAdet > 0 ? (float)Yapilan / (float)T.IstenenAdet : 0.f,
 						CigUI::Gold, CigUI::White));
 				}
@@ -521,15 +509,13 @@ namespace CigTablet
 				Rows.Add(MakeBarRow(CigText::Get(TEXT("tablet.morale")), Ap.Morale / 100.f,
 					Ap.Morale < 30.f ? CigUI::Bad : FLinearColor(0.9f, 0.7f, 0.2f), CigUI::Dim));
 				Rows.Add(MakeRow(
-					FText::Format(LOCTEXT("PersonelYetenek", "Hız x{0}  ·  Titizlik x{1}  ·  Güler yüz x{2}"),
-						FText::AsNumber(Ap.Hiz), FText::AsNumber(Ap.Titizlik), FText::AsNumber(Ap.GulerYuz)).ToString(),
+					CigText::Format(TEXT("tablet.staff.skills"), Ap.Hiz, Ap.Titizlik, Ap.GulerYuz),
 					FString(), CigUI::Dim));
 
 				if (Ap.OdenmemisGun > 0)
 				{
 					Rows.Add(MakeRow(
-						FText::Format(LOCTEXT("PersonelOdenmemis", "{0} gündür maaşı ödenmedi"),
-							FText::AsNumber(Ap.OdenmemisGun)).ToString(),
+						CigText::Format(TEXT("tablet.staff.unpaid"), Ap.OdenmemisGun),
 						FString(), CigUI::Bad));
 				}
 
@@ -538,9 +524,8 @@ namespace CigTablet
 				if (Staff->TransferTeklifi > 0)
 				{
 					Rows.Add(MakeRow(
-						FText::Format(LOCTEXT("PersonelTransfer", "Rakip {0} TL teklif etti"),
-							FText::AsNumber(Staff->TransferTeklifi)).ToString(),
-						LOCTEXT("PersonelKarsiTeklif", "karşı teklif").ToString(), CigUI::Bad, true));
+						CigText::Format(TEXT("tablet.staff.transfer"), Staff->TransferTeklifi),
+						CigText::Get(TEXT("tablet.staff.counteroffer")), CigUI::Bad, true));
 				}
 
 				if (Ap.bWantsRaise)
@@ -556,11 +541,10 @@ namespace CigTablet
 					const FCigStaffAday& A = Staff->Adaylar[i];
 					Rows.Add(MakeRow(
 						FString::Printf(TEXT("%d) %s — %s"), i + 1, *A.Name, *CigBalance::Staff(A.Arketip).Label),
-						FText::Format(LOCTEXT("AdayMaas", "{0} TL/gün"), FText::AsNumber(A.MaasBeklentisi)).ToString(),
+						CigText::Format(TEXT("tablet.candidate.wage"), A.MaasBeklentisi),
 						CigUI::White, true));
 					Rows.Add(MakeRow(
-						FText::Format(LOCTEXT("AdayYetenek", "     hız x{0}  ·  titizlik x{1}  ·  güler yüz x{2}"),
-							FText::AsNumber(A.Hiz), FText::AsNumber(A.Titizlik), FText::AsNumber(A.GulerYuz)).ToString(),
+						CigText::Format(TEXT("tablet.candidate.skills"), A.Hiz, A.Titizlik, A.GulerYuz),
 						FString(), CigUI::Dim));
 				}
 			}
@@ -583,4 +567,3 @@ namespace CigTablet
 	}
 }
 
-#undef LOCTEXT_NAMESPACE

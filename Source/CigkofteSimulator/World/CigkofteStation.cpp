@@ -479,6 +479,17 @@ void ACigkofteStation::SetHighlighted(bool bOn)
 void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 {
 	LockLevel = RequiredLevel;
+
+	// The label is rewritten even when the lock state has not changed.
+	//
+	// It is the one thing here built from a template rather than from a colour, so
+	// it is the one thing that goes stale when the language changes: switching to
+	// English left "SEVIYE 6" standing over a station in a shop whose HUD had
+	// already switched, because this function returned early for every station
+	// whose lock had not moved. Setting text on a component that already has it is
+	// cheap; the early return below still guards the material work and the pop.
+	RefreshLockLabel();
+
 	if (bLocked == bLock)
 	{
 		return;
@@ -497,11 +508,6 @@ void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 	{
 		BaseMID->SetVectorParameterValue(TEXT("Color"), bLocked ? LockedBase : FLinearColor(0.45f, 0.42f, 0.40f));
 	}
-	if (Label)
-	{
-		Label->SetText(FText::FromString(bLocked ? FString::Printf(TEXT("SEVIYE %d"), LockLevel) : LabelBaseText));
-		Label->SetTextRenderColor(bLocked ? FColor(150, 150, 155) : FColor::White);
-	}
 	if (Dough && bLocked)
 	{
 		Dough->SetVisibility(false);
@@ -510,6 +516,15 @@ void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 	if (bWasLocked && !bLocked)
 	{
 		Pop(); // unlock feedback
+	}
+}
+
+void ACigkofteStation::RefreshLockLabel()
+{
+	if (Label)
+	{
+		Label->SetText(FText::FromString(bLocked ? CigText::Format(TEXT("level.locked"), LockLevel) : LabelBaseText));
+		Label->SetTextRenderColor(bLocked ? FColor(150, 150, 155) : FColor::White);
 	}
 }
 

@@ -33,8 +33,10 @@ order on the right and the recipe on the left.*
 | *Shop upgrades* | *Daily quests, story goals, regulars* |
 | ![The chopping board](docs/screenshots/07_dograma.png) | ![The apprentice at work](docs/screenshots/08_cirak.png) |
 | *Chopping, two strokes of four into a garnish* | *The apprentice works whichever station you assign them to* |
-| ![The seating area](docs/screenshots/06_salon.png) | |
-| *Customers who eat in take a table* | |
+| ![The seating area](docs/screenshots/06_salon.png) | ![A delivery standing in the shop](docs/screenshots/10_teslimat.png) |
+| *Customers who eat in take a table* | *A delivery arrives as a crate and stands there until you unload it* |
+| ![Tablet — stock and the fridge](docs/screenshots/09_tablet_stok.png) | |
+| *Stock, and the one shared volume every perishable competes for* | |
 
 ## Playing it
 

@@ -708,7 +708,14 @@ void UCigCheatManager::ShotStep()
 		// part doing the explaining. The game still ships Turkish first - this
 		// changes the shot, not the default. Station signs stay as they are: isot
 		// and salça are what the ingredients are called.
-		CigText::SetLanguage(1);
+		//
+		// Through the settings path rather than CigText::SetLanguage directly. The
+		// world's signage is written once when a lock is applied, not rebuilt each
+		// frame, so setting the language alone left "SEVIYE 6" standing in an
+		// otherwise English shop - which is what a player switching language would
+		// have seen too.
+		Mode->Settings.Language = 1;
+		Mode->ApplySettings();
 		Mode->StartFirstDayIfIntro();
 		// A day now begins in preparation. Every one of these callers wants
 		// the shop trading - a screenshot of an empty queue, a benchmark of

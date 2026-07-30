@@ -60,6 +60,16 @@ public:
 
 	static const FCigRecipe& Recipe(int32 Index);
 
+	// The recipe's name and blurb, from Config/Text/Strings.csv when it has them.
+	//
+	// The literals in the table stay Turkish deliberately: they are also the
+	// fallback for the JSON balance override, and a balance file that shipped
+	// English defaults would be the wrong default for a game whose first language
+	// is Turkish. Keyed by index, so renaming a recipe cannot silently drop its
+	// translation the way a name-derived key would.
+	static FString RecipeName(int32 Index);
+	static FString RecipeDesc(int32 Index);
+
 	// --- Human recipe wording (the UI never shows raw ratios) ---
 	// e.g. "5 measures bulgur - 3 water - 2 paste - 1 spice"
 	static FString HumanRecipeMix(const FCigRecipe& R);

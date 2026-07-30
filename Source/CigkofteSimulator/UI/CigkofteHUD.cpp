@@ -527,7 +527,7 @@ void ACigkofteHUD::DrawBowlPanel(ACigkofteGameMode* GM)
 	float Y = ScreenSize.Y - H - SX(24.f);
 	const float PanelTop = Y;
 	Panel(X, Y, W, H);
-	PanelHeader(X, Y, W, CigText::Format(TEXT("hud.bowl"), R.Name), FLinearColor(0.8f, 0.35f, 0.15f));
+	PanelHeader(X, Y, W, CigText::Format(TEXT("hud.bowl"), *UCigCookingSystem::RecipeName(Cook->CurrentRecipe)), FLinearColor(0.8f, 0.35f, 0.15f));
 	Y += LineHeight(FontBody, HeadScale) * 1.25f + SX(8.f);
 
 	const float TX = X + SX(16.f);

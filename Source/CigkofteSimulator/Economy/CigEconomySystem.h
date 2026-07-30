@@ -30,6 +30,11 @@ public:
 
 	static const FCigSupplier& Supplier(int32 Index);
 
+	// The supplier's name and blurb, from the text table when it has them. Same
+	// arrangement as the recipes: the literals in the table are the fallback.
+	static FString SupplierName(int32 Index);
+	static FString SupplierDesc(int32 Index);
+
 	// --- Money ---
 	bool TrySpend(int32 Cost);
 	void Earn(int32 Amount);

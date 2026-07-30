@@ -151,21 +151,46 @@ scaled to 0.4 in Z - only the "9" of "Marul x9" poked out of the end.
 - **1.7 Deterministic tests.** Every derivation added here is pure and tested;
   74 → 81.
 
+## The English that was not English
+
+The game had a language setting that 46 strings ignored. They were written with
+`LOCTEXT` while the rest of the project uses `CigText` and
+`Config/Text/Strings.csv` - and no `.po` or `.locres` data has ever existed here,
+so those strings were permanently Turkish in both languages while *looking*
+localised, which is why nobody had noticed. Thirty-seven were in
+`CigTabletData.cpp`. Another group never reached the text system at all: the
+reputation title that sits under the money the whole time, the recipe and supplier
+tables, the review pool, and every `SEVIYE N` sign in the world.
+
+All of it now goes through the text table - 100 new keys - and
+`Tools/check_sources.py` fails the build on a `LOCTEXT` anywhere in `Source`, so
+it cannot come back. Recipes and suppliers use the same arrangement the balance
+tables already had: a key per row, falling back to the table's Turkish literal, so
+a forgotten translation degrades to Turkish rather than printing `recipe.gizli.name`
+on the bowl.
+
+Two real defects fell out of it, both invisible until the language was switched at
+runtime:
+
+- **A station's sign never changed.** `SetLocked` returned early when the lock had
+  not moved, and the sign's wording is the one thing there built from a template -
+  so switching to English left "SEVIYE 6" standing over a station in a shop whose
+  HUD had already switched.
+- **`ApplySettings` changed the language and nothing else.** The world's signage is
+  written once, when a lock is applied, not rebuilt per frame. It now re-applies
+  the current level, which rewrites the signs against the language just chosen.
+
+What is deliberately still Turkish: customer names, rival shop names, the street
+addresses, and the ingredient words on the station tubs. Isot and salça are what
+the ingredients are called.
+
+`CigShots` takes its pictures in English through the settings path a player would
+use, rather than by setting the language directly - which is how the second defect
+above was found rather than reasoned about.
+
 ## Next exact task
 
-**The English text that is not English.** The game has a language setting, and 46
-strings ignore it: they were written with `LOCTEXT` while the rest of the project
-uses `CigText` and `Config/Text/Strings.csv`, and no `.po` or `.locres` data has
-ever existed to translate them. Thirty-seven are in `CigTabletData.cpp`. Alongside
-them, `PopularityTitle()`, the recipe and supplier tables and every `SEVIYE %d`
-label are hardcoded Turkish literals that never reach the text system at all.
-
-This is visible from outside: the README is English and its screenshots are the
-game explaining itself, so the untranslated rows are exactly the part a visitor
-cannot skim. `CigShots` now takes its pictures in English, which is what exposed
-the gap.
-
-Then **Stage 2.3** — batch spoilage. See `PLAN.md`.
+**Stage 2.3** — batch spoilage. See `PLAN.md`.
 
 Two older items still stand: the shop interior is the measured performance problem
 (74 FPS in the room the game is played in against 88 across the whole route), and
@@ -515,13 +540,13 @@ by hand before each build.
 
 ## Last test result
 
-`Automation RunTests Cigkofte` — **89 passed, 0 failed**, exit code 0.
+`Automation RunTests Cigkofte` — **93 passed, 0 failed**, exit code 0.
 
 Test groups added on this branch: `Cigkofte.Sale`, `Cigkofte.Reviews`,
 `Cigkofte.SaveMigration`, `Cigkofte.DoughVisual`, `Cigkofte.MixDiagnosis`,
-`Cigkofte.ToppingVisual`, `Cigkofte.Storage`, `Cigkofte.Crate`. Still missing from
-the commercial-demo test standard: `InventoryBatches` (Stage 2.3), `Localization`
-and `DataValidation`.
+`Cigkofte.ToppingVisual`, `Cigkofte.Storage`, `Cigkofte.Crate`,
+`Cigkofte.Localization`. Still missing from the commercial-demo test standard:
+`InventoryBatches` (Stage 2.3) and `DataValidation`.
 
 `Cigkofte.Crate` covers the four cases a delivery has now that it is an object:
 it fits, it half-fits and the crate keeps the rest, a second press against a full

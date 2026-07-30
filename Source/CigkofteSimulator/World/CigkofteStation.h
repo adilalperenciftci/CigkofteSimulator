@@ -46,6 +46,12 @@ public:
 	// Level lock: while closed the station stays pale grey, its label reads
 	// "SEVIYE N" and interaction is refused. It pops briefly on unlock.
 	void SetLocked(bool bLock, int32 RequiredLevel);
+
+	// Rewrites the label from the current language. Called by SetLocked whether or
+	// not the lock moved, because a language change moves the wording without
+	// moving the lock.
+	void RefreshLockLabel();
+
 	bool IsLocked() const { return bLocked; }
 	int32 GetLockLevel() const { return LockLevel; }
 
