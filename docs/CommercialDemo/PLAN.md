@@ -99,20 +99,50 @@ automation until there is an in-game input hook.
 The single most important stage for the sales pitch. Depends on Stage 0.1 only
 in that the finished product must already be authoritative.
 
-- 1.1 Mixture visual state driven from food state, cached material instances
-- 1.2 Ingredient pouring with procedural utensil motion
-- 1.3 Kneading progression: pitch, cohesion, deformation, completion
-- 1.4 Chopping states and pooled fragments
-- 1.5 Wrap assembly surface, data-driven topping placement
-- 1.6 Readable recoverable failures
-- 1.7 Deterministic tests for visual state derivation
+- 1.1 Mixture visual state driven from food state, cached material instances —
+  **done.** The station was handed two numbers (fill, knead) and lerped between
+  two hardcoded colours, so isot, mix quality and freshness were invisible on the
+  counter while feeding the price, the customer's reaction and the review.
+  `FCigDoughVisual` (Cooking/CigDoughVisual.h) is pure and testable: it takes the
+  batch and returns a colour and a scale. The material instances were already
+  created once in `Setup` rather than per frame, so what was actually missing was
+  the write itself being skipped when nothing changed — `NearlyEqual` on the
+  state and an equality check on the colour, which matters because the kneading
+  station pushes its state on every stroke. Tests: `Cigkofte.DoughVisual`.
+- 1.2 Ingredient pouring with procedural utensil motion — **done.** A scoop in
+  the ingredient's colour, lifted from the tub on one sine with the tip on a
+  later curve.
+- 1.3 Kneading progression: pitch, cohesion, deformation, completion — **done.**
+  Pitch already tracked progress; what was missing was the batch gathering as it
+  is worked, and any sign at all of the rhythm window the gain depends on.
+- 1.4 Chopping states and pooled fragments — **done.** A shrinking head and a
+  fragment per stroke, from a pool, scattered from a fixed table.
+- 1.5 Wrap assembly surface, data-driven topping placement — **done.**
+  `Orders/CigToppingVisual.h`. Tests: `Cigkofte.ToppingVisual`.
+- 1.6 Readable recoverable failures — **done.** `Cooking/CigMixDiagnosis.h` names
+  the worst fault and whether adding can still fix it. Tests:
+  `Cigkofte.MixDiagnosis`.
+- 1.7 Deterministic tests for visual state derivation — **done.** Every
+  derivation added in this stage is pure and tested; 74 → 81.
+
+**Stage 1 is complete.** Three defects it turned up in existing code are recorded
+in `STATE.md`; the loudest is that the isot target the HUD showed the player was
+uninitialised stack memory.
 
 ## Stage 2 — opening, closing, physical inventory
 
 Depends on Stage 1 for the preparation loop it wraps around.
 
-- 2.1 Opening routine, 2.2 physical stock, 2.3 storage rules,
-  2.4 batch spoilage, 2.5 closing routine
+- 2.1 Opening routine — **done.** A day starts in `ECigPhase::Opening`: the
+  stations work, the clock does not run and the queue stays out. The player opens
+  the shop at the service counter, which is the door during preparation and the
+  hand-off during service. What limits preparation is energy, not a timer:
+  kneading and chopping cost the same as they do at noon, so a morning spent
+  preparing is a shift spent tired. Dough ages from the moment it is made, so
+  preparing everything as early as possible is not free either.
+- 2.4 Batch spoilage — **already there.** Freshness decays per recipe, the fridge
+  slows it, and Stage 1.3 made it visible on the counter.
+- 2.2 physical stock, 2.3 storage rules, 2.5 closing routine
 
 ## Stage 3 — shop customization and build mode
 

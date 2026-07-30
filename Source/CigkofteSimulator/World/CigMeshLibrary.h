@@ -30,4 +30,9 @@ namespace CigMesh
 	// Scene_Bazaar_Vol1 (an Ottoman/eastern bazaar). Each mesh sits in its own
 	// folder: /Game/Scene_Bazaar_Vol1/Assets/MS/3D/<Folder>/<Name>
 	UStaticMesh* Bazaar(const TCHAR* Folder, const TCHAR* Name);
+
+	// MMSupermarket: shop fittings, all in one folder. Bakery counters, a
+	// checkout, shelving, fridges, crates and trays - the furniture a food shop
+	// is made of, in one consistent style, which is what the stations needed.
+	inline UStaticMesh* Market(const TCHAR* Name) { return LoadAt(TEXT("MMSupermarket/Equipment/Mesh"), Name); }
 }

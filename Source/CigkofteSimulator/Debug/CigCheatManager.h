@@ -45,6 +45,11 @@ public:
 	UFUNCTION(Exec) void CigSeed();
 	UFUNCTION(Exec) void CigSetSeed(int32 Seed);
 
+	// `CigLang 0|1` switches language the way the settings menu does - including
+	// rebuilding the world's signage, which a bare CigText::SetLanguage does not.
+	// The capture scripts use it so a recording is in one language throughout.
+	UFUNCTION(Exec) void CigLang(int32 Language);
+
 	// Re-reads Config/Balance/*.csv, for balance experiments without a restart.
 	UFUNCTION(Exec) void CigReloadBalance();
 
@@ -66,12 +71,29 @@ public:
 	// Tours and photographs the new assets: shop, seating, street, square, market, cat.
 	UFUNCTION(Exec) void CigTour();
 
+	// A fixed benchmark route, for filling in PERFORMANCE_BUDGET.md.
+	//
+	// The same five viewpoints every run, held for the same time, on a fixed
+	// seed with every district open and the stock full - so two runs differ
+	// because the build changed, not because the day went differently. It emits
+	// a CSV profiler event at each stop, which is what lets a run be read per
+	// viewpoint rather than as one average that hides the expensive one. Quits
+	// when the route ends.
+	//
+	// The route is deliberately the heaviest state the game can be in. A budget
+	// measured on an empty first day would be met by a build that stutters as
+	// soon as the player earns anything.
+	UFUNCTION(Exec) void CigBench(int32 SecondsPerStop = 6);
+
 private:
 	ACigkofteGameMode* GM() const;
 
 	void ShotStep();
 	void TourStep();
+	void BenchStep();
 
 	FTimerHandle ShotTimer;
 	int32 ShotIndex = 0;
+	FTimerHandle BenchTimer;
+	int32 BenchIndex = 0;
 };

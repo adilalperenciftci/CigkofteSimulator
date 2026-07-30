@@ -63,6 +63,10 @@ public:
 	float InspectorTimer = -1.f;
 	void TriggerInspectorNow();
 
+	// Sends the queue, the seated guests and the inspector home. Called when the
+	// shop shuts, which is now a window before the books are closed.
+	void SendEveryoneHome();
+
 private:
 	float CustomerTimer = 5.f;
 

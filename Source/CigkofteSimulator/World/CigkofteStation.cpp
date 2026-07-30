@@ -1,9 +1,62 @@
 #include "World/CigkofteStation.h"
+#include "World/CigMeshLibrary.h"
 #include "Core/CigText.h"
+#include "Core/CigLog.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/StaticMesh.h"
+
+// Whether the coloured top survives the model going in underneath it.
+//
+// For most stations the top was a stand-in for the object itself and goes away
+// with the box. For the ingredient stations it is the ingredient: a tub of isot
+// on a counter, in the ingredient's own colour, positioned at counter height by
+// Setup. Hiding it would have cost the shop the one cue that works across the
+// room, and CigWorldBuilder colours it from CigIngredientColor already.
+//
+// Declared here rather than next to its one original caller because it now also
+// answers "does this station have something to scoop out of", which Setup and
+// Pop both need and both run earlier in the file.
+static bool StationKeepsTop(ECigStation Type)
+{
+	switch (Type)
+	{
+	case ECigStation::Bulgur:
+	case ECigStation::Isot:
+	case ECigStation::Salca:
+	case ECigStation::Su:
+	case ECigStation::Baharat:
+		return true;
+	default:
+		return false;
+	}
+}
+
+// The stations furnished with the four-metre bakery counter.
+//
+// Kept as its own list rather than reusing StationKeepsTop, which happens to
+// contain five of them: they are different questions. One asks whether the
+// coloured tub survives, the other whether the model is a counter that has to
+// stand at counter height. Merging them would have left the kneading and
+// chopping benches knee-high next to their neighbours, which is what the first
+// version of this did.
+static bool StationIsCounterRun(ECigStation Type)
+{
+	switch (Type)
+	{
+	case ECigStation::Bulgur:
+	case ECigStation::Isot:
+	case ECigStation::Salca:
+	case ECigStation::Su:
+	case ECigStation::Baharat:
+	case ECigStation::Yogurma:
+	case ECigStation::Dograma:
+		return true;
+	default:
+		return false;
+	}
+}
 
 namespace
 {
@@ -37,12 +90,48 @@ ACigkofteStation::ACigkofteStation()
 	Dough->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Dough->SetVisibility(false);
 
+	Visual = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Visual"));
+	Visual->SetupAttachment(Base);
+	Visual->SetMobility(EComponentMobility::Movable);
+	Visual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Visual->SetVisibility(false);
+
+	// The scoop. Hidden until a measure is taken, then it lifts out of the tub,
+	// tips, and drops back - which is the whole of "ingredient pouring with
+	// procedural utensil motion" without an animation asset in it. Attached to
+	// Top rather than Base so it travels with the tub the ingredient is in.
+	Scoop = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Scoop"));
+	Scoop->SetupAttachment(Base);
+	Scoop->SetMobility(EComponentMobility::Movable);
+	Scoop->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Scoop->SetVisibility(false);
+
 	Label = CreateDefaultSubobject<UTextRenderComponent>(TEXT("Label"));
 	Label->SetupAttachment(Base);
 	Label->SetMobility(EComponentMobility::Movable);
 	Label->SetHorizontalAlignment(EHTA_Center);
 	Label->SetWorldSize(26.f);
 	Label->SetTextRenderColor(FColor::White);
+
+	// Nothing small on a counter casts a shadow.
+	//
+	// Measured per viewpoint: the shop interior was spending 523 draw calls a
+	// frame on shadow depths against the street's 53, and it is the one room the
+	// whole game is played in. The counter key light is a movable point light,
+	// which renders six cube faces for every primitive in its radius, and the
+	// radius is full of tubs, dough, scoops and signage.
+	//
+	// The counter itself keeps its shadow - that is the shape the room is read
+	// by. A tub's shadow on the counter it is standing on is not something
+	// anybody looks at, and the signage casting at all was never intentional.
+	for (UPrimitiveComponent* Small : { (UPrimitiveComponent*)Top, (UPrimitiveComponent*)Dough,
+		(UPrimitiveComponent*)Scoop, (UPrimitiveComponent*)Label })
+	{
+		if (Small)
+		{
+			Small->SetCastShadow(false);
+		}
+	}
 }
 
 void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, const FString& LabelText, float LabelYaw)
@@ -175,28 +264,200 @@ void ACigkofteStation::Setup(ECigStation InType, const FLinearColor& Color, cons
 	Dough->SetRelativeScale3D(FVector(0.5f) / BaseScale);
 	Dough->SetRelativeLocation(FVector(0.f, 0.f, (TopZ + 25.f - 50.f * BaseScale.Z) / BaseScale.Z));
 
-	LabelBaseText = LabelText;
-	Label->SetText(FText::FromString(LabelText));
-	const float LabelZ = FMath::Max(185.f, TopZ + 70.f);
-	Label->SetRelativeLocation(FVector(0.f, 0.f, (LabelZ - 50.f * BaseScale.Z) / BaseScale.Z));
+	// The scoop, on the stations that have something to scoop out of.
+	//
+	// A cylinder standing on end, a third of the tub's width, in the ingredient's
+	// own colour: it is the measure being lifted, so it has to be the colour of
+	// the thing being measured or it reads as a tool rather than as a portion.
+	// Everywhere else it stays hidden and is never ticked.
+	if (Scoop && StationKeepsTop(StationType))
+	{
+		Scoop->SetStaticMesh(Cylinder);
+		ScoopRestZ = (TopZ + 6.f - 50.f * BaseScale.Z) / BaseScale.Z;
+		ScoopScale = FVector(TopScale.X * 0.32f, TopScale.Y * 0.32f, TopScale.Z * 0.9f) / BaseScale;
+		Scoop->SetRelativeScale3D(ScoopScale);
+		Scoop->SetRelativeLocation(FVector(0.f, 0.f, ScoopRestZ));
+		if (Mat)
+		{
+			ScoopMID = UMaterialInstanceDynamic::Create(Mat, this);
+			ScoopMID->SetVectorParameterValue(TEXT("Color"), Color);
+			Scoop->SetMaterial(0, ScoopMID);
+		}
+	}
+
+	// The chopping board's pieces, built once.
+	//
+	// Created here rather than in the constructor because only one station in the
+	// shop needs them and the constructor runs for all twenty. The world is built
+	// at runtime anyway, so registering components here is the same kind of work
+	// everything else on this actor already does.
+	if (StationType == ECigStation::Dograma && Cube)
+	{
+		ChopPieces.Reserve(ChopPieceCount);
+		for (int32 i = 0; i < ChopPieceCount; ++i)
+		{
+			UStaticMeshComponent* Piece = NewObject<UStaticMeshComponent>(this);
+			if (!Piece)
+			{
+				break;
+			}
+			Piece->SetupAttachment(Base);
+			Piece->RegisterComponent();
+			Piece->SetMobility(EComponentMobility::Movable);
+			Piece->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			Piece->SetStaticMesh(i == 0 ? Cube : Sphere);
+			Piece->SetVisibility(false);
+			Piece->SetCastShadow(false); // same reasoning as the tubs
+			if (Mat)
+			{
+				// Lettuce green, and the cut pieces a shade lighter than the
+				// head so a board part-way through reads as two things.
+				UMaterialInstanceDynamic* PieceMID = UMaterialInstanceDynamic::Create(Mat, this);
+				PieceMID->SetVectorParameterValue(TEXT("Color"),
+					i == 0 ? FLinearColor(0.22f, 0.52f, 0.18f) : FLinearColor(0.38f, 0.70f, 0.26f));
+				Piece->SetMaterial(0, PieceMID);
+			}
+			ChopPieces.Add(Piece);
+		}
+		SetChopState(0, 4);
+	}
+
+	LabelKey = LabelText;
+	LabelTopZ = TopZ;
+	Label->SetText(FText::FromString(ResolvedLabel()));
 	Label->SetRelativeScale3D(FVector(1.f) / BaseScale);
 	Label->SetWorldRotation(FRotator(0.f, LabelYaw, 0.f));
+	SetLabelDebug(false);
 
 	// The actor sits on the ground: the base cube is raised by half its height.
 	AddActorWorldOffset(FVector(0.f, 0.f, 50.f * BaseScale.Z));
 
+	// Last, so everything above still describes the box the layout reserved.
+	// Without the pack this does nothing and the coloured primitives stand.
+	// The counters get the overhang; nothing else does. Two and a half boxes of
+	// length puts SM_BakeryCounter02 at 210 against 250 between stations - a row
+	// of counters with a gap, which is what a kitchen looks like.
+	const float Overhang = StationIsCounterRun(StationType) ? 2.5f : 1.f;
+	ApplyStationMesh(MeshForStation(StationType), BaseScale, Overhang);
+
 	UpdateTickState();
+}
+
+void ACigkofteStation::SetLabelDebug(bool bDebug)
+{
+	if (!Label)
+	{
+		return;
+	}
+	bLabelDebug = bDebug;
+
+	const FVector BaseScale = Base->GetRelativeScale3D();
+	// Signage sits just above the counter it names and is small enough to be
+	// read rather than announced. Debug goes back overhead at the old size.
+	const float Size = bDebug ? 26.f : 16.f;
+	const float Z = bDebug ? FMath::Max(185.f, LabelTopZ + 70.f) : LabelTopZ + 34.f;
+
+	Label->SetWorldSize(Size);
+	Label->SetRelativeLocation(FVector(0.f, 0.f, (Z - 50.f * BaseScale.Z) / BaseScale.Z));
+	// A locked station keeps its grey; SetLocked owns that colour.
+	//
+	// Dark brown rather than the warm cream that was tried first: the shop's
+	// walls and floor are cream, so cream signage disappeared into them. White
+	// is still right for debug, where it sits against the sky as often as not.
+	if (!bLocked)
+	{
+		Label->SetTextRenderColor(bDebug ? FColor::White : FColor(58, 42, 30));
+	}
+}
+
+FVector ACigkofteStation::LabelFacing() const
+{
+	// A TextRender is read from the side its forward vector points at. Checked
+	// against the shot pass rather than reasoned about: the first version negated
+	// this, and the kitchen view - where every name had read correctly - came back
+	// with all of them hidden, while the street view kept its mirrored ones.
+	return Label ? Label->GetForwardVector() : FVector::ForwardVector;
+}
+
+void ACigkofteStation::SetChopState(int32 Done, int32 Needed)
+{
+	if (ChopPieces.Num() == 0 || !Base)
+	{
+		return;
+	}
+
+	const int32 Steps = FMath::Max(Needed, 1);
+	const float T = FMath::Clamp((float)Done / (float)Steps, 0.f, 1.f);
+	const FVector BaseScale = Base->GetRelativeScale3D();
+
+	// Where the cut pieces land. Fixed rather than random: the same stroke should
+	// put a piece in the same place every time, or the board flickers as the
+	// player chops and the eye reads it as pieces moving rather than as pieces
+	// accumulating.
+	static const FVector2D Scatter[ChopPieceCount - 1] = {
+		{ -14.f,  -9.f }, { 11.f, -13.f }, { -8.f, 12.f }, { 16.f, 6.f }, { 2.f, -3.f }
+	};
+
+	const float BoardZ = (LabelTopZ + 4.f - 50.f * BaseScale.Z) / FMath::Max(BaseScale.Z, 0.01f);
+
+	// The head: full size on an untouched board, down to a third by the last
+	// stroke. It never disappears entirely mid-count, because a board with
+	// nothing on it and a board one stroke from done would look the same.
+	if (UStaticMeshComponent* Head = ChopPieces[0])
+	{
+		const float HeadSize = FMath::Lerp(0.26f, 0.09f, T);
+		Head->SetVisibility(true);
+		Head->SetRelativeScale3D(FVector(HeadSize, HeadSize, HeadSize * 0.7f) / BaseScale);
+		Head->SetRelativeLocation(FVector(-6.f, 0.f, BoardZ) / BaseScale);
+	}
+
+	// One fragment per stroke, appearing in order. With four strokes the board
+	// fills; with the fast-chopping upgrade at two, it fills in bigger jumps,
+	// which is the upgrade being visible rather than only felt.
+	for (int32 i = 1; i < ChopPieces.Num(); ++i)
+	{
+		UStaticMeshComponent* Piece = ChopPieces[i];
+		if (!Piece)
+		{
+			continue;
+		}
+		const float Threshold = (float)i / (float)ChopPieces.Num();
+		const bool bShow = T >= Threshold - KINDA_SMALL_NUMBER;
+		Piece->SetVisibility(bShow);
+		if (bShow)
+		{
+			const FVector2D S = Scatter[(i - 1) % UE_ARRAY_COUNT(Scatter)];
+			Piece->SetRelativeScale3D(FVector(0.055f) / BaseScale);
+			Piece->SetRelativeLocation(FVector(S.X, S.Y, BoardZ + 2.f) / BaseScale);
+		}
+	}
+}
+
+void ACigkofteStation::SetLabelVisible(bool bVisible)
+{
+	if (Label && Label->IsVisible() != bVisible)
+	{
+		Label->SetVisibility(bVisible);
+	}
 }
 
 void ACigkofteStation::UpdateTickState()
 {
-	// Kneading always ticks; the rest only while a pop is running.
-	SetActorTickEnabled(bAlwaysTick || PopTime > 0.f || Pulse > 0.01f);
+	// Kneading always ticks; the rest only while something is running.
+	SetActorTickEnabled(bAlwaysTick || PopTime > 0.f || Pulse > 0.01f || ScoopTime > 0.f);
 }
 
 void ACigkofteStation::Pop()
 {
 	PopTime = 0.28f;
+	// The scoop runs twice as long as the tub's bounce, so the measure is still
+	// in the air when the tub has finished reacting - a scoop that started and
+	// ended with the pop read as one flicker rather than as two things.
+	if (Scoop && StationKeepsTop(StationType))
+	{
+		ScoopTime = ScoopDuration;
+		Scoop->SetVisibility(true);
+	}
 	SetActorTickEnabled(true);
 }
 
@@ -218,6 +479,17 @@ void ACigkofteStation::SetHighlighted(bool bOn)
 void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 {
 	LockLevel = RequiredLevel;
+
+	// The label is rewritten even when the lock state has not changed.
+	//
+	// It is the one thing here built from a template rather than from a colour, so
+	// it is the one thing that goes stale when the language changes: switching to
+	// English left "SEVIYE 6" standing over a station in a shop whose HUD had
+	// already switched, because this function returned early for every station
+	// whose lock had not moved. Setting text on a component that already has it is
+	// cheap; the early return below still guards the material work and the pop.
+	RefreshLockLabel();
+
 	if (bLocked == bLock)
 	{
 		return;
@@ -236,11 +508,6 @@ void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 	{
 		BaseMID->SetVectorParameterValue(TEXT("Color"), bLocked ? LockedBase : FLinearColor(0.45f, 0.42f, 0.40f));
 	}
-	if (Label)
-	{
-		Label->SetText(FText::FromString(bLocked ? FString::Printf(TEXT("SEVIYE %d"), LockLevel) : LabelBaseText));
-		Label->SetTextRenderColor(bLocked ? FColor(150, 150, 155) : FColor::White);
-	}
 	if (Dough && bLocked)
 	{
 		Dough->SetVisibility(false);
@@ -252,42 +519,199 @@ void ACigkofteStation::SetLocked(bool bLock, int32 RequiredLevel)
 	}
 }
 
-void ACigkofteStation::UpdateDough(float Fill01, float Knead01)
+FString ACigkofteStation::ResolvedLabel() const
+{
+	const FString Value = CigText::Get(*LabelKey);
+	return Value == LabelKey ? LabelKey : Value;
+}
+
+void ACigkofteStation::RefreshLockLabel()
+{
+	if (Label)
+	{
+		Label->SetText(FText::FromString(bLocked ? CigText::Format(TEXT("level.locked"), LockLevel) : ResolvedLabel()));
+		Label->SetTextRenderColor(bLocked ? FColor(150, 150, 155) : FColor::White);
+	}
+}
+
+UStaticMesh* ACigkofteStation::MeshForStation(ECigStation Type)
+{
+	// One pack for the whole shop, on purpose. Furniture from three sources at
+	// three fidelities is what the style guide exists to prevent, and a bakery
+	// counter next to a bakery shelf already matches without any work.
+	switch (Type)
+	{
+	case ECigStation::Servis:     return CigMesh::Market(TEXT("SM_BakeryCounter01"));
+	case ECigStation::Yogurma:    return CigMesh::Market(TEXT("SM_BakeryCounter02"));
+	case ECigStation::Paketleme:  return CigMesh::Market(TEXT("SM_BakeryStand01"));
+	case ECigStation::Buzdolabi:  return CigMesh::Market(TEXT("SM_Refrigerator_01"));
+	case ECigStation::Tarif:      return CigMesh::Market(TEXT("SM_BakeryMenu"));
+	case ECigStation::YanUrun:    return CigMesh::Market(TEXT("SM_BakeryRack"));
+	case ECigStation::Dograma:    return CigMesh::Market(TEXT("SM_BakeryCounter02"));
+	case ECigStation::Lavas:      return CigMesh::Market(TEXT("SM_BreadShelf"));
+	case ECigStation::Bulasik:    return CigMesh::Market(TEXT("SM_SteelTray"));
+
+	// The ingredient stations are a counter each, and the coloured tub already
+	// sitting on top is kept (see StationKeepsTop). Crates were the first
+	// attempt and they read wrong: fitted to their box they end up on the floor,
+	// so the player was reaching down at a vegetable box instead of across a
+	// counter, and the ingredient's colour - the thing that tells bulgur from
+	// isot at a glance - went with it.
+	case ECigStation::Bulgur:
+	case ECigStation::Isot:
+	case ECigStation::Salca:
+	case ECigStation::Su:
+	case ECigStation::Baharat:    return CigMesh::Market(TEXT("SM_BakeryCounter02"));
+
+	// These already had good Kenney models in the world builder; reuse them
+	// rather than introducing a second look for the same object.
+	case ECigStation::Lavabo:     return CigMesh::Furniture(TEXT("kitchenSink"));
+	case ECigStation::Cop:        return CigMesh::Furniture(TEXT("trashcan"));
+
+	default:                      return nullptr;
+	}
+}
+
+void ACigkofteStation::ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseScale, float FootprintOverhang)
+{
+	if (!Mesh || !Visual)
+	{
+		return;
+	}
+
+	Visual->SetStaticMesh(Mesh);
+	Visual->SetVisibility(true);
+
+	// Fit the model inside the box on all three axes, not just height. Fitting
+	// to height alone looked right in principle and was wrong on screen: a
+	// produce crate is wider than it is tall, so scaling it until it was as tall
+	// as its box made it several times too wide, and the ingredient stations ran
+	// into each other across the shop.
+	const FBoxSphereBounds B = Mesh->GetBounds();
+	const FVector RawSize = B.BoxExtent * 2.f;
+	const FVector TargetBox = 100.f * BaseScale.GetAbs(); // the cube is 100uu a side
+
+	// Height is a hard limit; the footprint may be allowed to overhang.
+	//
+	// The ingredient stations are the case that forced this. Their box is a 90cm
+	// cube and SM_BakeryCounter02 is a four-metre counter, 172 high - so fitting
+	// inside the box on every axis put the counter at 0.22 scale, 39cm tall, and
+	// furnished the shop with knee-high units the player reaches down into.
+	//
+	// A counter's height is the measurement that has to be right: it is what the
+	// player stands at. Its length is what a shop varies.
+	//
+	// Granted per station rather than to everything, and the first version did
+	// grant it to everything: the flat panels - the menu board, the sign - are
+	// authored lying down, so their mesh height is a thickness of two units. The
+	// rule could not tell that from a counter that is short for its box, and it
+	// inflated a 45cm sign into a three-metre one.
+	const float Overhang = FMath::Max(FootprintOverhang, 1.f);
+	auto FitInto = [&TargetBox, Overhang](float SizeX, float SizeY, float SizeZ)
+	{
+		return FMath::Min3(TargetBox.X * Overhang / FMath::Max(SizeX, 1.f),
+			TargetBox.Y * Overhang / FMath::Max(SizeY, 1.f),
+			TargetBox.Z / FMath::Max(SizeZ, 1.f));
+	};
+
+	// Turn the model a quarter turn when that fits it better.
+	//
+	// The service counter is why. Its mesh is 400 long on X, 72 deep and 100
+	// high; its box is 100 deep on X and 400 long on Y, because the counter is
+	// meant to run across the shop front. The two long axes were perpendicular,
+	// so fitting on all three axes squeezed a four-metre counter into a
+	// one-metre depth - a quarter scale, knee high, and effectively invisible in
+	// the room. Nobody had noticed because the player stands behind it.
+	//
+	// Turned, the same mesh fits its box exactly. The test is a comparison and
+	// not a special case, so a station whose mesh already points the right way
+	// keeps the scale it had: the ingredient counters are measured against a
+	// cubic box and come out identical either way.
+	const float FitAsIs = FitInto(RawSize.X, RawSize.Y, RawSize.Z);
+	const float FitTurned = FitInto(RawSize.Y, RawSize.X, RawSize.Z);
+	const bool bTurn = FitTurned > FitAsIs;
+	const float WorldScale = bTurn ? FitTurned : FitAsIs;
+
+	Visual->SetRelativeRotation(FRotator(0.f, bTurn ? 90.f : 0.f, 0.f));
+
+	// Visual hangs off Base, which is already scaled, so undo that.
+	//
+	// Component-wise and not swapped, even when the model is turned. Unreal
+	// multiplies a child's scale against its parent's per axis in the child's
+	// own local space, so a quarter turn does not move which parent number
+	// applies to which mesh axis. Swapping them "to match the rotation" was
+	// tried and measured: the service counter came out 289 deep and 100 wide,
+	// the exact opposite of a shop counter, instead of 400 across and 72 deep.
+	Visual->SetRelativeScale3D(FVector(WorldScale) / BaseScale);
+
+	UE_LOG(LogCig, Verbose, TEXT("[MESHFIT] %d turn=%d scale=%.2f world=%.0fx%.0fx%.0f"),
+		(int32)StationType, bTurn ? 1 : 0, WorldScale,
+		Visual->Bounds.BoxExtent.X * 2.f, Visual->Bounds.BoxExtent.Y * 2.f, Visual->Bounds.BoxExtent.Z * 2.f);
+
+	// Sit the model's underside on the box's underside.
+	const float BoxBottom = -50.f * BaseScale.Z;
+	const float MeshBottom = (B.Origin.Z - B.BoxExtent.Z) * WorldScale;
+	Visual->SetRelativeLocation(FVector(0.f, 0.f, (BoxBottom - MeshBottom) / BaseScale.Z));
+
+	// The primitives were the placeholder for exactly this. Two exceptions: the
+	// dough ball is live state rather than a placeholder, and the ingredient
+	// tubs are the ingredient.
+	Base->SetVisibility(false);
+	Top->SetVisibility(StationKeepsTop(StationType));
+}
+
+void ACigkofteStation::UpdateDough(const FCigDoughVisual& InVisual)
 {
 	if (StationType != ECigStation::Yogurma || !Dough)
 	{
 		return;
 	}
-	CurFill = FMath::Clamp(Fill01, 0.f, 1.f);
-	CurKnead = FMath::Clamp(Knead01, 0.f, 1.f);
+	if (InVisual.NearlyEqual(CurVisual))
+	{
+		return;
+	}
+	CurVisual = InVisual;
 	ApplyDoughTransform();
 }
 
-void ACigkofteStation::PulseDough()
+void ACigkofteStation::PulseDough(float Strength)
 {
-	Pulse = 1.f;
+	// A mistimed stroke still moves the dough, because a stroke that did nothing
+	// at all would read as a dropped input rather than as a wasted one. It moves
+	// about a third as far, which is the difference the player has to feel.
+	Pulse = FMath::Clamp(0.3f + 0.7f * FMath::Clamp(Strength, 0.f, 1.f), 0.f, 1.f);
 	ApplyDoughTransform();
 }
 
 void ACigkofteStation::ApplyDoughTransform()
 {
-	if (CurFill <= 0.f)
+	if (!CurVisual.IsVisible())
 	{
 		Dough->SetVisibility(false);
 		return;
 	}
 
 	Dough->SetVisibility(true);
-	const float S = 0.25f + 0.55f * CurFill;
 	const FVector BaseScale = Base->GetRelativeScale3D();
-	const FVector Squash(S * (1.f + 0.20f * Pulse), S * (1.f + 0.20f * Pulse), S * (1.f - 0.30f * Pulse));
+
+	// Two shapes multiplied: what the batch is, and what the last stroke did to
+	// it. Scale3D carries the slump of a loose mix; the pulse is the squash of
+	// the hand coming down, and it fades.
+	const FVector Shape = CurVisual.Scale3D();
+	const FVector Squash(Shape.X * (1.f + 0.20f * Pulse), Shape.Y * (1.f + 0.20f * Pulse), Shape.Z * (1.f - 0.30f * Pulse));
 	Dough->SetRelativeScale3D(Squash / BaseScale);
 
+	// The colour is the batch's, not the station's: see Cooking/CigDoughVisual.h
+	// for what feeds it. Written only when it actually differs, because this
+	// runs from the pulse tick as well as from every stroke.
 	if (DoughMID)
 	{
-		const FLinearColor Raw(0.76f, 0.60f, 0.42f);
-		const FLinearColor Kneaded(0.45f, 0.12f, 0.06f);
-		DoughMID->SetVectorParameterValue(TEXT("Color"), FMath::Lerp(Raw, Kneaded, CurKnead));
+		const FLinearColor Renk = CurVisual.Color();
+		if (!Renk.Equals(LastDoughColor, 0.002f))
+		{
+			DoughMID->SetVectorParameterValue(TEXT("Color"), Renk);
+			LastDoughColor = Renk;
+		}
 	}
 }
 
@@ -314,6 +738,32 @@ void ACigkofteStation::Tick(float DeltaSeconds)
 		if (PopTime <= 0.f && Top)
 		{
 			Top->SetRelativeScale3D(TopBaseScale);
+			UpdateTickState();
+		}
+	}
+
+	if (ScoopTime > 0.f && Scoop)
+	{
+		ScoopTime = FMath::Max(0.f, ScoopTime - DeltaSeconds);
+		const float T = FMath::Clamp(1.f - ScoopTime / ScoopDuration, 0.f, 1.f);
+
+		// Up, over, and back down. Height is a single sine so the measure leaves
+		// the tub and returns to it; the tip is a separate curve that peaks later
+		// and stays over, because a scoop that starts pouring on the way up is
+		// pouring at the tub it just came out of.
+		const float Lift = FMath::Sin(T * PI) * 34.f;
+		const float TipT = FMath::Clamp((T - 0.35f) / 0.45f, 0.f, 1.f);
+		const float Tip = FMath::Sin(TipT * PI) * 75.f;
+
+		const FVector BaseScale = Base->GetRelativeScale3D();
+		Scoop->SetRelativeLocation(FVector(0.f, 0.f, ScoopRestZ + Lift / FMath::Max(BaseScale.Z, 0.01f)));
+		Scoop->SetRelativeRotation(FRotator(Tip, 0.f, 0.f));
+
+		if (ScoopTime <= 0.f)
+		{
+			Scoop->SetVisibility(false);
+			Scoop->SetRelativeRotation(FRotator::ZeroRotator);
+			Scoop->SetRelativeLocation(FVector(0.f, 0.f, ScoopRestZ));
 			UpdateTickState();
 		}
 	}

@@ -30,10 +30,17 @@ private:
 	UFont* FontFine = nullptr;   // medium engine font - secondary small notes only
 
 	// Text scales (multiplied by UIScale)
+	//
+	// Body and fine were set small enough that the recipe panel and the key
+	// hints along the bottom were hard to read at 1080p - the resolution most
+	// people will play this at, where UIScale is exactly 1. The style guide asks
+	// for nothing under 16px after UIScale; these are the two that were under
+	// it. Head and title were already fine and are left alone, which also keeps
+	// the hierarchy from flattening.
 	static constexpr float TitleScale = 2.3f;
 	static constexpr float HeadScale = 1.5f;
-	static constexpr float BodyScale = 1.15f;
-	static constexpr float FineScale = 1.0f;
+	static constexpr float BodyScale = 1.32f;
+	static constexpr float FineScale = 1.15f;
 
 	float SX(float DesignX) const { return DesignX * UIScale; }
 
@@ -54,6 +61,12 @@ private:
 	void Bar(float X, float Y, float W, float H, float Frac, const FLinearColor& Fill);
 	void Text(const FString& S, const FLinearColor& Color, float X, float Y, UFont* Font, float Scale = 1.f);
 	void CenterText(const FString& S, float Y, UFont* Font, float Scale, const FLinearColor& Color);
+	// Text drawn straight onto the world, with no panel behind it. The shop floor
+	// is light and the walls are cream, so a grey label on either disappears; a
+	// dark offset copy gives it an edge whatever it lands on. Panelled text does
+	// not need this - the panel already supplies the contrast.
+	void ShadowText(const FString& S, const FLinearColor& Color, float X, float Y, UFont* Font, float Scale = 1.f);
+	void ShadowCenterText(const FString& S, float Y, UFont* Font, float Scale, const FLinearColor& Color);
 	float TextWidth(const FString& S, UFont* Font, float Scale) const;
 	float LineHeight(UFont* Font, float Scale) const;
 	// Draws a line and advances Y by the real height plus spacing.

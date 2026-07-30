@@ -707,6 +707,68 @@ def check_repo_files() -> None:
     print("  depo: zorunlu dosyalar yerinde")
 
 
+# Config values that are written by the editor and must not be committed.
+#
+# Each is (section, key, why). This started as the only thing holding the Android
+# File Server token out: deleting the line did nothing, because the editor writes
+# that block on startup and generates a fresh token when it finds none, so it came
+# back seven times in one working session. The root cause is fixed now - the
+# plugin is disabled in the .uproject, so the settings object never loads and
+# never writes - and this stays as the backstop that would catch it returning, or
+# catch the next value of the same kind.
+GIZLI_CONFIG_ALANLARI = [
+    ("/Script/AndroidFileServerEditor.AndroidFileServerRuntimeSettings",
+     "SecurityToken",
+     "editörün ürettiği makineye özel token; herkese açık depoda durmamalı"),
+]
+
+
+def check_config_secrets() -> None:
+    ini = ROOT / "Config" / "DefaultEngine.ini"
+    if not ini.is_file():
+        fail("Config/DefaultEngine.ini yok.")
+        return
+
+    bolum = None
+    for no, satir in enumerate(ini.read_text(encoding="utf-8-sig").splitlines(), 1):
+        s = satir.strip()
+        if s.startswith("[") and s.endswith("]"):
+            bolum = s[1:-1]
+            continue
+        if s.startswith(";") or "=" not in s:
+            continue
+        anahtar, deger = (p.strip() for p in s.split("=", 1))
+        for hedef_bolum, hedef_anahtar, neden in GIZLI_CONFIG_ALANLARI:
+            if bolum == hedef_bolum and anahtar == hedef_anahtar and deger:
+                fail(f"Config/DefaultEngine.ini:{no}: {anahtar} dolu — {neden}. "
+                     f"[{hedef_bolum}] bölümünü tamamen silin.")
+
+    print(f"  config: {len(GIZLI_CONFIG_ALANLARI)} gizli alan kuralı tutuyor")
+
+
+def check_no_loctext() -> None:
+    """LOCTEXT/NSLOCTEXT kullanımı yasak.
+
+    Bu proje oyuncuya görünen metni CigText + Config/Text/Strings.csv üzerinden
+    okur; LOCTEXT ise derlenmiş .locres verisine bağlıdır ve bu depoda hiç .po
+    veya .locres olmadı. Yani LOCTEXT ile yazılmış her metin, dil ayarı ne olursa
+    olsun kalıcı olarak Türkçe kalıyordu — 46 metin tam olarak bu durumdaydı ve
+    çevrilmiş görünmeleri sorunu uzun süre gizledi. Geri dönmesin diye kural.
+    """
+    sayac = 0
+    for path in sorted(list(SOURCE.rglob("*.cpp")) + list(SOURCE.rglob("*.h"))):
+        for no, satir in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+            s = satir.strip()
+            if s.startswith("//") or s.startswith("*"):
+                continue  # yorumda anlatmak serbest
+            if "LOCTEXT(" in s or "LOCTEXT_NAMESPACE" in s:
+                rel = path.relative_to(ROOT).as_posix()
+                fail(f"{rel}:{no}: LOCTEXT kullanılmış — oyuncuya görünen metin "
+                     f"Config/Text/Strings.csv anahtarı ve CigText::Get ile yazılır.")
+            sayac += 1
+    print(f"  yerelleştirme: {sayac} satırda LOCTEXT yok")
+
+
 def main() -> int:
     print("Cigkofte kaynak kontrolu")
     check_sources()
@@ -718,6 +780,8 @@ def main() -> int:
     check_single_callers()
     check_cooked_assets()
     check_repo_files()
+    check_config_secrets()
+    check_no_loctext()
 
     if problems:
         print(f"\n{len(problems)} sorun bulundu:\n")

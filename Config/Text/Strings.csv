@@ -713,3 +713,166 @@ dlg.mood.angry.2,"Rezalet, hiç beğenmedim.","Awful. I did not like it one bit.
 dlg.regular.repeatmistake,Yine mi? Geçen sefer de böyle olmuştu...,Again? It went the same way last time...
 dlg.trait.hygiene,"Şu tezgahın hali ne böyle, iğrenç!",Look at the state of that counter. Disgusting!
 dlg.trait.price,Bu fiyata bu mu? Pahalı geldi.,This is what that price buys? Too expensive.
+mix.nobulgur,"Bulgur yok — önce bulgur ekle","No bulgur — add bulgur first"
+mix.toolittle.su,"Su az — biraz su ekle","Not enough water — add some"
+mix.toomuch.su,"Su fazla — bulgurla dengele","Too much water — balance it with bulgur"
+mix.toolittle.salca,"Salça az — biraz salça ekle","Not enough paste — add some"
+mix.toomuch.salca,"Salça fazla — bulgurla dengele","Too much paste — balance it with bulgur"
+mix.toolittle.baharat,"Baharat az — biraz baharat ekle","Not enough spice — add some"
+mix.toomuch.baharat,"Baharat fazla — bulgurla dengele","Too much spice — balance it with bulgur"
+mix.toolittle.isot,"İsot az — bu tarif daha acı olmalı","Not enough isot — this recipe wants more heat"
+mix.toomuch.isot,"İsot fazla — bulgurla seyrelt","Too much isot — dilute it with bulgur"
+mix.unfixable,"Kase doldu — düzeltmek için boşalt (G)","The bowl is full — dump it to start over (G)"
+msg.day.prep,"Gün {0} — hazırlık. Dükkânı açmak için servis bankosuna git.","Day {0} — preparation. Step up to the service counter to open."
+hud.prep,"HAZIRLIK","PREPARING"
+hud.prep.hint,"Harcı hazırla, garnitür doğra — sonra servis bankosunda dükkânı aç","Prepare the mix, chop garnish — then open the shop at the service counter"
+prompt.servis.open,"[E] Dükkânı aç","[E] Open the shop"
+msg.day.closing,"Kapanış — temizliği yetiştir, sonra bankodan günü kapat","Closing — clean what you can, then close up at the counter"
+hud.closing,"KAPANIŞ {0} sn","CLOSING {0}s"
+prompt.servis.close,"[E] Günü kapat","[E] Close for the day"
+msg.inventory.nofridgeroom,"Buzdolabında yer yok — {0} sığmıyor","No room in the fridge — {0} will not fit"
+msg.inventory.noshelfroom,"Rafta yer yok — {0} sığmıyor","No room on the shelf — {0} will not fit"
+msg.inventory.partial,"Sadece {0} {1} sığdı","Only {0} {1} would fit"
+tablet.stock.cold,"Buzdolabı {0}/{1}","Fridge {0}/{1}"
+prompt.crate,"[E] {0} x{1} kaldır","[E] Put away {0} x{1}"
+msg.inventory.cratearrived,"Teslimat geldi: {0} {1} — kapının yanında","Delivery arrived: {0} {1} — by the door"
+msg.inventory.crateunloaded,"{0} {1} kilere kaldırıldı","{0} {1} put away"
+msg.inventory.cratenoroom,"{0} için yer yok — kasa bekliyor","No room for {0} — the crate waits"
+msg.inventory.crateovernight,"Dışarıda kalan {0} birim gece kilere kaldırıldı","{0} units left out were put away overnight"
+tablet.licence,0) Ruhsat ve vergi levhası,0) Licence and tax plate
+tablet.licence.valid,"{0} gün geçerli  ·  yenile {1} TL","valid {0} more days  ·  renew {1} TL"
+tablet.licence.expired,"SÜRESİ DOLDU  ·  yenile {0} TL","EXPIRED  ·  renew {0} TL"
+tablet.bribe,9) Müfettişe rüşvet ver,9) Bribe the inspector
+tablet.bribe.amount,"{0} TL  ·  riskli","{0} TL  ·  risky"
+tablet.shopclosed,Dükkân belediye kararıyla kapalı,Closed by council order
+tablet.price.rivalavg,Rakip ortalaması,Rival average
+tablet.price.rivalvalue,liste x{0},list x{0}
+tablet.price.income,Mahalle gelir düzeyi,Neighbourhood income level
+tablet.price.incomevalue,x{0},x{0}
+tablet.price.row,"{0} TL  (liste {1} - x{2})","{0} TL  (list {1} - x{2})"
+tablet.price.hint,"Rakam tuşu fiyatı artırır, Shift ile düşürür.","A number key raises the price, Shift lowers it."
+tablet.social.header,Sosyal medya - {0} takipçi,Social media - {0} followers
+tablet.social.promo,1) Ürün tanıtımı paylaş,1) Post a product feature
+tablet.social.posts,{0} gönderi hakkı,{0} posts left
+tablet.social.campaign,2) Kampanya duyur,2) Announce a campaign
+tablet.social.campaignlive,bugün yayında,live today
+tablet.social.campaigncost,150 TL,150 TL
+tablet.social.replyheader,Kötü yoruma yanıt:,Replying to a bad review:
+tablet.social.defend,7) Savun,7) Defend
+tablet.social.apologise,8) Özür dile,8) Apologise
+tablet.social.ignore,9) Görmezden gel,9) Ignore
+tablet.bulk.header,Toplu sipariş teklifi,Bulk order offer
+tablet.bulk.offer,{0}. güne {1} dürüm,{1} wraps by day {0}
+tablet.bulk.reward,{0} TL,{0} TL
+tablet.bulk.accept,1) Kabul et,1) Accept
+tablet.bulk.reject,2) Reddet,2) Decline
+tablet.bulk.activeheader,Toplu sipariş,Bulk order
+tablet.bulk.progress,"{0}/{1} dürüm  ·  teslim {2}. gün","{0}/{1} wraps  ·  due day {2}"
+tablet.staff.skills,"Hız x{0}  ·  Titizlik x{1}  ·  Güler yüz x{2}","Speed x{0}  ·  Care x{1}  ·  Manner x{2}"
+tablet.staff.unpaid,{0} gündür maaşı ödenmedi,unpaid for {0} days
+tablet.staff.transfer,Rakip {0} TL teklif etti,A rival offered {0} TL
+tablet.staff.counteroffer,karşı teklif,counter-offer
+tablet.candidate.wage,{0} TL/gün,{0} TL/day
+tablet.candidate.skills,"     hız x{0}  ·  titizlik x{1}  ·  güler yüz x{2}","     speed x{0}  ·  care x{1}  ·  manner x{2}"
+rep.title.legend,Çiğköfte Efsanesi,Çiğköfte Legend
+rep.title.city,Şehir Efsanesi,City Legend
+rep.title.pride,Mahalle Gururu,Pride of the Neighbourhood
+rep.title.trader,Esnaf,Local Trader
+rep.title.rookie,Çaylak,Rookie
+rep.title.unknown,Tanınmıyor,Unknown
+level.up,SEVİYE {0}! {1},LEVEL {0}! {1}
+level.float,SEVİYE {0}!,LEVEL {0}!
+level.locked,SEVIYE {0},LEVEL {0}
+level.unlock.2,"Ayran satışı, doğrama tezgâhı ve semt pazarı açıldı!","Ayran, the chopping board and the district market are open!"
+level.unlock.3,"Paketleme açıldı, meydan yolu serbest. Çırak da işe alınabilir.","Packaging is open and the square is reachable. You can hire an apprentice."
+level.unlock.4,"Araba anahtarı sende! Buzdolabı ve okul-park bölgesi açıldı.","The car keys are yours. The fridge and the school-park district are open."
+level.unlock.5,"Emlak vakti! Tabletten (T) satılık evi alabilirsin. Tedarikçi deposu yolu açıldı.","Property time. Buy the house for sale from the tablet (T). The supplier depot is reachable."
+level.unlock.6,"Yeni şube yatırımı tablette! Şehir stadı da artık ulaşılabilir.","A second branch is on the tablet, and the city stadium is reachable."
+level.unlock.7,"Sahil kordonu açıldı — yazlık kalabalık ve yüksek bahşiş.","The seafront is open — summer crowds and big tips."
+level.unlock.more,Ustalık artıyor.,Your craft is improving.
+recipe.klasik.name,Klasik,Classic
+recipe.klasik.desc,Dengeli mahalle usulü,"Balanced, the neighbourhood way"
+recipe.ekonomik.name,Ekonomik,Budget
+recipe.ekonomik.desc,"Bol bulgur, az masraf","Plenty of bulgur, little cost"
+recipe.adiyaman.name,Adıyaman,Adıyaman
+recipe.adiyaman.desc,"Bol salçalı, koyu kıvam","Heavy on paste, thick texture"
+recipe.cokacili.name,Çok Acılı,Extra Hot
+recipe.cokacili.desc,"İsot fırtınası, cesurlara","An isot storm, for the brave"
+recipe.evyapimi.name,Ev Yapımı,Homemade
+recipe.evyapimi.desc,"Anne eli değmiş gibi, uzun dayanır","Like mother made it, and it keeps"
+recipe.premium.name,Premium,Premium
+recipe.premium.desc,"Seçme malzeme, yüksek fiyat","Choice ingredients, high price"
+recipe.ustaisi.name,Usta İşi,Master's Work
+recipe.ustaisi.desc,"Dar tolerans, büyük ödül","Tight tolerance, big reward"
+recipe.gizli.name,Gizli Tarif,Secret Recipe
+recipe.gizli.desc,Eski ustanın mirası,The old master's legacy
+supplier.toptanci.name,Mahalle Toptancısı,Neighbourhood Wholesaler
+supplier.toptanci.desc,"Dengeli fiyat, tanıdık yüz","Fair price, a familiar face"
+supplier.ucuzdepo.name,Ucuz Depo,Bargain Depot
+supplier.ucuzdepo.desc,Ucuz ama kalitesi şüpheli,Cheap but the quality is doubtful
+supplier.premium.name,Premium Üretici,Premium Producer
+supplier.premium.desc,"Pahalı, kalitesi tartışılmaz","Expensive, and unarguably good"
+supplier.ciftci.name,Yerel Çiftçi,Local Farmer
+supplier.ciftci.desc,"Taze ürün, yavaş teslimat","Fresh produce, slow delivery"
+supplier.hizli.name,Hızlı Teslimatçı,Express Courier
+supplier.hizli.desc,"Şimşek hızı, orta kalite","Lightning fast, middling quality"
+tablet.pricechanged,{0}: {1} TL,{0}: {1} TL
+review.expensive.1,Lezzet güzel de bu fiyata bu porsiyon fazla geldi.,Tastes good but that portion is a lot to ask for the money.
+review.expensive.2,"Mahallenin en pahalı dürümü, kalitesi o kadar önde değil.","The dearest wrap on the street, and not that far ahead on quality."
+review.expensive.3,Cebi yakıyor. Karşı sokakta yarı fiyatına yiyorum.,It burns a hole in your pocket. I eat for half that one street over.
+review.cheap.1,Bu fiyata çiğköfte olur mu? İçine ne koyduklarını merak ettim.,Çiğköfte at that price? I did wonder what goes into it.
+review.cheap.2,Ucuz ama tadı da o kadar; malzemeden kısıyorlar galiba.,Cheap and it tastes it; they must be cutting the ingredients.
+review.cheap.3,"Bedavaya yakın, güzel de insan bir tereddüt ediyor.","Near enough free, and good, but it does give you pause."
+review.good.1,Hayatımda yediğim en iyi çiğköfte. Nokta.,Best çiğköfte I have ever eaten. Full stop.
+review.good.2,"Acısı tam kararında, dürüm taptaze. Koşun!","Heat exactly right, the wrap dead fresh. Go!"
+review.good.3,"Usta işini biliyor, sipariş kusursuzdu.","The man knows his trade, and the order was perfect."
+review.good.4,Fiyatına göre efsane. Kedisi de çok tatlı.,"A legend for the price. Lovely cat, too."
+review.mid.1,Fena değil ama sipariş tam istediğim gibi olmadı.,Not bad but the order was not quite what I asked for.
+review.mid.2,"Lezzet iyi, biraz bekledim ama değdi.","Good flavour, waited a while, worth it."
+review.mid.3,"Ortalama üstü. Ayranı soğuktu, +1 puan.","Above average. The ayran was cold, +1 for that."
+review.mid.4,"Mahalle esnafı işte, samimi ama acele etmiyorlar.","A local shop through and through: friendly, in no hurry."
+review.bad.1,Siparişimin yarısı eksikti. Bir daha gelmem.,Half my order was missing. I will not be back.
+review.bad.2,Hijyen konusunda ciddi endişelerim var...,I have serious concerns about the hygiene...
+review.bad.3,"Acı istedim, tatlı geldi resmen. Olmaz.","I asked for hot and got mild. That will not do."
+review.bad.4,Beklemekten sıra bize gelmedi zaten.,We waited and our turn never came.
+review.dirty,Lezzet iyi ama tezgahın hali içler acısıydı.,The food was good but the state of that counter was miserable.
+review.queue,"Kuyruğun sonu gelmiyor, milleti çevirip duruyor.",The queue never ends and they keep turning people away.
+review.critic.author,LezzetRehberi (Eleştirmen),FlavourGuide (Critic)
+msg.review.criticvisited,Meğer gizli eleştirmen ağırlamışsın! Yorumu yayında.,You were hosting a secret critic. Their review is live.
+level.stationopen,AÇILDI: {0},OPEN: {0}
+level.opened,AÇILDI,OPEN
+spice.mild.ascii,AZ ACILI,MILD
+spice.medium.ascii,ORTA ACILI,MEDIUM
+spice.hot.ascii,COK ACILI,HOT
+station.bulgur,BULGUR,BULGUR
+station.isot,ISOT,ISOT
+station.salca,SALCA,TOMATO PASTE
+station.su,SU,WATER
+station.baharat,BAHARAT,SPICES
+station.yogurma,YOGURMA,KNEADING
+station.dograma,DOGRAMA,CHOPPING
+station.lavabo,LAVABO,SINK
+station.cop,COP,BIN
+station.lavas,LAVAS,FLATBREAD
+station.paketleme,PAKETLEME,PACKING
+station.buzdolabi,BUZDOLABI,FRIDGE
+station.temizlik,TEMIZLIK,CLEANING
+station.bulasik,BULASIK,DISHES
+station.cay,CAY,TEA
+station.mama,MAMA,CAT BOWL
+station.tarif,TARIF,RECIPES
+station.yanurun,YAN URUN,SIDES
+station.eldiven,ELDIVEN,GLOVES
+station.isotplus,ISOT+,ISOT+
+station.reklam,REKLAM,ADVERT
+station.servis,SERVIS,COUNTER
+world.houseforsale,SATILIK EV - 5000 TL,HOUSE FOR SALE - 5000 TL
+world.school,MAHALLE OKULU,LOCAL SCHOOL
+world.yourhouse,EVIN (gunluk +150 TL),YOUR HOUSE (+150 TL a day)
+world.knead2,YOGURMA 2,KNEADING 2
+world.bestonstreet,* MAHALLENIN EN IYISI *,* BEST ON THE STREET *
+world.music,MUZIK,MUSIC
+world.register2,KASA 2,REGISTER 2
+world.branch2,CIGKOFTECI SUBE 2,CIGKOFTECI BRANCH 2
+float.houseisyours,EV SENIN!,THE HOUSE IS YOURS!
+float.chop,Dogra! {0}/{1},Chop! {0}/{1}

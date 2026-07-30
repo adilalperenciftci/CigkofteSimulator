@@ -3,11 +3,14 @@
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigDaySystem.h"
 #include "World/CigkofteStation.h"
+#include "World/CigWorldBuilder.h"
 #include "Orders/CigOrderSystem.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Cat/CigCat.h"
 #include "Cat/CigCatSystem.h"
 #include "Delivery/CigDeliverySystem.h"
+#include "Inventory/CigInventorySystem.h"
+#include "Inventory/CigStockCrate.h"
 #include "Progression/CigProgressionSystem.h"
 #include "Progression/CigSkillSystem.h"
 #include "Vehicles/CigCar.h"
@@ -362,6 +365,12 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 	if (PC->WasInputKeyJustPressed(EKeys::F1))
 	{
 		Mode->bShowDebugHUD = !Mode->bShowDebugHUD;
+		// The station labels are part of the same decision: signage while
+		// playing, overhead capitals while inspecting a layout.
+		if (Mode->WorldBuilder)
+		{
+			Mode->WorldBuilder->SetStationLabelsDebug(Mode->bShowDebugHUD);
+		}
 	}
 	if (CigInput::WasPressed(PC, ECigAction::Settings))
 	{
@@ -467,6 +476,17 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 				Mode->CatSys->Pet();
 			}
 		}
+		else if (FocusedCrate && Mode->Inventory)
+		{
+			// Unloading is work, not service: it goes through whenever the
+			// stations do, so the morning's deliveries can be put away before
+			// the door opens.
+			const UCigDaySystem* Days = Mode->Days.Get();
+			if (Days && Days->CanWork())
+			{
+				Mode->Inventory->UnloadCrate(FocusedCrate);
+			}
+		}
 		else
 		{
 			Mode->HandleInteract(FocusedStation);
@@ -548,7 +568,12 @@ void ACigkoftePlayerCharacter::UpdateFocus()
 	{
 		FocusedStation->SetHighlighted(false);
 	}
+	if (FocusedCrate)
+	{
+		FocusedCrate->SetHighlighted(false);
+	}
 	FocusedStation = nullptr;
+	FocusedCrate = nullptr;
 	bCarFocused = false;
 	bCatFocused = false;
 	if (!Camera || bDriving)
@@ -577,6 +602,11 @@ void ACigkoftePlayerCharacter::UpdateFocus()
 		if (Cast<ACigCat>(Hit.GetActor()))
 		{
 			bCatFocused = true;
+		}
+		FocusedCrate = Cast<ACigStockCrate>(Hit.GetActor());
+		if (FocusedCrate)
+		{
+			FocusedCrate->SetHighlighted(true);
 		}
 	}
 }
@@ -608,7 +638,7 @@ void ACigkoftePlayerCharacter::UpdateEnergy(float DeltaSeconds)
 {
 	ACigkofteGameMode* Mode = GM();
 	const UCigDaySystem* Days = Mode ? Mode->Days.Get() : nullptr;
-	if (!Days || !Days->IsPlaying())
+	if (!Days || !Days->CanWork())
 	{
 		return;
 	}

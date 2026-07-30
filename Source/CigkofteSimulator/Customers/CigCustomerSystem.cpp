@@ -656,6 +656,18 @@ void UCigCustomerSystem::OnDayStart(int32 Day)
 
 void UCigCustomerSystem::OnDayEnd(int32 Day)
 {
+	SendEveryoneHome();
+}
+
+// Everyone out: the queue, the tables and the inspector.
+//
+// Split out of OnDayEnd because the two moments stopped being the same one.
+// The clock running out shuts the door, and the books are closed a window
+// later - so the shop has to empty when it shuts, not when the takings are
+// counted, or the closing minute is spent scrubbing around a queue of people
+// standing frozen at the counter.
+void UCigCustomerSystem::SendEveryoneHome()
+{
 	for (int32 i = Queue.Num() - 1; i >= 0; --i)
 	{
 		if (ACigkofteCustomer* C = Queue[i].Get())

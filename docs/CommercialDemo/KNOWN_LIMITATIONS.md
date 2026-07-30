@@ -3,6 +3,23 @@
 Genuine, non-blocking limitations of the current branch. Defects that are simply
 not fixed yet belong in `PLAN.md`, not here.
 
+## Visual
+
+- **The counters overhang their interaction boxes.** Fixed the knee-high units
+  they replaced — the counters now stand at 90cm — but they do it by letting the
+  model run to 210cm inside a 90cm box. Where the player can stand and interact
+  is unchanged, which is the point, and it means the visible counter and the
+  volume it answers to are no longer the same shape. Fine while the stations are
+  250 apart; it would need revisiting if a layout ever put two closer than that.
+
+- **Signage pops in and out at 700uu.** Fixed the overlap it replaced — the far
+  counter row's names no longer project across the near row in wide shots — but
+  the boundary is a hard visibility switch, not a fade. `UTextRenderComponent`
+  has no opacity to animate without a custom material, so a player walking the
+  length of the shop will see names appear rather than fade up. Chosen over
+  leaving the overlap, which was wrong in every screenshot; worth revisiting if
+  the pop reads badly in motion, which nobody has watched yet.
+
 ## Verification
 
 - **Nobody has played the game on this branch.** Every check is static analysis,

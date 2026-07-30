@@ -31,11 +31,33 @@ class UCigWorldBuilder : public UCigSystem
 
 public:
 	virtual void OnInit() override;
+	virtual void UpdateSystem(float DeltaSeconds) override;
 
 	void BuildWorld();
 
 	// --- Spawn helpers (other systems use these too) ---
-	AStaticMeshActor* SpawnBox(const FVector& Loc, const FVector& Scale, const FLinearColor& Color, UStaticMesh* Mesh = nullptr);
+	// MaterialOverride replaces the flat colour entirely - pass one for a
+	// surface that should read as a material (tiled wall, brick) rather than as
+	// a painted box. Colour is ignored when it is set.
+	AStaticMeshActor* SpawnBox(const FVector& Loc, const FVector& Scale, const FLinearColor& Color, UStaticMesh* Mesh = nullptr,
+		UMaterialInterface* MaterialOverride = nullptr);
+
+	// Surfaces from ModularBuildingSet, or null without the pack. Loaded once in
+	// OnInit; a missing one just leaves the painted box it replaces.
+	UPROPERTY() TObjectPtr<UMaterialInterface> WallTileMaterial;
+	UPROPERTY() TObjectPtr<UMaterialInterface> BrickMaterial;
+
+	// Settles the mobility of everything SpawnBox/SpawnProp made.
+	//
+	// The world is built at runtime, so every prop is spawned Movable and moved
+	// into place. Once the building is over almost none of them ever move again,
+	// and a Movable primitive costs the render thread its mesh draw commands every
+	// frame; a Static one is cached. Called at the end of BuildWorld and again
+	// after an upgrade adds furniture.
+	void FinalizeStaticProps();
+
+	// Filled by SpawnBox/SpawnProp, drained by FinalizeStaticProps.
+	TArray<TWeakObjectPtr<AStaticMeshActor>> BuiltProps;
 
 	// Places an imported low poly mesh, scaling it from its bounds to the target
 	// height. With a null mesh (no asset) it falls back to a FallbackColor box.
@@ -73,6 +95,20 @@ public:
 
 	ACigkofteStation* FindStation(ECigStation Type) const;
 
+	// Switches every station label between signage and the old overhead debug
+	// text. Follows the debug HUD, so one key controls both.
+	void SetStationLabelsDebug(bool bDebug);
+
+	// Signage is hidden past this distance.
+	//
+	// The counters stand in rows 270uu apart in depth, so from anywhere back in
+	// the room the far row's names project on top of the near row's - "BULGUR"
+	// across the fridge, "BAHARAT" across "BULASIK". Legible while working at a
+	// counter, illegible in every wide shot, which is what a store page is made
+	// of. A label is there to name the thing you are standing at; at 700uu the
+	// nearest row is named and the back wall is quiet.
+	static constexpr float LabelVisibleRange = 700.f;
+
 	// A locked district: the barrier actors are destroyed on unlock and its
 	// delivery addresses join the address pool at that moment.
 	struct FCigDistrictState
@@ -83,6 +119,11 @@ public:
 		int32 PedCount = 0;      // pedestrians to bring to life on unlock
 		float PedRadius = 1600.f;
 		TArray<TWeakObjectPtr<AActor>> GateActors;
+		// The "LEVEL N" line on the barrier sign, kept separately from the rest of
+		// the gate. Its wording is written once at build time, so a language change
+		// has to come back and rewrite it - the sign is the only piece of world text
+		// that is a template rather than a name.
+		TWeakObjectPtr<AActor> GateLevelSign;
 		TArray<FCigAddress> PendingAddresses;
 	};
 	TArray<FCigDistrictState> Districts;
@@ -97,6 +138,16 @@ public:
 	UPROPERTY() TObjectPtr<ADirectionalLight> Sun;
 	UPROPERTY() TObjectPtr<ASkyLight> SkyLightActor;
 	UPROPERTY() TArray<TObjectPtr<APointLight>> ShopLights;      // bright in the evening, out during a cut
+	// Warm key over the counter. The four shop lights are spread evenly around
+	// the room, which lights it but says nothing about where to look; this one
+	// puts the brightest thing in the frame on the food and the hands making it.
+	// Goes out with the others in a power cut.
+	UPROPERTY() TObjectPtr<APointLight> CounterLight;
+	// Daylight coming in at the doorway. Cool, and the only cool light in the
+	// shop - it is what makes the interior read as warm by comparison rather
+	// than just as orange. Fades out as the day does, and is unaffected by a
+	// power cut, being the sun.
+	UPROPERTY() TObjectPtr<APointLight> DoorLight;
 	UPROPERTY() TArray<TObjectPtr<AStaticMeshActor>> StreetBulbs; // street lamp globes
 	UPROPERTY() TObjectPtr<AStaticMeshActor> GroundActor;         // goes wet in the rain
 	UPROPERTY() TObjectPtr<AActor> HouseSign;
@@ -125,6 +176,14 @@ public:
 	void ReleaseSeat(int32 Index);
 
 private:
+	// Signage visibility is re-evaluated on a clock, not every frame: it is a
+	// distance test across twenty stations that nothing perceives at 60 Hz, and
+	// the label only has to catch up with a walking player.
+	float LabelRangeTimer = 0.f;
+	static constexpr float LabelRangeInterval = 0.25f;
+	bool bStationLabelsDebug = false;
+	void UpdateStationLabelRange();
+
 	void BuildKitchen();
 	void BuildFurniture();
 	void BuildSeatingArea();

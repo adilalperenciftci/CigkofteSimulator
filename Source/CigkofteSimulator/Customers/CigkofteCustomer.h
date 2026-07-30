@@ -67,6 +67,12 @@ public:
 	bool bSeatMode = false;  // heading to a table / seated
 	bool bSeated = false;    // reached the table and sat down
 
+	// A real body, when the character pack is installed. The primitives below
+	// stay as the fallback and are hidden when this takes over - the same rule
+	// the cat and the stations follow, and it matters because Content/Characters
+	// is not in the repository.
+	UPROPERTY() TObjectPtr<class USkeletalMeshComponent> SkelBody;
+
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Body;
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> Head;
 	UPROPERTY() TObjectPtr<UStaticMeshComponent> LeftArm;
@@ -79,6 +85,12 @@ public:
 	UPROPERTY() TObjectPtr<UTextRenderComponent> TraitText;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BodyMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> HeadMID;
+
+	// Which working animation the apprentice should be playing, or none to fall
+	// back to idle and walking. Set by the staff system from the job it has been
+	// given; nothing else on this actor decides it.
+	enum class EWorkAnim : uint8 { None, Work, Reach, Serve, Wrap };
+	void SetWorkAnim(EWorkAnim InWork);
 
 private:
 	FVector Target = FVector::ZeroVector;
@@ -94,4 +106,43 @@ private:
 
 	void PickWanderTarget();
 	void ApplyWalkAnim(bool bWalking, float DeltaSeconds);
+
+	// True once a skeletal body is standing in for the primitives.
+	bool bSkeletal = false;
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimIdle;
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimWalk;
+	// From MC_Sample, which is rigged to the same UE5 mannequin skeleton, so
+	// these load and play with no retargeting. Null without the pack.
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimSit;
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimHappy;
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimAngry;
+	// Queueing with patience running out. The last customer state that had no
+	// clip: until now a customer about to walk out looked exactly like one who
+	// had just arrived, and the patience bar over their head was the only thing
+	// saying otherwise.
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimImpatient;
+
+	// Working at a station. This class doubles as the apprentice NPC, which is
+	// the only body in the shop the player ever sees do the job - so these are
+	// the animations for the staff jobs rather than for anything a customer does.
+	//
+	// Found in MC_Sample, which was already installed and licensed for this
+	// project, rather than downloaded. No pack contains kneading çiğköfte or
+	// rolling a dürüm, and none ever will; what exists are motions of the right
+	// shape. A drill held low is a pair of hands working something on a counter
+	// in front of you, and at the distance the player watches from that is what
+	// kneading and chopping look like.
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimWork;   // knead, chop
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimReach;  // take an ingredient
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimServe;  // hand it over
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimWrap;   // roll and pack
+
+	EWorkAnim WorkAnim = EWorkAnim::None;
+	// Which one is playing, so the same sequence is not restarted every frame.
+	UPROPERTY() TObjectPtr<class UAnimSequence> AnimPlaying;
+
+	// Swaps the primitives for a mannequin, or leaves them alone without the
+	// pack. Seed picks the body so a regular looks the same on every visit.
+	void TrySetupSkeletalBody(int32 Seed);
+	void UpdateSkeletalAnim(bool bWalking);
 };

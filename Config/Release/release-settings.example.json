@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "configuration": "Shipping",
+  "platform": "Win64",
+  "includePrerequisites": true,
+  "includeCrashReporter": true,
+  "includeSymbolsInPublicArchive": false,
+  "archiveDirectory": "Releases",
+  "defaultMapVerification": "Project Settings > Maps & Modes ve Packaging ayarlarından doğrula",
+  "publish": {
+    "githubDraft": true,
+    "steamUpload": false,
+    "steamSetLive": false
+  }
+}

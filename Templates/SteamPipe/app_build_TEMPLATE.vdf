@@ -1,0 +1,13 @@
+"appbuild"
+{
+    "appid"        "APP_ID_HERE"
+    "desc"         "CigkofteSimulator VERSION_HERE"
+    "buildoutput"  "..\\..\\Releases\\SteamBuildOutput"
+    "contentroot"  "..\\..\\Build\\Windows-Shipping"
+    "setlive"      ""
+    "preview"      "1"
+    "depots"
+    {
+        "DEPOT_ID_HERE" "depot_build_TEMPLATE.vdf"
+    }
+}

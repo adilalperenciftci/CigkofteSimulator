@@ -7,11 +7,13 @@
 #include "Vehicles/CigCar.h"
 #include "Cat/CigCat.h"
 #include "World/CigMeshLibrary.h"
+#include "Core/CigText.h"
 #include "Core/CigLog.h"
 #include "Core/CigUpgrades.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/DirectionalLight.h"
+#include "Components/DirectionalLightComponent.h"
 #include "Engine/PointLight.h"
 #include "Engine/SkyLight.h"
 #include "Components/StaticMeshComponent.h"
@@ -22,6 +24,8 @@
 #include "Components/SkyAtmosphereComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "GameFramework/PlayerStart.h"
+#include "GameFramework/Pawn.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "Core/CigSpawnUtils.h"
 
@@ -33,13 +37,29 @@ void UCigWorldBuilder::OnInit()
 	ConeMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"));
 	BaseMaterial = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
 
+	// A food shop's walls are tiled, and that one surface does more for the room
+	// than any prop in it. Null without the pack, which leaves the painted boxes
+	// exactly as they were.
+	//
+	// Red rather than the white this started with. Seen from the counter the
+	// white instance renders as a flat cool grey, and a cool grey interior is
+	// the one thing docs/Art/VISUAL_STYLE_GUIDE.md rules out by name - the shop
+	// is supposed to read warm, with the daylight from the street as the only
+	// cool thing in frame. Red tile is also what a Turkish lokanta actually has
+	// on its walls.
+	WallTileMaterial = LoadObject<UMaterialInterface>(nullptr,
+		TEXT("/Game/ModularBuildingSet/materials/Bricks_Tiles/tile_trim_clean/tile_trim_clean_color_red.tile_trim_clean_color_red"));
+	BrickMaterial = LoadObject<UMaterialInterface>(nullptr,
+		TEXT("/Game/ModularBuildingSet/materials/Bricks_Tiles/brick_wall_orange.brick_wall_orange"));
+
 	if (!CubeMesh || !BaseMaterial)
 	{
 		UE_LOG(LogCig, Warning, TEXT("Engine BasicShapes bulunamadı; dünya görselleri eksik kurulabilir."));
 	}
 }
 
-AStaticMeshActor* UCigWorldBuilder::SpawnBox(const FVector& Loc, const FVector& Scale, const FLinearColor& Color, UStaticMesh* Mesh)
+AStaticMeshActor* UCigWorldBuilder::SpawnBox(const FVector& Loc, const FVector& Scale, const FLinearColor& Color, UStaticMesh* Mesh,
+	UMaterialInterface* MaterialOverride)
 {
 	UWorld* World = GetWorld();
 	if (!World)
@@ -57,13 +77,20 @@ AStaticMeshActor* UCigWorldBuilder::SpawnBox(const FVector& Loc, const FVector& 
 	{
 		C->SetStaticMesh(UseMesh);
 	}
-	if (BaseMaterial)
+	if (MaterialOverride)
+	{
+		// A real surface brings its own colour; no MID and no parameter, which
+		// also means these boxes share one material instead of one each.
+		C->SetMaterial(0, MaterialOverride);
+	}
+	else if (BaseMaterial)
 	{
 		UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(BaseMaterial, A);
 		MID->SetVectorParameterValue(TEXT("Color"), Color);
 		C->SetMaterial(0, MID);
 	}
 	A->SetActorScale3D(Scale);
+	BuiltProps.Add(A);
 	return A;
 }
 
@@ -94,6 +121,7 @@ AStaticMeshActor* UCigWorldBuilder::SpawnProp(UStaticMesh* Mesh, const FVector& 
 		{
 			C->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		}
+		BuiltProps.Add(A);
 		return A;
 	}
 
@@ -119,10 +147,21 @@ AStaticMeshActor* UCigWorldBuilder::SpawnProp(UStaticMesh* Mesh, const FVector& 
 	C->SetMobility(EComponentMobility::Movable);
 	C->SetStaticMesh(Mesh);
 
-	// Scale from bounds to the target height
+	// Scale from bounds to the target height, but never past the footprint that
+	// height implies.
+	//
+	// Height alone is the wrong measure for anything wider than it is tall. The
+	// flatbread station uses a baguette mesh, which is long and low: scaling its
+	// 8cm height to 28 made it fourteen times its own length, and the shop
+	// shipped a rack of loaves the size of the counter. A prop is allowed to be
+	// twice as wide as it is tall - most tableware is - and is clamped beyond
+	// that, which leaves every correctly proportioned prop untouched.
 	const FBoxSphereBounds B = Mesh->GetBounds();
 	const float RawHeight = FMath::Max(1.f, B.BoxExtent.Z * 2.f);
-	const float Scale = TargetHeight / RawHeight;
+	const float RawWidth = FMath::Max(1.f, FMath::Max(B.BoxExtent.X, B.BoxExtent.Y) * 2.f);
+	constexpr float MaxWidthOverHeight = 2.f;
+	const float Scale = FMath::Min(TargetHeight / RawHeight,
+		(TargetHeight * MaxWidthOverHeight) / RawWidth);
 	A->SetActorScale3D(FVector(Scale));
 
 	// Sit the mesh base on the ground (Loc.Z)
@@ -134,6 +173,7 @@ AStaticMeshActor* UCigWorldBuilder::SpawnProp(UStaticMesh* Mesh, const FVector& 
 	{
 		C->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
+	BuiltProps.Add(A);
 	return A;
 }
 
@@ -175,6 +215,87 @@ ACigkofteStation* UCigWorldBuilder::FindStation(ECigStation Type) const
 {
 	const TWeakObjectPtr<ACigkofteStation>* Found = Stations.Find(Type);
 	return Found ? Found->Get() : nullptr;
+}
+
+void UCigWorldBuilder::SetStationLabelsDebug(bool bDebug)
+{
+	bStationLabelsDebug = bDebug;
+	for (const TPair<ECigStation, TWeakObjectPtr<ACigkofteStation>>& Pair : Stations)
+	{
+		if (ACigkofteStation* S = Pair.Value.Get())
+		{
+			S->SetLabelDebug(bDebug);
+		}
+	}
+	// Debug wants every name at once, including the far row - that is the whole
+	// point of the overhead mode. Restore them here rather than waiting for the
+	// next range tick to notice.
+	if (bDebug)
+	{
+		for (const TPair<ECigStation, TWeakObjectPtr<ACigkofteStation>>& Pair : Stations)
+		{
+			if (ACigkofteStation* S = Pair.Value.Get())
+			{
+				S->SetLabelVisible(true);
+			}
+		}
+	}
+}
+
+void UCigWorldBuilder::UpdateSystem(float DeltaSeconds)
+{
+	LabelRangeTimer += DeltaSeconds;
+	if (LabelRangeTimer >= LabelRangeInterval)
+	{
+		LabelRangeTimer = 0.f;
+		UpdateStationLabelRange();
+	}
+}
+
+void UCigWorldBuilder::UpdateStationLabelRange()
+{
+	if (bStationLabelsDebug)
+	{
+		return; // debug shows the lot
+	}
+
+	const UWorld* World = GetWorld();
+	const APawn* Pawn = World ? UGameplayStatics::GetPlayerPawn(World, 0) : nullptr;
+	if (!Pawn)
+	{
+		return;
+	}
+
+	// Squared distance, in 2D. Height is irrelevant here - the player is on the
+	// floor and so are the counters - and comparing squares avoids twenty square
+	// roots for a test whose answer is a bool.
+	const FVector Here = Pawn->GetActorLocation();
+	constexpr float RangeSq = LabelVisibleRange * LabelVisibleRange;
+
+	for (const TPair<ECigStation, TWeakObjectPtr<ACigkofteStation>>& Pair : Stations)
+	{
+		ACigkofteStation* S = Pair.Value.Get();
+		if (!S)
+		{
+			continue;
+		}
+
+		const FVector There = S->GetActorLocation();
+		bool bShow = FVector::DistSquared2D(Here, There) <= RangeSq;
+
+		// Hide a name being read from behind. A UTextRenderComponent seen from
+		// its back side draws mirrored, and the screenshot pass came back with a
+		// street view full of backwards signage - "PAKETLEME" and "LAVAS" spelled
+		// right to left across the front of the shop. Every station label faces
+		// the same way, so one dot product against its forward vector settles it.
+		if (bShow)
+		{
+			const FVector ToPlayer = (Here - There).GetSafeNormal2D();
+			bShow = FVector::DotProduct(ToPlayer, S->LabelFacing()) > 0.f;
+		}
+
+		S->SetLabelVisible(bShow);
+	}
 }
 
 AActor* UCigWorldBuilder::SpawnWorldText(const FVector& Loc, const FString& Text, float Size, const FColor& Color, float Yaw)
@@ -224,6 +345,7 @@ void UCigWorldBuilder::BuildWorld()
 	BuildRivalShops();
 	BuildDistricts();
 	SpawnLights();
+	FinalizeStaticProps();
 
 	if (UWorld* World = GetWorld())
 	{
@@ -231,17 +353,74 @@ void UCigWorldBuilder::BuildWorld()
 	}
 }
 
+void UCigWorldBuilder::FinalizeStaticProps()
+{
+	// Movable is what the world is built with and Static is what it should end as.
+	//
+	// Turning the sun's cascades down halved the shadow-depth draw calls - 372 to
+	// 162 at the shop - and moved the render thread by 0.08 ms in the wrong
+	// direction, which is a clear answer: submission of shadow draws was not what
+	// it was spending its time on. What is left is 629 primitives, every one of
+	// them Movable because the world is assembled at runtime, and a Movable
+	// primitive has its mesh draw commands rebuilt rather than cached.
+	//
+	// Nothing here moves after the build. The ones that do - stations, the crate,
+	// the cat, the customers, the lights - are not props and never enter this list.
+	int32 Sabitlenen = 0;
+	for (const TWeakObjectPtr<AStaticMeshActor>& Weak : BuiltProps)
+	{
+		if (AStaticMeshActor* A = Weak.Get())
+		{
+			if (UStaticMeshComponent* C = A->GetStaticMeshComponent())
+			{
+				if (C->Mobility != EComponentMobility::Static)
+				{
+					C->SetMobility(EComponentMobility::Static);
+					++Sabitlenen;
+				}
+			}
+		}
+	}
+	BuiltProps.Reset();
+	UE_LOG(LogCig, Log, TEXT("Dunya dekoru sabitlendi: %d prop"), Sabitlenen);
+}
+
 void UCigWorldBuilder::BuildKitchen()
 {
 	// Shop floor and walls (the front is open to the street)
 	SpawnBox(FVector(150.f, 0.f, 2.f), FVector(17.5f, 26.f, 0.05f), FLinearColor(0.42f, 0.34f, 0.24f));
-	SpawnBox(FVector(1000.f, 0.f, 200.f), FVector(0.4f, 26.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f));
-	SpawnBox(FVector(150.f, 1300.f, 200.f), FVector(17.f, 0.4f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f));
-	SpawnBox(FVector(150.f, -1300.f, 200.f), FVector(17.f, 0.4f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f));
-	SpawnBox(FVector(-700.f, 900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f));
-	SpawnBox(FVector(-700.f, -900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f));
+	// The four walls of the shop. Tiled where the pack is installed, painted
+	// cream where it is not.
+	SpawnBox(FVector(1000.f, 0.f, 200.f), FVector(0.4f, 26.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, WallTileMaterial);
+	SpawnBox(FVector(150.f, 1300.f, 200.f), FVector(17.f, 0.4f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, WallTileMaterial);
+	SpawnBox(FVector(150.f, -1300.f, 200.f), FVector(17.f, 0.4f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, WallTileMaterial);
+	SpawnBox(FVector(-700.f, 900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, BrickMaterial);
+	SpawnBox(FVector(-700.f, -900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, BrickMaterial);
 
+	// The shop sign, on a board.
+	//
+	// The letters are a TextRender, drawn on nothing and readable from both
+	// sides, so from inside the shop the name read back to front across the top
+	// of the frame - which is exactly where the README's first screenshot is
+	// taken from. A real sign has a board behind it.
+	//
+	// The board goes at -710, between the letters at -720 and the shop. The
+	// street is further out at -X: it sees the letters first and the board behind
+	// them, while the inside sees the board and nothing else. Putting it at -733
+	// gets this exactly backwards and hides the sign from the customers.
+	SpawnBox(FVector(-710.f, 0.f, 430.f), FVector(0.15f, 6.f, 1.3f), FLinearColor(0.10f, 0.09f, 0.08f));
 	SpawnWorldText(FVector(-720.f, 0.f, 430.f), TEXT("CIGKOFTECI"), 90.f, FColor(255, 140, 40), 180.f);
+
+	// Two posts holding the canopy up.
+	//
+	// The awning runs the width of the shop front, and the middle of that width
+	// is the doorway - so three of the six stripes had nothing behind them and
+	// hung in the air. They are not wrong to be there; a shop entrance has a
+	// canopy. It just needs to be standing on something.
+	for (float PostY : { -520.f, 520.f })
+	{
+		SpawnBox(FVector(-830.f, PostY, 170.f), FVector(0.12f, 0.12f, 3.4f), FLinearColor(0.24f, 0.20f, 0.16f));
+	}
 
 	// Awning (red and white stripes)
 	for (int32 i = 0; i < 6; ++i)
@@ -266,37 +445,37 @@ void UCigWorldBuilder::BuildKitchen()
 	}
 
 	// Ingredient stations (back area)
-	SpawnStation(ECigStation::Bulgur, FVector(600.f, -500.f, 0.f), CigIngredientColor(ECigIngredient::Bulgur), TEXT("BULGUR"), 180.f);
-	SpawnStation(ECigStation::Isot, FVector(600.f, -250.f, 0.f), CigIngredientColor(ECigIngredient::Isot), TEXT("ISOT"), 180.f);
-	SpawnStation(ECigStation::Salca, FVector(600.f, 0.f, 0.f), CigIngredientColor(ECigIngredient::Salca), TEXT("SALCA"), 180.f);
-	SpawnStation(ECigStation::Su, FVector(600.f, 250.f, 0.f), CigIngredientColor(ECigIngredient::Su), TEXT("SU"), 180.f);
-	SpawnStation(ECigStation::Baharat, FVector(600.f, 500.f, 0.f), CigIngredientColor(ECigIngredient::Baharat), TEXT("BAHARAT"), 180.f);
+	SpawnStation(ECigStation::Bulgur, FVector(600.f, -500.f, 0.f), CigIngredientColor(ECigIngredient::Bulgur), TEXT("station.bulgur"), 180.f);
+	SpawnStation(ECigStation::Isot, FVector(600.f, -250.f, 0.f), CigIngredientColor(ECigIngredient::Isot), TEXT("station.isot"), 180.f);
+	SpawnStation(ECigStation::Salca, FVector(600.f, 0.f, 0.f), CigIngredientColor(ECigIngredient::Salca), TEXT("station.salca"), 180.f);
+	SpawnStation(ECigStation::Su, FVector(600.f, 250.f, 0.f), CigIngredientColor(ECigIngredient::Su), TEXT("station.su"), 180.f);
+	SpawnStation(ECigStation::Baharat, FVector(600.f, 500.f, 0.f), CigIngredientColor(ECigIngredient::Baharat), TEXT("station.baharat"), 180.f);
 
-	SpawnStation(ECigStation::Yogurma, FVector(250.f, -650.f, 0.f), FLinearColor(0.72f, 0.72f, 0.76f), TEXT("YOGURMA"), 180.f);
-	SpawnStation(ECigStation::Dograma, FVector(600.f, 750.f, 0.f), FLinearColor(0.25f, 0.65f, 0.20f), TEXT("DOGRAMA"), 180.f);
-	SpawnStation(ECigStation::Lavabo, FVector(250.f, 650.f, 0.f), FLinearColor(0.85f, 0.90f, 0.95f), TEXT("LAVABO"), 180.f);
-	SpawnStation(ECigStation::Cop, FVector(250.f, 950.f, 0.f), FLinearColor(0.15f, 0.15f, 0.17f), TEXT("COP"), 180.f);
+	SpawnStation(ECigStation::Yogurma, FVector(250.f, -650.f, 0.f), FLinearColor(0.72f, 0.72f, 0.76f), TEXT("station.yogurma"), 180.f);
+	SpawnStation(ECigStation::Dograma, FVector(600.f, 750.f, 0.f), FLinearColor(0.25f, 0.65f, 0.20f), TEXT("station.dograma"), 180.f);
+	SpawnStation(ECigStation::Lavabo, FVector(250.f, 650.f, 0.f), FLinearColor(0.85f, 0.90f, 0.95f), TEXT("station.lavabo"), 180.f);
+	SpawnStation(ECigStation::Cop, FVector(250.f, 950.f, 0.f), FLinearColor(0.15f, 0.15f, 0.17f), TEXT("station.cop"), 180.f);
 
 	// Wrap assembly line (close to serving)
-	SpawnStation(ECigStation::Lavas, FVector(-350.f, -250.f, 0.f), FLinearColor(0.93f, 0.88f, 0.72f), TEXT("LAVAS"), 180.f);
-	SpawnStation(ECigStation::Paketleme, FVector(-350.f, 250.f, 0.f), FLinearColor(0.65f, 0.50f, 0.30f), TEXT("PAKETLEME"), 180.f);
+	SpawnStation(ECigStation::Lavas, FVector(-350.f, -250.f, 0.f), FLinearColor(0.93f, 0.88f, 0.72f), TEXT("station.lavas"), 180.f);
+	SpawnStation(ECigStation::Paketleme, FVector(-350.f, 250.f, 0.f), FLinearColor(0.65f, 0.50f, 0.30f), TEXT("station.paketleme"), 180.f);
 
 	// Shop-running stations
-	SpawnStation(ECigStation::Buzdolabi, FVector(870.f, -650.f, 0.f), FLinearColor(0.80f, 0.85f, 0.92f), TEXT("BUZDOLABI"), 180.f);
-	SpawnStation(ECigStation::Temizlik, FVector(870.f, 650.f, 0.f), FLinearColor(0.30f, 0.75f, 0.75f), TEXT("TEMIZLIK"), 180.f);
-	SpawnStation(ECigStation::Bulasik, FVector(250.f, 350.f, 0.f), FLinearColor(0.55f, 0.65f, 0.75f), TEXT("BULASIK"), 180.f);
-	SpawnStation(ECigStation::Cay, FVector(870.f, 950.f, 0.f), FLinearColor(0.72f, 0.30f, 0.12f), TEXT("CAY"), 180.f);
-	SpawnStation(ECigStation::MamaKabi, FVector(-200.f, 1100.f, 0.f), FLinearColor(0.85f, 0.60f, 0.70f), TEXT("MAMA"), 180.f);
-	SpawnStation(ECigStation::Tarif, FVector(870.f, -950.f, 0.f), FLinearColor(0.55f, 0.42f, 0.75f), TEXT("TARIF"), 180.f);
-	SpawnStation(ECigStation::YanUrun, FVector(-350.f, 650.f, 0.f), FLinearColor(0.90f, 0.65f, 0.25f), TEXT("YAN URUN"), 180.f);
+	SpawnStation(ECigStation::Buzdolabi, FVector(870.f, -650.f, 0.f), FLinearColor(0.80f, 0.85f, 0.92f), TEXT("station.buzdolabi"), 180.f);
+	SpawnStation(ECigStation::Temizlik, FVector(870.f, 650.f, 0.f), FLinearColor(0.30f, 0.75f, 0.75f), TEXT("station.temizlik"), 180.f);
+	SpawnStation(ECigStation::Bulasik, FVector(250.f, 350.f, 0.f), FLinearColor(0.55f, 0.65f, 0.75f), TEXT("station.bulasik"), 180.f);
+	SpawnStation(ECigStation::Cay, FVector(870.f, 950.f, 0.f), FLinearColor(0.72f, 0.30f, 0.12f), TEXT("station.cay"), 180.f);
+	SpawnStation(ECigStation::MamaKabi, FVector(-200.f, 1100.f, 0.f), FLinearColor(0.85f, 0.60f, 0.70f), TEXT("station.mama"), 180.f);
+	SpawnStation(ECigStation::Tarif, FVector(870.f, -950.f, 0.f), FLinearColor(0.55f, 0.42f, 0.75f), TEXT("station.tarif"), 180.f);
+	SpawnStation(ECigStation::YanUrun, FVector(-350.f, 650.f, 0.f), FLinearColor(0.90f, 0.65f, 0.25f), TEXT("station.yanurun"), 180.f);
 
 	// Shop counter for upgrades - back wall
-	SpawnStation(ECigStation::Eldiven, FVector(870.f, -350.f, 0.f), FLinearColor(0.9f, 0.55f, 0.1f), TEXT("ELDIVEN"), 180.f);
-	SpawnStation(ECigStation::IsotPlus, FVector(870.f, 0.f, 0.f), FLinearColor(0.6f, 0.1f, 0.1f), TEXT("ISOT+"), 180.f);
-	SpawnStation(ECigStation::Reklam, FVector(870.f, 350.f, 0.f), FLinearColor(0.2f, 0.6f, 0.9f), TEXT("REKLAM"), 180.f);
+	SpawnStation(ECigStation::Eldiven, FVector(870.f, -350.f, 0.f), FLinearColor(0.9f, 0.55f, 0.1f), TEXT("station.eldiven"), 180.f);
+	SpawnStation(ECigStation::IsotPlus, FVector(870.f, 0.f, 0.f), FLinearColor(0.6f, 0.1f, 0.1f), TEXT("station.isotplus"), 180.f);
+	SpawnStation(ECigStation::Reklam, FVector(870.f, 350.f, 0.f), FLinearColor(0.2f, 0.6f, 0.9f), TEXT("station.reklam"), 180.f);
 
 	// Service counter
-	SpawnStation(ECigStation::Servis, FVector(-600.f, 0.f, 0.f), FLinearColor(0.50f, 0.30f, 0.15f), TEXT("SERVIS"), 0.f);
+	SpawnStation(ECigStation::Servis, FVector(-600.f, 0.f, 0.f), FLinearColor(0.50f, 0.30f, 0.15f), TEXT("station.servis"), 0.f);
 }
 
 void UCigWorldBuilder::BuildFurniture()
@@ -445,6 +624,29 @@ void UCigWorldBuilder::SpawnLights()
 	{
 		Sun->GetLightComponent()->SetMobility(EComponentMobility::Movable);
 		Sun->GetLightComponent()->SetIntensity(6.f);
+
+		// The sun's cascades, narrowed - it is the only shadow caster left and it
+		// was drawing the world three times over.
+		//
+		// Every point light stopped casting in an earlier pass, which left the
+		// render thread at 9.46 ms against its 8 ms target with the cost sitting
+		// almost entirely in one place: 371 shadow-depth draw calls at the shop
+		// against 57 out on the street. A movable directional light defaults to
+		// three cascades over 20000 units, and 20000 units is the whole map, so
+		// every primitive in it was submitted once per cascade.
+		//
+		// Two cascades over 7000 units keeps the shadows where they are read -
+		// the counter, the seating, the pavement in front of the shop - and drops
+		// them from the far end of a street the player sees at a distance and in
+		// motion. The exponent pulls the split inwards so the near cascade, which
+		// is the one covering the counter, keeps its resolution.
+		if (UDirectionalLightComponent* SunComp = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
+		{
+			SunComp->DynamicShadowDistanceMovableLight = 7000.f;
+			SunComp->DynamicShadowCascades = 2;
+			SunComp->CascadeDistributionExponent = 2.f;
+			SunComp->MarkRenderStateDirty();
+		}
 	}
 
 	const FVector LightSpots[] = { FVector(150.f, -600.f, 450.f), FVector(150.f, 600.f, 450.f), FVector(-600.f, 0.f, 450.f), FVector(600.f, 0.f, 450.f) };
@@ -455,12 +657,84 @@ void UCigWorldBuilder::SpawnLights()
 		{
 			P->GetLightComponent()->SetMobility(EComponentMobility::Movable);
 			P->GetLightComponent()->SetIntensity(6000.f);
+			// Fill light, and fill light does not need to cast.
+			//
+			// A movable point light renders six cube faces of shadow depth for
+			// every primitive inside its radius. With four of these at 2800uu
+			// over 626 static meshes, the shadow pass was averaging 361 draw
+			// calls against the base pass's 46, and the render thread was
+			// spending 18.01 ms of an 18.04 ms frame. Four overlapping fills in
+			// one room produce shadows that largely cancel each other anyway -
+			// the sun casts the shadows that give the scene its shape, and the
+			// counter key light below keeps its own.
+			P->GetLightComponent()->SetCastShadows(false);
 			if (UPointLightComponent* PC = Cast<UPointLightComponent>(P->GetLightComponent()))
 			{
 				PC->SetAttenuationRadius(2800.f);
 				PC->SetLightColor(FLinearColor(1.f, 0.95f, 0.85f));
 			}
 			ShopLights.Add(P);
+		}
+	}
+
+	// The key light, over the counter the player works at. SpawnLights runs last
+	// in BuildWorld, so the stations exist and it can sit where the work
+	// actually happens rather than at a guessed coordinate.
+	{
+		const ACigkofteStation* Yogurma = FindStation(ECigStation::Yogurma);
+		const ACigkofteStation* Servis = FindStation(ECigStation::Servis);
+		FVector Where(300.f, 0.f, 330.f);
+		if (Yogurma && Servis)
+		{
+			const FVector Mid = (Yogurma->GetActorLocation() + Servis->GetActorLocation()) * 0.5f;
+			Where = FVector(Mid.X, Mid.Y, 330.f);
+		}
+
+		CounterLight = World->SpawnActor<APointLight>(Where, FRotator::ZeroRotator);
+		if (CounterLight)
+		{
+			CounterLight->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+			if (UPointLightComponent* PC = Cast<UPointLightComponent>(CounterLight->GetLightComponent()))
+			{
+				// Warmer and tighter than the room lights: roughly 3000K against
+				// their 4500K, and a radius that falls off before the walls so
+				// the counter reads as the lit place rather than the room being
+				// uniformly brighter.
+				PC->SetLightColor(FLinearColor(1.f, 0.78f, 0.52f));
+				PC->SetAttenuationRadius(1250.f);
+				PC->SetIntensity(9000.f);
+				// This one used to keep its shadows, on the argument that a bowl
+				// casting onto the counter is the reason the light is there.
+				// The argument was fine and the measurement beat it.
+				//
+				// Per viewpoint, the shop interior was spending 495 draw calls a
+				// frame on shadow depths against the street's 59 - in the one
+				// room the whole game is played in. A movable point light draws
+				// six cube faces for every primitive in its radius, and at 1250
+				// this radius holds the counters, the walls and the furniture.
+				// Switching the small props off it first moved 523 to 495 and
+				// the frame time not at all, which is what pointed here.
+				PC->SetCastShadows(false);
+			}
+		}
+	}
+
+	// Just inside the doorway. The front wall is two brick pieces at
+	// (-700, ±900) with the entrance between them, so this sits in the gap and
+	// throws cool light back into a room lit by warm bulbs.
+	DoorLight = World->SpawnActor<APointLight>(FVector(-620.f, 0.f, 260.f), FRotator::ZeroRotator);
+	if (DoorLight)
+	{
+		DoorLight->GetLightComponent()->SetMobility(EComponentMobility::Movable);
+		if (UPointLightComponent* PC = Cast<UPointLightComponent>(DoorLight->GetLightComponent()))
+		{
+			PC->SetLightColor(FLinearColor(0.62f, 0.74f, 0.95f)); // roughly 6000K
+			PC->SetAttenuationRadius(1500.f);
+			PC->SetIntensity(5000.f);
+			// Same reasoning as the room fills. This one exists to put a cool
+			// tone on the doorway wall for the interior to read warm against,
+			// and a colour cast costs nothing to render.
+			PC->SetCastShadows(false);
 		}
 	}
 
@@ -671,7 +945,7 @@ void UCigWorldBuilder::BuildCity()
 		SpawnBox(HousePos + FVector(0.f, 0.f, 250.f), FVector(5.f, 5.f, 5.f), FLinearColor(0.92f, 0.85f, 0.70f));
 		if (AStaticMeshActor* Roof = SpawnBox(HousePos + FVector(0.f, 0.f, 545.f), FVector(5.6f, 5.6f, 0.5f), FLinearColor(0.65f, 0.15f, 0.10f))) { Roof->SetActorEnableCollision(false); }
 		if (AStaticMeshActor* Door = SpawnBox(HousePos + FVector(-254.f, 0.f, 110.f), FVector(0.1f, 1.4f, 2.2f), FLinearColor(0.2f, 0.5f, 0.2f))) { Door->SetActorEnableCollision(false); }
-		HouseSign = SpawnWorldText(HousePos + FVector(-300.f, 0.f, 620.f), TEXT("SATILIK EV - 5000 TL"), 60.f, FColor(255, 200, 60), 180.f);
+		HouseSign = SpawnWorldText(HousePos + FVector(-300.f, 0.f, 620.f), CigText::Get(TEXT("world.houseforsale")), 60.f, FColor(255, 200, 60), 180.f);
 	}
 }
 
@@ -772,9 +1046,10 @@ void UCigWorldBuilder::BuildGate(FCigDistrictState& D, const FVector& Loc, bool 
 		D.GateActors.Add(Board);
 	}
 	if (AActor* T1 = SpawnWorldText(Loc + FVector(bHorizontal ? (Loc.Y > 0.f ? -14.f : 14.f) : 14.f, 0.f, 470.f),
-		FString::Printf(TEXT("SEVIYE %d"), Def.Level), 62.f, FColor(255, 200, 60), SignYaw))
+		CigText::Format(TEXT("level.locked"), Def.Level), 62.f, FColor(255, 200, 60), SignYaw))
 	{
 		D.GateActors.Add(T1);
+		D.GateLevelSign = T1;
 	}
 	if (AActor* T2 = SpawnWorldText(Loc + FVector(bHorizontal ? (Loc.Y > 0.f ? -14.f : 14.f) : 14.f, 0.f, 390.f),
 		Def.Name, 40.f, FColor(220, 220, 230), SignYaw))
@@ -1032,7 +1307,7 @@ void UCigWorldBuilder::BuildSchoolPark(FCigDistrictState& D)
 		}
 	}
 	if (AStaticMeshActor* Door = SpawnBox(School + FVector(0.f, -304.f, 110.f), FVector(1.6f, 0.1f, 2.2f), FLinearColor(0.3f, 0.18f, 0.08f))) { Door->SetActorEnableCollision(false); }
-	SpawnWorldText(School + FVector(0.f, -320.f, 560.f), TEXT("MAHALLE OKULU"), 56.f, FColor(240, 230, 210), 0.f);
+	SpawnWorldText(School + FVector(0.f, -320.f, 560.f), CigText::Get(TEXT("world.school")), 56.f, FColor(240, 230, 210), 0.f);
 
 	// Flagpole
 	if (AStaticMeshActor* Pole = SpawnBox(School + FVector(-900.f, -600.f, 350.f), FVector(0.14f, 0.14f, 7.f), FLinearColor(0.85f, 0.85f, 0.88f), CylinderMesh)) { Pole->SetActorEnableCollision(false); }
@@ -1248,9 +1523,9 @@ void UCigWorldBuilder::RefreshUnlocks(int32 Level, bool bAnnounce)
 			const FString OpenName = CigStationUnlockName(Pair.Key);
 			if (GM && !OpenName.IsEmpty())
 			{
-				GM->AddMessage(FString::Printf(TEXT("AÇILDI: %s"), *OpenName), FLinearColor(0.45f, 1.f, 0.55f));
+				GM->AddMessage(CigText::Format(TEXT("level.stationopen"), *OpenName), FLinearColor(0.45f, 1.f, 0.55f));
 			}
-			SpawnFloatText(S->GetActorLocation() + FVector(0.f, 0.f, 210.f), TEXT("AÇILDI"), FColor(120, 255, 140), 40.f);
+			SpawnFloatText(S->GetActorLocation() + FVector(0.f, 0.f, 210.f), CigText::Get(TEXT("level.opened")), FColor(120, 255, 140), 40.f);
 		}
 	}
 
@@ -1260,6 +1535,17 @@ void UCigWorldBuilder::RefreshUnlocks(int32 Level, bool bAnnounce)
 		const FCigDistrictDef& Def = CigDistrictDef(D.Id);
 		if (D.bOpen || Level < Def.Level)
 		{
+			// Still shut. Its sign says "LEVEL N", which is the one piece of world
+			// text built from a template, so it is also the one piece that goes
+			// stale when the language changes - and this function is called on a
+			// settings change for exactly that reason.
+			if (AActor* Sign = D.GateLevelSign.Get())
+			{
+				if (UTextRenderComponent* T = Sign->FindComponentByClass<UTextRenderComponent>())
+				{
+					T->SetText(FText::FromString(CigText::Format(TEXT("level.locked"), Def.Level)));
+				}
+			}
 			continue;
 		}
 		D.bOpen = true;
@@ -1365,6 +1651,29 @@ void UCigWorldBuilder::UpdateSun(float T)
 		}
 	}
 
+	// The counter keeps its lead over the room at every hour, and goes out with
+	// everything else in a cut - a shop lit only over the counter during a power
+	// failure would read as the one light that still works, which is a different
+	// scene from the one the event is describing.
+	if (CounterLight)
+	{
+		CounterLight->GetLightComponent()->SetIntensity(bPowerOut ? 0.f : ShopIntensity * 1.6f);
+	}
+
+	// --- Doorway daylight: follows the sun, ignores the power cut ---
+	// It is strongest at midday and nearly gone by dusk, which is also when the
+	// shop bulbs come up - so the room shifts from cool-and-warm to warm-only
+	// over the day instead of holding one look. A cut does not touch it.
+	if (DoorLight)
+	{
+		float DoorIntensity = FMath::Lerp(5000.f, 250.f, Evening);
+		if (Weather == 1)
+		{
+			DoorIntensity *= 0.5f; // rain: less light through the door
+		}
+		DoorLight->GetLightComponent()->SetIntensity(DoorIntensity);
+	}
+
 	// --- Street lamps: come on towards dusk ---
 	const FLinearColor BulbOff(0.30f, 0.29f, 0.24f);
 	const FLinearColor BulbOn(2.4f, 2.1f, 1.25f);
@@ -1389,7 +1698,7 @@ void UCigWorldBuilder::SetHouseOwned()
 		HouseSign->Destroy();
 		HouseSign = nullptr;
 	}
-	SpawnWorldText(HousePos + FVector(-300.f, 0.f, 620.f), TEXT("EVIN (gunluk +150 TL)"), 50.f, FColor(100, 255, 120), 180.f);
+	SpawnWorldText(HousePos + FVector(-300.f, 0.f, 620.f), CigText::Get(TEXT("world.yourhouse")), 50.f, FColor(100, 255, 120), 180.f);
 }
 
 void UCigWorldBuilder::ApplyUpgradeVisual(int32 UpgradeIndex)
@@ -1401,24 +1710,24 @@ void UCigWorldBuilder::ApplyUpgradeVisual(int32 UpgradeIndex)
 		break;
 	case ECigUpgrade::IkinciYogurma:
 		SpawnBox(FVector(250.f, -450.f, 55.f), FVector(1.0f, 1.0f, 1.1f), FLinearColor(0.72f, 0.72f, 0.76f));
-		SpawnWorldText(FVector(250.f, -450.f, 170.f), TEXT("YOGURMA 2"), 24.f, FColor::White, 180.f);
+		SpawnWorldText(FVector(250.f, -450.f, 170.f), CigText::Get(TEXT("world.knead2")), 24.f, FColor::White, 180.f);
 		break;
 	case ECigUpgrade::HizliDograma:
 		SpawnBox(FVector(600.f, 900.f, 60.f), FVector(0.8f, 0.5f, 1.2f), FLinearColor(0.7f, 0.72f, 0.75f));
 		break;
 	case ECigUpgrade::YeniTabela:
-		SpawnWorldText(FVector(-740.f, 0.f, 540.f), TEXT("* MAHALLENIN EN IYISI *"), 56.f, FColor(255, 220, 90), 180.f);
+		SpawnWorldText(FVector(-740.f, 0.f, 540.f), CigText::Get(TEXT("world.bestonstreet")), 56.f, FColor(255, 220, 90), 180.f);
 		break;
 	case ECigUpgrade::Klima:
 		SpawnBox(FVector(980.f, 500.f, 330.f), FVector(1.4f, 0.5f, 0.5f), FLinearColor(0.9f, 0.92f, 0.95f));
 		break;
 	case ECigUpgrade::MuzikSistemi:
 		SpawnBox(FVector(980.f, -500.f, 330.f), FVector(0.5f, 0.7f, 0.8f), FLinearColor(0.12f, 0.12f, 0.14f));
-		SpawnWorldText(FVector(940.f, -500.f, 380.f), TEXT("MUZIK"), 22.f, FColor(180, 200, 255), 180.f);
+		SpawnWorldText(FVector(940.f, -500.f, 380.f), CigText::Get(TEXT("world.music")), 22.f, FColor(180, 200, 255), 180.f);
 		break;
 	case ECigUpgrade::IkinciKasa:
 		SpawnBox(FVector(-600.f, 450.f, 55.f), FVector(0.9f, 0.9f, 1.1f), FLinearColor(0.50f, 0.30f, 0.15f));
-		SpawnWorldText(FVector(-640.f, 450.f, 170.f), TEXT("KASA 2"), 24.f, FColor::White, 0.f);
+		SpawnWorldText(FVector(-640.f, 450.f, 170.f), CigText::Get(TEXT("world.register2")), 24.f, FColor::White, 0.f);
 		break;
 	case ECigUpgrade::DisOturma:
 		for (float Y : { -350.f, 350.f })
@@ -1452,7 +1761,7 @@ void UCigWorldBuilder::ApplyUpgradeVisual(int32 UpgradeIndex)
 		break;
 	case ECigUpgrade::YeniSube:
 		SpawnBox(FVector(-1000.f, -1800.f, 200.f), FVector(4.f, 4.f, 4.f), FLinearColor(0.9f, 0.6f, 0.3f));
-		SpawnWorldText(FVector(-1210.f, -1800.f, 430.f), TEXT("CIGKOFTECI SUBE 2"), 46.f, FColor(255, 140, 40), 180.f);
+		SpawnWorldText(FVector(-1210.f, -1800.f, 430.f), CigText::Get(TEXT("world.branch2")), 46.f, FColor(255, 140, 40), 180.f);
 		break;
 	default:
 		break;

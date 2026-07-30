@@ -3,6 +3,7 @@
 #include "Game/CigkofteGameMode.h"
 #include "World/CigWorldBuilder.h"
 #include "Economy/CigEconomySystem.h"
+#include "Customers/CigCustomerSystem.h"
 #include "Core/CigLog.h"
 
 void UCigDaySystem::UpdateSystem(float DeltaSeconds)
@@ -16,6 +17,26 @@ void UCigDaySystem::UpdateSystem(float DeltaSeconds)
 			GM->WorldBuilder->UpdateSun(DayProgress());
 		}
 		if (TimeLeft <= 0.f)
+		{
+			// The clock running out shuts the door, not the books. The takings
+			// are counted after the closing window, so anything cleaned in it
+			// counts towards tomorrow.
+			Phase = ECigPhase::Closing;
+			PhaseTimer = ClosingLength;
+			if (GM)
+			{
+				if (GM->Customers)
+				{
+					GM->Customers->SendEveryoneHome();
+				}
+				GM->AddMessage(CigText::Get(TEXT("msg.day.closing")), FLinearColor(0.9f, 0.75f, 0.4f));
+			}
+		}
+		break;
+
+	case ECigPhase::Closing:
+		PhaseTimer -= DeltaSeconds;
+		if (PhaseTimer <= 0.f)
 		{
 			EndDay();
 		}
@@ -40,7 +61,10 @@ void UCigDaySystem::StartDay(bool bAdvanceDay)
 	{
 		Day++;
 	}
-	Phase = ECigPhase::Playing;
+	// The morning starts in preparation, not in service. The day's hooks still
+	// fire here - stock arrives, energy resets, staff turn up - because those are
+	// things that happen overnight, not things that happen when the door opens.
+	Phase = ECigPhase::Opening;
 	TimeLeft = DayLength;
 	DayEarnings = 0;
 	DayServed = 0;
@@ -48,11 +72,34 @@ void UCigDaySystem::StartDay(bool bAdvanceDay)
 
 	if (GM)
 	{
-		GM->AddMessage(CigText::Format(TEXT("msg.day.started"), Day), FLinearColor(0.9f, 0.9f, 0.4f));
-		GM->PlaySound(ECigSound::DayStart);
+		GM->AddMessage(CigText::Format(TEXT("msg.day.prep"), Day), FLinearColor(0.9f, 0.9f, 0.4f));
 		GM->BroadcastDayStart(Day);
 	}
-	UE_LOG(LogCig, Log, TEXT("Gün %d başladı"), Day);
+	UE_LOG(LogCig, Log, TEXT("Gün %d hazırlık"), Day);
+}
+
+void UCigDaySystem::FinishClosing()
+{
+	if (Phase != ECigPhase::Closing)
+	{
+		return;
+	}
+	EndDay();
+}
+
+void UCigDaySystem::OpenShop()
+{
+	if (Phase != ECigPhase::Opening)
+	{
+		return;
+	}
+	Phase = ECigPhase::Playing;
+	if (GM)
+	{
+		GM->AddMessage(CigText::Format(TEXT("msg.day.started"), Day), FLinearColor(0.9f, 0.9f, 0.4f));
+		GM->PlaySound(ECigSound::DayStart);
+	}
+	UE_LOG(LogCig, Log, TEXT("Gün %d açıldı"), Day);
 }
 
 void UCigDaySystem::EndDay()

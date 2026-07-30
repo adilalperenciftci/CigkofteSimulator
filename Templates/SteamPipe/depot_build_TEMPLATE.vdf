@@ -1,0 +1,14 @@
+"DepotBuildConfig"
+{
+    "DepotID"       "DEPOT_ID_HERE"
+    "ContentRoot"   "..\\..\\Build\\Windows-Shipping"
+    "FileMapping"
+    {
+        "LocalPath"  "*"
+        "DepotPath"  "."
+        "recursive"  "1"
+    }
+    "FileExclusion" "*.pdb"
+    "FileExclusion" "*.env"
+    "FileExclusion" "*credentials*"
+}

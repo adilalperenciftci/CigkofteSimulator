@@ -2,9 +2,12 @@
 #include "Core/CigText.h"
 #include "Orders/CigOrderSystem.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/SkeletalMesh.h"
+#include "Animation/AnimSequence.h"
 #include "Engine/World.h"
 
 ACigkofteCustomer::ACigkofteCustomer()
@@ -23,6 +26,12 @@ ACigkofteCustomer::ACigkofteCustomer()
 		C->SetCollisionEnabled(bQuery ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
 		return C;
 	};
+
+	SkelBody = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("SkelBody"));
+	SkelBody->SetupAttachment(RootComponent);
+	SkelBody->SetMobility(EComponentMobility::Movable);
+	SkelBody->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SkelBody->SetVisibility(false);
 
 	Body = MakePart(TEXT("Body"), true);
 	Body->SetRelativeLocation(FVector(0.f, 0.f, 80.f));
@@ -159,6 +168,11 @@ void ACigkofteCustomer::InitVisuals(int32 Seed)
 	const bool bGlasses = Rand.FRand() < 0.25f;
 	GlassL->SetVisibility(bGlasses);
 	GlassR->SetVisibility(bGlasses);
+
+	// Last, because it reads HeightScale and hides everything set above when it
+	// succeeds. Without the character pack it does nothing and the primitive
+	// customer - hat, bag, glasses and all - is what walks in.
+	TrySetupSkeletalBody(VisualSeed);
 }
 
 void ACigkofteCustomer::ApplyOrderVisuals()
@@ -335,8 +349,220 @@ FString ACigkofteCustomer::OrderString() const
 	return S;
 }
 
+void ACigkofteCustomer::TrySetupSkeletalBody(int32 Seed)
+{
+	// Two bodies from the UE5 mannequin set, chosen by seed so a regular walks
+	// in looking like themselves. These are placeholders in the art sense - see
+	// docs/Art/FAB_ASSET_PLAN.md, they are sci-fi mannequins next to Kenney
+	// furniture - but a person shaped like a person beats a cylinder with a
+	// sphere on it, and the skeleton is the one every animation pack targets.
+	const bool bSecond = (Seed % 2) != 0;
+
+	// MC_Sample first, and mesh and animation have to come from the same place.
+	//
+	// The listing says its animations are rigged to the UE5 mannequin, and the
+	// hierarchy may well match, but the sequences reference their own USkeleton
+	// asset (SKM_MCUE5v2_Skeleton). PlayAnimation across two different skeleton
+	// assets does not play - it fails quietly and leaves the mesh in bind pose,
+	// which would have shipped as customers standing frozen in the queue. So the
+	// body comes from whichever pack the animations come from.
+	bool bMocap = true;
+	USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, bSecond
+		? TEXT("/Game/MC_Sample/Demo/Characters/MCUE5v2/Meshes/SKM_MCUE5Fv2.SKM_MCUE5Fv2")
+		: TEXT("/Game/MC_Sample/Demo/Characters/MCUE5v2/Meshes/SKM_MCUE5v2.SKM_MCUE5v2"));
+
+	if (!Mesh)
+	{
+		// Without that pack, the UE5 mannequin and its own animations.
+		bMocap = false;
+		Mesh = LoadObject<USkeletalMesh>(nullptr, bSecond
+			? TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn.SKM_Quinn")
+			: TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny.SKM_Manny"));
+	}
+
+	if (!Mesh || !SkelBody)
+	{
+		return; // neither pack: the primitives stay
+	}
+
+	SkelBody->SetSkeletalMesh(Mesh);
+	SkelBody->SetVisibility(true);
+	// Feet on the ground, facing the way the actor faces. The mannequin models
+	// point down -Y, hence the yaw.
+	SkelBody->SetRelativeLocation(FVector::ZeroVector);
+	SkelBody->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
+	SkelBody->SetRelativeScale3D(FVector(HeightScale));
+
+	if (bMocap)
+	{
+		// Idle variety matters more than it sounds: six customers queueing on
+		// one idle move in lockstep, which reads as a bug rather than as a
+		// queue. Seed picks between three.
+		const int32 Which = VisualSeed % 3;
+		AnimIdle = LoadObject<UAnimSequence>(nullptr, Which == 1
+			? TEXT("/Game/MC_Sample/Animations/Idle/am_Stand_Idle_03_LookAround.am_Stand_Idle_03_LookAround")
+			: (Which == 2
+				? TEXT("/Game/MC_Sample/Animations/Idle/am_Stand_Idle_06_ScratchArm.am_Stand_Idle_06_ScratchArm")
+				: TEXT("/Game/MC_Sample/Animations/Idle/am_Stand_Conv_Talk_05_Generic.am_Stand_Conv_Talk_05_Generic")));
+
+		// NoRM is the in-place cut. The actor is moved by VInterpConstantTo in
+		// Tick, so the root-motion version would fight it and slide.
+		AnimWalk = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Swagger/am_Loco_Walk_Swagger_NoRM.am_Loco_Walk_Swagger_NoRM"));
+
+		// A piano performance: seated, hands forward, which at a table reads as
+		// someone leaning over their food. It is the closest thing the pack has
+		// to sitting and eating, and it replaces the stopgap that dropped the
+		// body 45cm and left the legs straight.
+		AnimSit = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Piano/am_SitPiano_Play_01.am_SitPiano_Play_01"));
+		AnimHappy = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Emotions/am_Stand_React_Excited_01.am_Stand_React_Excited_01"));
+		AnimAngry = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Emotions/am_Stand_Emotion_Frustrated_01_All.am_Stand_Emotion_Frustrated_01_All"));
+
+		// The work set, chosen by what the motion is rather than by what the clip
+		// was named for. All four are already in the project and on this
+		// skeleton, so they cost nothing and need no retargeting.
+		//
+		// Drill held low: standing over a surface, both hands working something
+		// in front at waist height, repeating. That is kneading, and it is
+		// chopping, and it is the closest thing to either that any general
+		// animation pack contains - because no pack contains the real ones.
+		AnimWork = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Drill/am_StandDrillLow_01_Drill.am_StandDrillLow_01_Drill"));
+		// Reaching into a machine, which is the same shape as reaching into a tub.
+		AnimReach = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/VendingMachine/am_Vend_Start.am_Vend_Start"));
+		// Taking the item out and offering it forward: the hand-off.
+		AnimServe = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/VendingMachine/am_Vend_Success_GrabItem.am_Vend_Success_GrabItem"));
+		// Both hands held in front, working over something held between them.
+		// Named for a spellbook and shaped like rolling a wrap.
+		AnimWrap = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Spellbook/am_SpellBook_02_Read_Loop_01.am_SpellBook_02_Read_Loop_01"));
+
+		// Waiting badly. A milder clip than the one played on the way out, and
+		// deliberately a different one: a customer who stomps while queueing and
+		// then stomps again while leaving looks like a bug rather than like
+		// someone who was kept waiting and then left.
+		AnimImpatient = LoadObject<UAnimSequence>(nullptr,
+			TEXT("/Game/MC_Sample/Animations/Emotions/am_Stand_Emotion_Frustrated_01_StompFeet.am_Stand_Emotion_Frustrated_01_StompFeet"));
+	}
+	else
+	{
+		// Mannequin fallback: locomotion only, no sit and no reactions.
+		AnimIdle = LoadObject<UAnimSequence>(nullptr, bSecond
+			? TEXT("/Game/Characters/Mannequins/Animations/Quinn/MF_Idle.MF_Idle")
+			: TEXT("/Game/Characters/Mannequins/Animations/Manny/MM_Idle.MM_Idle"));
+		// In place for the same reason as above: Tick moves the actor.
+		AnimWalk = LoadObject<UAnimSequence>(nullptr, bSecond
+			? TEXT("/Game/Characters/Mannequins/Animations/Quinn/MF_Walk_Fwd.MF_Walk_Fwd")
+			: TEXT("/Game/Characters/Mannequins/Animations/Manny/MM_Walk_InPlace.MM_Walk_InPlace"));
+	}
+
+	// The primitives were the whole customer; they are now the fallback.
+	for (UStaticMeshComponent* Part : { Body.Get(), Head.Get(), LeftArm.Get(), RightArm.Get(),
+		Hat.Get(), Bag.Get(), GlassL.Get(), GlassR.Get() })
+	{
+		if (Part)
+		{
+			Part->SetVisibility(false);
+		}
+	}
+
+	bSkeletal = true;
+	UpdateSkeletalAnim(false);
+}
+
+void ACigkofteCustomer::SetWorkAnim(EWorkAnim InWork)
+{
+	if (WorkAnim == InWork)
+	{
+		return;
+	}
+	WorkAnim = InWork;
+	// Pushed straight through rather than waiting for the next movement update:
+	// the apprentice changes job while standing still, and the walking tick is
+	// the only other thing that would notice.
+	UpdateSkeletalAnim(false);
+}
+
+void ACigkofteCustomer::UpdateSkeletalAnim(bool bWalking)
+{
+	if (!bSkeletal || !SkelBody)
+	{
+		return;
+	}
+	// A seated animation exists now (MC_Sample), so the body no longer has to be
+	// shoved downwards to fake one. The drop is kept only for the case where
+	// that pack is absent and the old stopgap is all there is - without it the
+	// customer stands to attention at the table.
+	const float SeatDrop = (bSeated && !AnimSit) ? -45.f * HeightScale : 0.f;
+	SkelBody->SetRelativeLocation(FVector(0.f, 0.f, SeatDrop));
+
+	UAnimSequence* Want = (bWalking && AnimWalk) ? AnimWalk : AnimIdle;
+
+	// Work beats standing but loses to walking: an apprentice kneading while
+	// sliding across the shop is the same defect the reaction animations had.
+	if (!bWalking && WorkAnim != EWorkAnim::None)
+	{
+		UAnimSequence* Job = nullptr;
+		switch (WorkAnim)
+		{
+		case EWorkAnim::Work:  Job = AnimWork;  break;
+		case EWorkAnim::Reach: Job = AnimReach; break;
+		case EWorkAnim::Serve: Job = AnimServe; break;
+		case EWorkAnim::Wrap:  Job = AnimWrap;  break;
+		default: break;
+		}
+		if (Job)
+		{
+			Want = Job;
+		}
+	}
+
+	// Running out of patience while standing in the queue. Below a third is late
+	// enough that the player still has time to do something about it, which is
+	// the only point at which showing it is worth anything.
+	if (!bWalking && !bLeaving && bArrived && !bSeated && AnimImpatient
+		&& MaxPatience > 0.f && Patience / MaxPatience < 0.34f)
+	{
+		Want = AnimImpatient;
+	}
+
+	if (bSeated && AnimSit)
+	{
+		Want = AnimSit;
+	}
+	// The reaction plays where the customer is still standing at the counter,
+	// which is the moment it is about. Once they turn and walk off, walking
+	// wins - a customer stomping in frustration while gliding to the door reads
+	// as broken rather than as angry.
+	else if (bLeaving && !bWalking)
+	{
+		if (UAnimSequence* React = bHappy ? AnimHappy : AnimAngry)
+		{
+			Want = React;
+		}
+	}
+	if (!Want || Want == AnimPlaying)
+	{
+		return; // restarting the same sequence every frame would freeze frame 0
+	}
+	SkelBody->PlayAnimation(Want, true);
+	AnimPlaying = Want;
+}
+
 void ACigkofteCustomer::ApplyWalkAnim(bool bWalking, float DeltaSeconds)
 {
+	// A real body animates itself; the primitive bob below is for the fallback.
+	if (bSkeletal)
+	{
+		UpdateSkeletalAnim(bWalking && !bSeated);
+		return;
+	}
+
 	// Seated pose: the body lowers and the arms swing as if eating.
 	if (bSeated)
 	{

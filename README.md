@@ -14,14 +14,29 @@ simulator written **entirely in C++** on Unreal Engine 5.8.
 
 > An **EG Games** production.
 
-![Service counter and the customer queue](docs/screenshots/01_servis.png)
+![The shop, the seating area, the street, the square and the market](docs/demo.gif)
+
+*Twelve seconds of the fixed tour route. Recorded from a packaged build with
+`Scripts/Record-Demo.ps1`, which produces the same clip every time rather than
+whatever the person holding the mouse managed on the day.*
+
+![The ingredient stations, with the next customer's order on the right](docs/screenshots/02_mutfak.png)
+
+*Bulgur, isot, tomato paste, water, spice — each measured separately, against the
+order on the right and the recipe on the left.*
 
 | | |
 | --- | --- |
-| ![Ingredient stations](docs/screenshots/02_mutfak.png) | ![The kneading counter](docs/screenshots/03_yogurma.png) |
-| *Bulgur, isot, tomato paste, water, spice — each station measured separately* | *Kneading: hold the rhythm with the left mouse button* |
+| ![The shop front and the street](docs/screenshots/01_servis.png) | ![The kneading counter](docs/screenshots/03_yogurma.png) |
+| *The shop front, the awning and the queue coming off the street* | *Kneading: hold the rhythm with the left mouse button* |
 | ![Tablet — shop upgrades](docs/screenshots/04_tablet_dukkan.png) | ![Tablet — quests](docs/screenshots/05_tablet_gorevler.png) |
 | *Shop upgrades* | *Daily quests, story goals, regulars* |
+| ![The chopping board](docs/screenshots/07_dograma.png) | ![The apprentice at work](docs/screenshots/08_cirak.png) |
+| *Chopping, two strokes of four into a garnish* | *The apprentice works whichever station you assign them to* |
+| ![The seating area](docs/screenshots/06_salon.png) | ![A delivery standing in the shop](docs/screenshots/10_teslimat.png) |
+| *Customers who eat in take a table* | *A delivery arrives as a crate and stands there until you unload it* |
+| ![Tablet — stock and the fridge](docs/screenshots/09_tablet_stok.png) | |
+| *Stock, and the one shared volume every perishable competes for* | |
 
 ## Playing it
 

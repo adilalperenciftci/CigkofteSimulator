@@ -19,6 +19,31 @@ const FCigSupplier& UCigEconomySystem::Supplier(int32 Index)
 	return Suppliers[FMath::Clamp(Index, 0, CigSupplierCount - 1)];
 }
 
+namespace
+{
+	const TCHAR* GSupplierKeys[CigSupplierCount] = {
+		TEXT("toptanci"), TEXT("ucuzdepo"), TEXT("premium"), TEXT("ciftci"), TEXT("hizli")
+	};
+
+	FString SupplierText(int32 Index, const TCHAR* Suffix, const TCHAR* Fallback)
+	{
+		const int32 i = FMath::Clamp(Index, 0, CigSupplierCount - 1);
+		const FString Key = FString::Printf(TEXT("supplier.%s.%s"), GSupplierKeys[i], Suffix);
+		const FString Value = CigText::Get(*Key);
+		return Value == Key ? FString(Fallback) : Value;
+	}
+}
+
+FString UCigEconomySystem::SupplierName(int32 Index)
+{
+	return SupplierText(Index, TEXT("name"), Supplier(Index).Name);
+}
+
+FString UCigEconomySystem::SupplierDesc(int32 Index)
+{
+	return SupplierText(Index, TEXT("desc"), Supplier(Index).Desc);
+}
+
 bool UCigEconomySystem::TrySpend(int32 Cost)
 {
 	if (Money < Cost)
@@ -202,10 +227,10 @@ bool UCigEconomySystem::BuyUpgrade(ECigUpgrade U)
 void UCigEconomySystem::CycleSupplier()
 {
 	CurrentSupplier = (CurrentSupplier + 1) % CigSupplierCount;
-	const FCigSupplier& S = Supplier(CurrentSupplier);
 	if (GM)
 	{
-		GM->AddMessage(CigText::Format(TEXT("msg.economy.supplier"), S.Name, S.Desc), FLinearColor(0.7f, 0.9f, 1.f));
+		GM->AddMessage(CigText::Format(TEXT("msg.economy.supplier"),
+			*SupplierName(CurrentSupplier), *SupplierDesc(CurrentSupplier)), FLinearColor(0.7f, 0.9f, 1.f));
 	}
 }
 
@@ -290,11 +315,11 @@ void UCigEconomySystem::AddSupplierRelation(float Delta)
 	R = FMath::Clamp(R + Delta, 0.f, 100.f);
 	if (GM && Old < 30.f && R >= 30.f)
 	{
-		GM->AddMessage(CigText::Format(TEXT("msg.economy.relation5"), Supplier(CurrentSupplier).Name), FLinearColor(0.5f, 1.f, 0.7f));
+		GM->AddMessage(CigText::Format(TEXT("msg.economy.relation5"), *SupplierName(CurrentSupplier)), FLinearColor(0.5f, 1.f, 0.7f));
 	}
 	else if (GM && Old < 60.f && R >= 60.f)
 	{
-		GM->AddMessage(CigText::Format(TEXT("msg.economy.relation10"), Supplier(CurrentSupplier).Name), FLinearColor(0.5f, 1.f, 0.7f));
+		GM->AddMessage(CigText::Format(TEXT("msg.economy.relation10"), *SupplierName(CurrentSupplier)), FLinearColor(0.5f, 1.f, 0.7f));
 	}
 }
 
@@ -324,7 +349,7 @@ void UCigEconomySystem::BuyHouse()
 	if (GM->WorldBuilder)
 	{
 		GM->WorldBuilder->SetHouseOwned();
-		GM->WorldBuilder->SpawnFloatText(GM->WorldBuilder->HousePos + FVector(-300.f, 0.f, 400.f), TEXT("EV SENİN!"), FColor(100, 255, 120), 50.f);
+		GM->WorldBuilder->SpawnFloatText(GM->WorldBuilder->HousePos + FVector(-300.f, 0.f, 400.f), CigText::Get(TEXT("float.houseisyours")), FColor(100, 255, 120), 50.f);
 	}
 	GM->AddMessage(CigText::Get(TEXT("msg.economy.housebought")), FLinearColor(0.4f, 1.f, 0.4f));
 	if (GM->Progression)

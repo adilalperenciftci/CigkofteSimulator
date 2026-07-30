@@ -23,9 +23,10 @@
 
 namespace
 {
-	// Names and descriptions stay in code (localization is a separate job), but
-	// the balance numbers are overridden from Config/CigRecipes.json when it
-	// exists, so ratios, prices and unlocks can be tuned without a rebuild.
+	// The names and blurbs here are the fallback for RecipeName/RecipeDesc, which
+	// prefer Config/Text/Strings.csv; the balance numbers are overridden from
+	// Config/CigRecipes.json when it exists, so ratios, prices and unlocks can be
+	// tuned without a rebuild.
 	// JSON shape: [{ "index": 0, "priceMult": 1.2, "unlockLevel": 1, ... }, ...]
 	void ApplyRecipeOverridesFromJson(TArray<FCigRecipe>& Table)
 	{
@@ -122,6 +123,35 @@ const FCigRecipe& UCigCookingSystem::Recipe(int32 Index)
 	return Table[FMath::Clamp(Index, 0, Table.Num() - 1)];
 }
 
+namespace
+{
+	const TCHAR* GRecipeKeys[CigRecipeCount] = {
+		TEXT("klasik"), TEXT("ekonomik"), TEXT("adiyaman"), TEXT("cokacili"),
+		TEXT("evyapimi"), TEXT("premium"), TEXT("ustaisi"), TEXT("gizli")
+	};
+
+	FString RecipeText(int32 Index, const TCHAR* Suffix, const TCHAR* Fallback)
+	{
+		const int32 i = FMath::Clamp(Index, 0, CigRecipeCount - 1);
+		const FString Key = FString::Printf(TEXT("recipe.%s.%s"), GRecipeKeys[i], Suffix);
+		const FString Value = CigText::Get(*Key);
+		// An unknown key comes back as the key, which is how a missing translation
+		// falls through to the table instead of putting "recipe.gizli.name" on the
+		// bowl.
+		return Value == Key ? FString(Fallback) : Value;
+	}
+}
+
+FString UCigCookingSystem::RecipeName(int32 Index)
+{
+	return RecipeText(Index, TEXT("name"), Recipe(Index).Name);
+}
+
+FString UCigCookingSystem::RecipeDesc(int32 Index)
+{
+	return RecipeText(Index, TEXT("desc"), Recipe(Index).Desc);
+}
+
 void UCigCookingSystem::TargetCounts(const FCigRecipe& R, int32 OutCounts[(int32)ECigIngredient::COUNT])
 {
 	constexpr int32 BulgurBase = 5;
@@ -130,9 +160,21 @@ void UCigCookingSystem::TargetCounts(const FCigRecipe& R, int32 OutCounts[(int32
 	OutCounts[(int32)ECigIngredient::Salca] = FMath::Max(1, FMath::RoundToInt(BulgurBase * R.RatioSalca));
 	OutCounts[(int32)ECigIngredient::Baharat] = FMath::Max(1, FMath::RoundToInt(BulgurBase * R.RatioBaharat));
 
-	// Isot: the count that lands in the middle of the recipe's range
+	// Isot: the count that lands in the middle of the recipe's range.
+	//
+	// The four others are summed by name. Summing indices 0..3 looks equivalent
+	// and is not: the enum runs Bulgur, Isot, Salca, Su, Baharat, so index 1 is
+	// isot - the one slot nothing has written yet - and index 4, Baharat, is left
+	// out. The isot target shown to the player was therefore derived from
+	// uninitialised stack memory, and came out as a different number on every
+	// run: the screenshot pass caught "İsot 0 / 6", "0 / 3", "0 / 2" and "0 / 1"
+	// across four captures of the same recipe before a test pinned it.
 	const float MidFrac = (R.IsotMinFrac + R.IsotMaxFrac) * 0.5f;
-	const int32 Others = OutCounts[0] + OutCounts[1] + OutCounts[2] + OutCounts[3];
+	const int32 Others =
+		OutCounts[(int32)ECigIngredient::Bulgur] +
+		OutCounts[(int32)ECigIngredient::Su] +
+		OutCounts[(int32)ECigIngredient::Salca] +
+		OutCounts[(int32)ECigIngredient::Baharat];
 	OutCounts[(int32)ECigIngredient::Isot] = FMath::Clamp(FMath::RoundToInt(MidFrac * Others / (1.f - MidFrac)), 1, 6);
 }
 
@@ -188,7 +230,7 @@ void UCigCookingSystem::CycleRecipe()
 			const FCigRecipe& R = Recipe(CurrentRecipe);
 			if (GM)
 			{
-				GM->AddMessage(CigText::Format(TEXT("msg.cooking.recipecycled"), R.Name, R.Desc, R.PriceMult), FLinearColor(0.8f, 0.7f, 1.f));
+				GM->AddMessage(CigText::Format(TEXT("msg.cooking.recipecycled"), *RecipeName(Dough.Recipe), *RecipeDesc(Dough.Recipe), R.PriceMult), FLinearColor(0.8f, 0.7f, 1.f));
 			}
 			return;
 		}
@@ -320,14 +362,21 @@ void UCigCookingSystem::KneadPress()
 
 	UCigEconomySystem* Eco = GM ? GM->Economy.Get() : nullptr;
 
+	// Stroke quality, 0-1, kept alongside the gain rather than derived from it:
+	// the gain also carries gloves, upgrades, skills and tiredness, so a rested
+	// expert's worst stroke can out-earn a beginner's best one and the dough
+	// would report the wrong thing.
 	float Gain = 4.f;
+	float StrokeQuality = 0.5f;
 	if (Dt >= 0.25 && Dt <= 0.85)
 	{
 		Gain = 7.f + 2.f * (Eco ? Eco->GloveLevel : 0);
+		StrokeQuality = 1.f;
 	}
 	else if (Dt < 0.15)
 	{
 		Gain = 2.f; // panic kneading achieves nothing
+		StrokeQuality = 0.f;
 	}
 
 	if (Eco && Eco->HasUpgrade(ECigUpgrade::IkinciYogurma))
@@ -362,7 +411,7 @@ void UCigCookingSystem::KneadPress()
 		}
 		if (ACigkofteStation* Yogurma = GM->WorldBuilder ? GM->WorldBuilder->FindStation(ECigStation::Yogurma) : nullptr)
 		{
-			Yogurma->PulseDough();
+			Yogurma->PulseDough(StrokeQuality);
 		}
 	}
 
@@ -419,7 +468,7 @@ void UCigCookingSystem::FinishDough()
 	if (GM)
 	{
 		GM->AddMessage(CigText::Format(TEXT("msg.cooking.finished"),
-			*CigQualityName(Dough.Quality), *CigSpiceName(Dough.Spice), Recipe(Dough.Recipe).Name), FLinearColor(0.4f, 1.f, 0.4f));
+			*CigQualityName(Dough.Quality), *CigSpiceName(Dough.Spice), *RecipeName(Dough.Recipe)), FLinearColor(0.4f, 1.f, 0.4f));
 		GM->PlaySound(ECigSound::Success);
 	Bus().DoughPrepared.Broadcast(Dough.Quality);
 		if (GM->WorldBuilder)
@@ -529,7 +578,7 @@ float UCigCookingSystem::FreshnessDecayMult(bool bInFridge) const
 void UCigCookingSystem::UpdateSystem(float DeltaSeconds)
 {
 	const UCigDaySystem* Days = GM ? GM->Days.Get() : nullptr;
-	if (!Days || !Days->IsPlaying())
+	if (!Days || !Days->CanWork())
 	{
 		return;
 	}
@@ -563,6 +612,62 @@ void UCigCookingSystem::UpdateSystem(float DeltaSeconds)
 		GM->AddMessage(CigText::Get(TEXT("msg.cooking.spoiled.fridge")), FLinearColor(1.f, 0.4f, 0.3f));
 		FridgeDough = FCigDough();
 	}
+
+	// The decay above is silent to the world until the station is told. Without
+	// this the dough held its colour until the next keypress and then vanished at
+	// zero, instead of visibly going off.
+	VisualRefreshTimer += DeltaSeconds;
+	if (VisualRefreshTimer >= VisualRefreshInterval)
+	{
+		VisualRefreshTimer = 0.f;
+		UpdateDoughVisual();
+	}
+}
+
+FCigDoughVisual UCigCookingSystem::CurrentVisual() const
+{
+	// A finished batch is measured against the recipe it was made from, not the
+	// one currently selected at the board. Otherwise flipping the selection after
+	// kneading changed the colour of dough nobody had touched.
+	const FCigRecipe& R = Recipe(Dough.IsValid() ? Dough.Recipe : CurrentRecipe);
+	FCigDoughVisual V;
+
+	if (Dough.IsValid())
+	{
+		// A finished batch: the ball shrinks as it is used and dulls as it sits.
+		V.Fill01 = (float)Dough.Servings / (float)CigDoughServings;
+		V.Knead01 = 1.f;
+		V.Quality01 = Dough.Quality / FMath::Max(R.QualityPotential, 1.f);
+		V.Freshness01 = Dough.Freshness / 100.f;
+		// The batch carries a spice band rather than a ratio, so the three
+		// levels map onto the same scale the bowl is measured against.
+		switch (Dough.Spice)
+		{
+		case ECigSpice::AzAci:  V.Spice01 = 0.15f; break;
+		case ECigSpice::Orta:   V.Spice01 = 0.5f;  break;
+		default:                V.Spice01 = 1.f;   break;
+		}
+	}
+	else
+	{
+		// Still in the bowl: what has gone in so far, and how far it has been
+		// worked. Freshness does not apply to a batch that does not exist yet.
+		const int32 Toplam = BowlTotal();
+		V.Fill01 = (float)Toplam / (float)BowlCapacity;
+		V.Knead01 = KneadProgress / 100.f;
+		V.Quality01 = QualityFromBowl() / FMath::Max(R.QualityPotential, 1.f);
+		V.Freshness01 = 1.f;
+		V.Spice01 = Toplam > 0
+			? ((float)Bowl[(int32)ECigIngredient::Isot] / (float)Toplam) / CigIsotVisualMax
+			: 0.f;
+	}
+
+	V.Fill01 = FMath::Clamp(V.Fill01, 0.f, 1.f);
+	V.Knead01 = FMath::Clamp(V.Knead01, 0.f, 1.f);
+	V.Spice01 = FMath::Clamp(V.Spice01, 0.f, 1.f);
+	V.Quality01 = FMath::Clamp(V.Quality01, 0.f, 1.f);
+	V.Freshness01 = FMath::Clamp(V.Freshness01, 0.f, 1.f);
+	return V;
 }
 
 void UCigCookingSystem::UpdateDoughVisual()
@@ -572,17 +677,5 @@ void UCigCookingSystem::UpdateDoughVisual()
 	{
 		return;
 	}
-	float Fill;
-	float Knead;
-	if (Dough.IsValid())
-	{
-		Fill = (float)Dough.Servings / 6.f;
-		Knead = 1.f;
-	}
-	else
-	{
-		Fill = (float)BowlTotal() / (float)BowlCapacity;
-		Knead = KneadProgress / 100.f;
-	}
-	Yogurma->UpdateDough(Fill, Knead);
+	Yogurma->UpdateDough(CurrentVisual());
 }

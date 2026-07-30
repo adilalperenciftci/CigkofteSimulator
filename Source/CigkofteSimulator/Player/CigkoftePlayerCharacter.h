@@ -21,6 +21,9 @@ public:
 
 	UPROPERTY() TObjectPtr<UCameraComponent> Camera;
 	UPROPERTY() TObjectPtr<ACigkofteStation> FocusedStation;
+	// A delivery crate under the crosshair. Separate from the station so the two
+	// prompts cannot both claim the screen.
+	UPROPERTY() TObjectPtr<class ACigStockCrate> FocusedCrate;
 
 	bool bDriving = false;
 	bool bCarFocused = false;

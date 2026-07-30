@@ -4,10 +4,16 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 
 | | |
 |---|---|
-| Branch | `feat/commercial-demo-overhaul` |
-| Base | `4f94f37` (master, not rewritten) |
+| Branch | `feat/stage1-tactile-prep` |
+| Base | `f09b5e0` (master, not rewritten) |
 | Latest commit | see `git log -1` on the branch |
+| Open PR | #2 — Stage 1: tactile food preparation |
 | Save version | **12** (was 11 at baseline) |
+
+The previous branch, `feat/commercial-demo-overhaul`, carried Stage 0 and is
+merged; this file pointed at it for several sessions after the work had moved on,
+which made it useless as a resume point. Check the table against
+`git rev-parse --abbrev-ref HEAD` before trusting it.
 
 ## Completed vertical slices
 
@@ -68,17 +74,169 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
   the code and the cook list agree, and the first positive check in the packaging
   script. See below.
 
+## What this branch actually contains
+
+The PR title says Stage 1.1, which was true when it was opened and is not any
+more. What is on the branch:
+
+- **1.1 Dough that looks like what it is.** `Cooking/CigDoughVisual.h` derives
+  colour and size from fill, kneading, spice, quality and freshness; the station
+  skips the material write when nothing visible changed. Corrected from its own
+  brief: the material instances were already created once in `Setup`, not per
+  frame. The real cost was the unconditional `SetVectorParameterValue`.
+- **Shop asset pass.** Real market and bakery models on every station, with the
+  primitive fallback kept for a checkout without the packs.
+- **Wall materials.** Red tile and orange brick. The first attempt used white
+  tile, which read as cool grey against cream walls.
+- **Wrap assembly visuals.** Flatbread, filled, wrapped and packed states, with
+  toppings as coloured spheres. Not the final look, but the player can see the
+  order being built rather than a number changing.
+- **Customer skeletal bodies and animation.** MC_Sample body and animation from
+  the same pack, mannequin fallback, primitives below that.
+- **Release, crash, performance, SteamPipe and asset-intake tooling.**
+
+Bundling this much into one PR is not a defence of the practice; it is a record
+of what a reviewer has to read.
+
 ## Current task
 
-**None in flight.** The packaged demo is verified end to end; see below.
+**None in flight.** Stage 1 is complete, and Stage 2.1 and 2.2 with it: packaging
+and the smoke test pass, and the performance budget has measurements in it.
+
+## Stage 2.1 and 2.2, finished
+
+- **2.1 A day with a shape.** `ECigPhase` splits the day into Intro, Opening,
+  Playing, Closing, Summary and GameOver, and `CanWork()` is what the systems ask
+  instead of `IsPlaying()`. Preparation and cleaning now have somewhere to happen
+  without summoning customers into an empty shop.
+- **2.1 Storage rules.** `CigStorage` gives the dry shelf a per-item limit and the
+  fridge one shared pool, so the paid `BuyukBuzdolabi` upgrade has its first
+  plannable effect and an order can be refused for want of room rather than money.
+  Pinned against `Stock.csv` after the first capacity number - 40, chosen without
+  reading the CSV - started the game two units over its own limit.
+- **2.2 Physical stock.** A delivery arrives as an `ACigStockCrate` standing in the
+  shop, labelled with what is in it, and becomes stock only when the player unloads
+  it with E. Capacity is checked on unload as well as on order, so a part-load
+  leaves the remainder on the crate rather than overflowing the fridge; perishables
+  wilt visibly while they stand there, and whatever is still out at close is put
+  away overnight at the quality it has by then. Stock no longer teleports.
+
+Three positioning bugs, all found by looking rather than reasoning: the crate stood
+at the world origin because the mesh was the root component and `Setup`'s relative
+location *is* the actor location; the first row of spots was 44 degrees off the axis
+a player at the counter looks down, so the delivery arrived outside the field of
+view of the room it arrived in; and the label rendered inside the box, because a
+child's relative location is multiplied by its parent's scale and the body is
+scaled to 0.4 in Z - only the "9" of "Marul x9" poked out of the end.
+
+## Stage 1, finished
+
+- **1.1 Dough that looks like what it is.** See below.
+- **1.2 Ingredient pouring.** A scoop in the ingredient's own colour lifts out of
+  the tub, tips and drops back. No animation asset: one sine for the lift, a
+  later curve for the tip, because a scoop that starts pouring on the way up is
+  pouring back into the tub it came from.
+- **1.3 Kneading progression.** Wet bulgur slumps and gathers into a ball as
+  cohesion rises, holding its volume. The rhythm window - a stroke 0.25-0.85 s
+  after the last is worth nearly twice a mistimed one - is finally visible: the
+  dough answers the stroke it was given, and a wasted one still moves it about a
+  third as far, because no movement at all reads as a dropped input.
+- **1.4 Chopping states.** The board carries a head that shrinks and a fragment
+  per stroke, swept when the garnish finishes. Pooled, and scattered from a fixed
+  table so pieces accumulate rather than appearing to move.
+- **1.5 Topping placement.** A table instead of index arithmetic: parsley is
+  scattered flecks, tomato two slices, molasses a drizzle down the bread.
+- **1.6 Readable recoverable failures.** The bowl now says what is wrong while it
+  can still be fixed, and whether it still can. See below.
+- **1.7 Deterministic tests.** Every derivation added here is pure and tested;
+  74 → 81.
+
+## The English that was not English
+
+The game had a language setting that 46 strings ignored. They were written with
+`LOCTEXT` while the rest of the project uses `CigText` and
+`Config/Text/Strings.csv` - and no `.po` or `.locres` data has ever existed here,
+so those strings were permanently Turkish in both languages while *looking*
+localised, which is why nobody had noticed. Thirty-seven were in
+`CigTabletData.cpp`. Another group never reached the text system at all: the
+reputation title that sits under the money the whole time, the recipe and supplier
+tables, the review pool, and every `SEVIYE N` sign in the world.
+
+All of it now goes through the text table - 100 new keys - and
+`Tools/check_sources.py` fails the build on a `LOCTEXT` anywhere in `Source`, so
+it cannot come back. Recipes and suppliers use the same arrangement the balance
+tables already had: a key per row, falling back to the table's Turkish literal, so
+a forgotten translation degrades to Turkish rather than printing `recipe.gizli.name`
+on the bowl.
+
+Two real defects fell out of it, both invisible until the language was switched at
+runtime:
+
+- **A station's sign never changed.** `SetLocked` returned early when the lock had
+  not moved, and the sign's wording is the one thing there built from a template -
+  so switching to English left "SEVIYE 6" standing over a station in a shop whose
+  HUD had already switched.
+- **`ApplySettings` changed the language and nothing else.** The world's signage is
+  written once, when a lock is applied, not rebuilt per frame. It now re-applies
+  the current level, which rewrites the signs against the language just chosen.
+
+What is deliberately still Turkish: customer names, rival shop names, the street
+addresses, and the ingredient words on the station tubs. Isot and salça are what
+the ingredients are called.
+
+`CigShots` takes its pictures in English through the settings path a player would
+use, rather than by setting the language directly - which is how the second defect
+above was found rather than reasoned about.
 
 ## Next exact task
 
-**Stage 1.1** — mixture visual state driven from food state, with cached
-material instances.
+**Stage 2.3** — batch spoilage. See `PLAN.md`.
 
-M1.1 and M1.2 are closed; M1.3 (the shop renders as primitives) is what Stage 1
-and Stage 8 exist to replace rather than a bug to fix first. See `PLAN.md`.
+Two older items still stand: the shop interior is the measured performance problem
+(74 FPS in the room the game is played in against 88 across the whole route), and
+nobody has played this branch.
+
+## What the last three slices found
+
+Each of these was in the shipped build and none of them was found by playing.
+
+- **The isot target was uninitialised memory.** `TargetCounts` fills the array by
+  name and summed indices 0..3; the enum runs Bulgur, Isot, Salca, Su, Baharat,
+  so it read the isot slot nothing had written and skipped baharat. The number
+  the HUD showed came out different on every run - "İsot 0 / 6", "0 / 3", "0 / 2",
+  "0 / 1" across four captures of the same recipe. Found by a diagnosis test
+  failing on a mix that was on target by construction.
+- **The counters were knee-high.** A four-metre counter mesh measured against a
+  90cm cube fits at 0.22 scale. Height is now the binding measurement and the
+  model may overhang its footprint.
+- **The molasses drizzle ran off the bread.** Six pieces at 4.8 apart is a 24cm
+  run and it started at -13. Caught by the placement test on the day it was
+  written.
+
+## Review fixes applied after the last push
+
+Six defects, all found by reading the branch rather than by a test:
+
+- **`AnimWalk` was overwritten unconditionally.** A leftover block after the
+  `if (bMocap)` split reassigned the mannequin walk over the MC_Sample one, so a
+  customer with an MC_Sample body would have tried to play a sequence from a
+  different skeleton — the exact silent bind-pose failure the mesh/animation
+  pairing was designed to avoid.
+- **Toppings did not appear when added.** `ToggleTopping` changed the mask and
+  said so in a message, but never pushed the visuals.
+- **Dough did not visibly go stale.** Freshness decayed every frame; the station
+  was told only when the batch spoiled outright, so it held its colour and then
+  vanished. Now refreshed on a 0.25 s clock.
+- **Finished dough was normalised by the wrong recipe.** `CurrentVisual` read
+  `CurrentRecipe`, so changing the selection after kneading changed the colour of
+  dough nobody had touched. It now reads `Dough.Recipe` when a batch exists.
+- **`RayTracingMode=Full`.** Inherited from the template, never chosen, never
+  measured. Now `Disabled`, with the reasoning in `DefaultEngine.ini`.
+- **A machine-specific Android File Server token was committed.** The section is
+  removed. It remains in git history, which is not being rewritten; treat the
+  token as burned. It is regenerated by the editor and gates a USB-only debug
+  service that was never shipped, so the exposure is small, but it should not
+  have been there.
 
 ## What the packaging run proved
 
@@ -382,12 +540,18 @@ by hand before each build.
 
 ## Last test result
 
-`Automation RunTests Cigkofte` — **69 passed, 0 failed**, exit code 0.
+`Automation RunTests Cigkofte` — **93 passed, 0 failed**, exit code 0.
 
 Test groups added on this branch: `Cigkofte.Sale`, `Cigkofte.Reviews`,
-`Cigkofte.SaveMigration`. Still missing from the commercial-demo test standard:
-`FoodVisualState`, `InventoryBatches`, `Placement`, `Localization`,
-`DataValidation` — all belong to stages not yet started.
+`Cigkofte.SaveMigration`, `Cigkofte.DoughVisual`, `Cigkofte.MixDiagnosis`,
+`Cigkofte.ToppingVisual`, `Cigkofte.Storage`, `Cigkofte.Crate`,
+`Cigkofte.Localization`. Still missing from the commercial-demo test standard:
+`InventoryBatches` (Stage 2.3) and `DataValidation`.
+
+`Cigkofte.Crate` covers the four cases a delivery has now that it is an object:
+it fits, it half-fits and the crate keeps the rest, a second press against a full
+shelf moves nothing, and nobody came to get it before closing. The fifth pins the
+point of the feature — the timer running out must not move the numbers.
 
 ## Blockers
 

@@ -3,6 +3,7 @@
 #include "Game/CigkofteGameMode.h"
 #include "World/CigWorldBuilder.h"
 #include "Economy/CigEconomySystem.h"
+#include "Core/CigText.h"
 #include "Kismet/GameplayStatics.h"
 
 namespace
@@ -18,12 +19,14 @@ int32 UCigProgressionSystem::XPForNext() const
 
 FString UCigProgressionSystem::PopularityTitle() const
 {
-	if (Rep >= 90.f) return TEXT("Çiğköfte Efsanesi");
-	if (Rep >= 80.f) return TEXT("Şehir Efsanesi");
-	if (Rep >= 60.f) return TEXT("Mahalle Gururu");
-	if (Rep >= 40.f) return TEXT("Esnaf");
-	if (Rep >= 20.f) return TEXT("Çaylak");
-	return TEXT("Tanınmıyor");
+	// This sits under the money in the corner of the screen the whole time, so it
+	// was the most visible untranslated string in the game.
+	if (Rep >= 90.f) return CigText::Get(TEXT("rep.title.legend"));
+	if (Rep >= 80.f) return CigText::Get(TEXT("rep.title.city"));
+	if (Rep >= 60.f) return CigText::Get(TEXT("rep.title.pride"));
+	if (Rep >= 40.f) return CigText::Get(TEXT("rep.title.trader"));
+	if (Rep >= 20.f) return CigText::Get(TEXT("rep.title.rookie"));
+	return CigText::Get(TEXT("rep.title.unknown"));
 }
 
 void UCigProgressionSystem::AddRep(float Delta)
@@ -52,23 +55,23 @@ void UCigProgressionSystem::AddXP(int32 Amount)
 		FString Unlock;
 		switch (Level)
 		{
-		case 2: Unlock = TEXT("Ayran satışı, doğrama tezgâhı ve semt pazarı açıldı!"); break;
-		case 3: Unlock = TEXT("Paketleme açıldı, meydan yolu serbest. Çırak da işe alınabilir."); break;
-		case 4: Unlock = TEXT("Araba anahtarı sende! Buzdolabı ve okul-park bölgesi açıldı."); break;
-		case 5: Unlock = TEXT("Emlak vakti! Tabletten (T) satılık evi alabilirsin. Tedarikçi deposu yolu açıldı."); break;
-		case 6: Unlock = TEXT("Yeni şube yatırımı tablette! Şehir stadı da artık ulaşılabilir."); break;
-		case 7: Unlock = TEXT("Sahil kordonu açıldı — yazlık kalabalık ve yüksek bahşiş."); break;
-		default: Unlock = TEXT("Ustalık artıyor."); break;
+		case 2: Unlock = CigText::Get(TEXT("level.unlock.2")); break;
+		case 3: Unlock = CigText::Get(TEXT("level.unlock.3")); break;
+		case 4: Unlock = CigText::Get(TEXT("level.unlock.4")); break;
+		case 5: Unlock = CigText::Get(TEXT("level.unlock.5")); break;
+		case 6: Unlock = CigText::Get(TEXT("level.unlock.6")); break;
+		case 7: Unlock = CigText::Get(TEXT("level.unlock.7")); break;
+		default: Unlock = CigText::Get(TEXT("level.unlock.more")); break;
 		}
 
 		if (GM)
 		{
-			GM->AddMessage(FString::Printf(TEXT("SEVİYE %d! %s"), Level, *Unlock), FLinearColor(0.4f, 0.9f, 1.f));
+			GM->AddMessage(CigText::Format(TEXT("level.up"), Level, *Unlock), FLinearColor(0.4f, 0.9f, 1.f));
 			if (APawn* Pawn = UGameplayStatics::GetPlayerPawn(this, 0))
 			{
 				if (GM->WorldBuilder)
 				{
-					GM->WorldBuilder->SpawnFloatText(Pawn->GetActorLocation() + FVector(0.f, 0.f, 150.f), FString::Printf(TEXT("SEVİYE %d!"), Level), FColor(100, 220, 255), 44.f);
+					GM->WorldBuilder->SpawnFloatText(Pawn->GetActorLocation() + FVector(0.f, 0.f, 150.f), CigText::Format(TEXT("level.float"), Level), FColor(100, 220, 255), 44.f);
 				}
 			}
 

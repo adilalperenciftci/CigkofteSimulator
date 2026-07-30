@@ -74,6 +74,16 @@ public:
 	// -> takeaway/plate).
 	UPROPERTY() TObjectPtr<class AStaticMeshActor> WrapVisual;
 	void UpdateWrapVisual();
+
+	// One small marker per topping, laid along the open flatbread. The wrap
+	// already carried ToppingMask and the visual simply never read it, so a
+	// player adding lettuce, tomato and onion watched nothing happen - and then
+	// got marked down on accuracy for a wrap they could not inspect.
+	//
+	// They disappear when the wrap is rolled, because at that point the filling
+	// is inside it.
+	UPROPERTY() TArray<TObjectPtr<class AStaticMeshActor>> ToppingVisuals;
+	void UpdateToppingVisuals();
 	// Where that visual sits in the world; derived from the flatbread station.
 	FVector WrapVisualPos() const;
 };

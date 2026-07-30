@@ -4,6 +4,8 @@
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigDaySystem.h"
 #include "Cooking/CigCookingSystem.h"
+#include "Cooking/CigMixDiagnosis.h"
+#include "Inventory/CigStockCrate.h"
 #include "Orders/CigOrderSystem.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Customers/CigkofteCustomer.h"
@@ -103,6 +105,19 @@ void ACigkofteHUD::CenterText(const FString& S, float Y, UFont* Font, float Scal
 	DrawText(S, Color, (ScreenSize.X - W) * 0.5f, Y, Font, Scale * UIScale);
 }
 
+void ACigkofteHUD::ShadowText(const FString& S, const FLinearColor& Color, float X, float Y, UFont* Font, float Scale)
+{
+	const float Off = FMath::Max(1.f, SX(2.f));
+	DrawText(S, FLinearColor(0.f, 0.f, 0.f, Color.A * 0.8f), X + Off, Y + Off, Font, Scale * UIScale);
+	DrawText(S, Color, X, Y, Font, Scale * UIScale);
+}
+
+void ACigkofteHUD::ShadowCenterText(const FString& S, float Y, UFont* Font, float Scale, const FLinearColor& Color)
+{
+	const float W = TextWidth(S, Font, Scale);
+	ShadowText(S, Color, (ScreenSize.X - W) * 0.5f, Y, Font, Scale);
+}
+
 FString ACigkofteHUD::Stars(float Value01to5)
 {
 	const int32 Full = FMath::Clamp(FMath::RoundToInt(Value01to5), 0, 5);
@@ -142,7 +157,10 @@ void ACigkofteHUD::DrawHUD()
 	TabletAlpha = FMath::FInterpTo(TabletAlpha, GM->bTabletOpen ? 1.f : 0.f, Dt, 10.f);
 	TabletSlide = FMath::FInterpTo(TabletSlide, GM->bTabletOpen ? 0.f : 1.f, Dt, 10.f);
 
-	if (GM->Days->Phase == ECigPhase::Playing)
+	// The working HUD is drawn through preparation as well as service: the
+	// player is using the same stations, and hiding the bowl panel would leave
+	// them kneading blind.
+	if (GM->Days->CanWork())
 	{
 		DrawStatusPanel(GM);
 		DrawMessages(GM);
@@ -159,9 +177,12 @@ void ACigkofteHUD::DrawHUD()
 		DrawEnergyBar(GM);
 		DrawTutorial(GM);
 		DrawPrompt(GM);
-		if (TabletAlpha > 0.02f)
-		{
-		}
+		// The tablet is not drawn here. It is a UMG widget put on the viewport by
+		// RefreshTabletWidget, and this is where it used to be drawn on Canvas -
+		// the empty `if (TabletAlpha > 0.02f) {}` left behind by that move has
+		// been in the file since the first commit, reading like a draw call
+		// somebody forgot to write. TabletAlpha and TabletSlide are still
+		// interpolated above because the widget reads them.
 	}
 
 	if (GM->bSettingsOpen)
@@ -184,7 +205,7 @@ void ACigkofteHUD::DrawHUD()
 void ACigkofteHUD::DrawWeatherOverlay(ACigkofteGameMode* GM)
 {
 	UCigWorldBuilder* WB = GM->WorldBuilder.Get();
-	if (!WB || !GM->Days || GM->Days->Phase != ECigPhase::Playing)
+	if (!WB || !GM->Days || !GM->Days->CanWork())
 	{
 		return;
 	}
@@ -374,7 +395,23 @@ void ACigkofteHUD::DrawStatusPanel(ACigkofteGameMode* GM)
 	const float MoneyScale = HeadScale * (1.f + 0.25f * MoneyPop);
 	Text(CigText::Format(TEXT("hud.money"), Eco->Money), Eco->Money >= 0 ? GGold : FLinearColor::Red, TX, Y, FontBody, MoneyScale);
 	Y += LineHeight(FontBody, HeadScale) * 1.05f;
-	Row(CigText::Format(TEXT("hud.timeleft"), FMath::CeilToInt(FMath::Max(0.f, Days->TimeLeft))), GDim, TX, Y, FontBody, BodyScale, 1.05f);
+	// A clock the player cannot spend is worse than no clock: during preparation
+	// it counts nothing down and reading it as pressure is exactly wrong.
+	if (Days->Phase == ECigPhase::Opening)
+	{
+		Row(CigText::Get(TEXT("hud.prep")), GOrange, TX, Y, FontBody, BodyScale, 1.05f);
+	}
+	else if (Days->Phase == ECigPhase::Closing)
+	{
+		// This clock does count down and the player can spend it, so it is shown
+		// - and in the warning colour, because the window is short by design.
+		Row(CigText::Format(TEXT("hud.closing"), FMath::CeilToInt(Days->ClosingLeft())),
+			GOrange, TX, Y, FontBody, BodyScale, 1.05f);
+	}
+	else
+	{
+		Row(CigText::Format(TEXT("hud.timeleft"), FMath::CeilToInt(FMath::Max(0.f, Days->TimeLeft))), GDim, TX, Y, FontBody, BodyScale, 1.05f);
+	}
 
 	// Level and XP
 	{
@@ -429,6 +466,19 @@ void ACigkofteHUD::DrawMessages(ACigkofteGameMode* GM)
 {
 	const float LH = LineHeight(FontBody, BodyScale);
 	float MsgY = SX(24.f);
+
+	// Start below the delivery panel when there is one.
+	//
+	// The panel is 720 wide and centred; the message feed is right-aligned and
+	// starts 24 from the top. A long message reaches back far enough to sit on
+	// top of the panel, and the screenshot pass caught two lines of delivery text
+	// printed over one another. Neither element is wrong on its own - they were
+	// simply never asked to share the top of the screen.
+	const UCigDeliverySystem* Del = GM ? GM->Delivery.Get() : nullptr;
+	if (Del && Del->Orders.Num() > 0)
+	{
+		MsgY += LineHeight(FontBody, HeadScale) + Del->Orders.Num() * LH * 1.15f + SX(24.f);
+	}
 	for (const FCigMessage& M : GM->Messages)
 	{
 		const float Alpha = FMath::Clamp(M.TimeLeft / 1.5f, 0.f, 1.f);
@@ -460,15 +510,24 @@ void ACigkofteHUD::DrawBowlPanel(ACigkofteGameMode* GM)
 	const float X = SX(24.f);
 	const float W = SX(470.f);
 
+	// The mix diagnosis is needed before the panel is sized, because it adds
+	// rows to it. Computed once and used twice rather than derived again below.
+	const bool bDiagnose = !Cook->Dough.IsValid();
+	const FCigMixDiagnosis Tani = bDiagnose
+		? CigMix::Diagnose(Cook->Bowl, R.RatioSu, R.RatioSalca, R.RatioBaharat,
+			R.IsotMinFrac, R.IsotMaxFrac, Cook->BowlTotal(), UCigCookingSystem::BowlCapacity)
+		: FCigMixDiagnosis();
+
 	// Height by row count: title + target + 5 ingredients + kneading + dough(2) + stock summary
 	int32 RowCount = 8;
 	if (Cook->Dough.IsValid()) { RowCount += 2; }
 	if (Cook->FridgeDough.IsValid()) { RowCount += 1; }
+	if (Tani.IsProblem()) { RowCount += Tani.bFixableByAdding ? 1 : 2; }
 	const float H = LineHeight(FontBody, HeadScale) * 1.25f + BodyLH * (RowCount + 1.2f) + SX(20.f);
 	float Y = ScreenSize.Y - H - SX(24.f);
 	const float PanelTop = Y;
 	Panel(X, Y, W, H);
-	PanelHeader(X, Y, W, CigText::Format(TEXT("hud.bowl"), R.Name), FLinearColor(0.8f, 0.35f, 0.15f));
+	PanelHeader(X, Y, W, CigText::Format(TEXT("hud.bowl"), *UCigCookingSystem::RecipeName(Cook->CurrentRecipe)), FLinearColor(0.8f, 0.35f, 0.15f));
 	Y += LineHeight(FontBody, HeadScale) * 1.25f + SX(8.f);
 
 	const float TX = X + SX(16.f);
@@ -482,6 +541,27 @@ void ACigkofteHUD::DrawBowlPanel(ACigkofteGameMode* GM)
 		const bool bOk = Cook->Bowl[i] >= Target[i];
 		Row(CigText::Format(TEXT("hud.scoop"), *CigIngredientName(Ing), Cook->Bowl[i], Target[i]),
 			bOk ? GGood : GWhite, TX + BodyLH, Y, FontBody, BodyScale, 1.08f);
+	}
+
+	// What is wrong with the mix, while it can still be put right.
+	//
+	// The bowl was judged silently: the ratio error reached the player at the
+	// till, minutes later, as a smaller payment and a worse review. The counts
+	// above tell a careful reader what to add next; they do not say that the
+	// batch about to be kneaded is already ruined. Only shown once a batch is
+	// not on the counter, because a bowl behind a finished batch is not the
+	// thing the player is working on.
+	if (Tani.IsProblem())
+	{
+		// Amber while it is recoverable, red once the bowl is too full to
+		// dilute - the colour is the difference between "fix this" and "start
+		// over", which is the whole point of saying it at all.
+		Row(CigText::Get(CigMix::TextKey(Tani.Problem)),
+			Tani.bFixableByAdding ? GOrange : GBad, TX, Y, FontBody, BodyScale, 1.1f);
+		if (!Tani.bFixableByAdding)
+		{
+			Row(CigText::Get(TEXT("mix.unfixable")), GBad, TX, Y, FontBody, BodyScale, 1.1f);
+		}
 	}
 
 	// Kneading
@@ -710,12 +790,12 @@ void ACigkofteHUD::DrawEnergyBar(ACigkofteGameMode* GM)
 	const float X = (ScreenSize.X - W) * 0.5f;
 	const float Y = ScreenSize.Y - SX(76.f);
 
-	Text(CigText::Get(TEXT("hud.energy")), GDim, X - SX(84.f), Y - BodyLH * 0.15f, FontBody, BodyScale);
+	ShadowText(CigText::Get(TEXT("hud.energy")), GDim, X - SX(84.f), Y - BodyLH * 0.15f, FontBody, BodyScale);
 	Bar(X, Y, W, BodyLH * 0.5f, Player->Energy / 100.f, Player->Energy < 30.f ? GBad : FLinearColor(0.4f, 0.9f, 0.5f));
 
 	if (Player->bDriving && GM->PlayerCar)
 	{
-		Text(CigText::Get(TEXT("hud.fuel")), GDim, X - SX(84.f), Y + BodyLH * 0.6f, FontBody, BodyScale);
+		ShadowText(CigText::Get(TEXT("hud.fuel")), GDim, X - SX(84.f), Y + BodyLH * 0.6f, FontBody, BodyScale);
 		Bar(X, Y + BodyLH * 0.75f, W, BodyLH * 0.4f, GM->PlayerCar->Fuel / 100.f, FLinearColor(0.9f, 0.7f, 0.2f));
 	}
 }
@@ -755,23 +835,47 @@ void ACigkofteHUD::DrawPrompt(ACigkofteGameMode* GM)
 	const float PromptY = ScreenSize.Y * 0.5f + SX(36.f);
 	if (PC->bDriving)
 	{
-		CenterText(CigText::Get(TEXT("hud.deliverprompt")), ScreenSize.Y - SX(120.f), FontBody, BodyScale, GInfo);
+		ShadowCenterText(CigText::Get(TEXT("hud.deliverprompt")), ScreenSize.Y - SX(120.f), FontBody, BodyScale, GInfo);
 	}
 	else if (PC->bCarFocused)
 	{
 		const int32 Level = GM->Progression ? GM->Progression->Level : 1;
-		CenterText(CigText::Get(Level >= 4 ? TEXT("hud.entercar") : TEXT("hud.carlocked")), PromptY, FontBody, HeadScale, FLinearColor(1.f, 0.8f, 0.4f));
+		ShadowCenterText(CigText::Get(Level >= 4 ? TEXT("hud.entercar") : TEXT("hud.carlocked")), PromptY, FontBody, HeadScale, FLinearColor(1.f, 0.8f, 0.4f));
 	}
 	else if (PC->bCatFocused)
 	{
 		const FString CatName = GM->CatSys ? GM->CatSys->CatName : CigText::Get(TEXT("hud.cat"));
-		CenterText(CigText::Format(TEXT("hud.petcat"), *CatName), PromptY, FontBody, HeadScale, FLinearColor(1.f, 0.8f, 0.9f));
+		ShadowCenterText(CigText::Format(TEXT("hud.petcat"), *CatName), PromptY, FontBody, HeadScale, FLinearColor(1.f, 0.8f, 0.9f));
+	}
+	else if (PC->FocusedCrate)
+	{
+		// A crate wins over a station because the player has walked away from the
+		// counter to reach it. Its own label already says what is inside; this
+		// says what pressing the key will do.
+		ShadowCenterText(PC->FocusedCrate->GetPromptText(), PromptY, FontBody, HeadScale,
+			FLinearColor(0.7f, 1.f, 0.75f));
 	}
 	else if (PC->FocusedStation)
 	{
 		const ECigStation T = PC->FocusedStation->StationType;
 		const bool bStationLocked = PC->FocusedStation->IsLocked();
 		FString Prompt = PC->FocusedStation->GetPromptText();
+		// During preparation the service counter is the door, so its prompt says
+		// so rather than offering to serve a queue that has not been let in.
+		if (GM->Days && T == ECigStation::Servis && GM->Days->Phase == ECigPhase::Opening)
+		{
+			ShadowCenterText(CigText::Get(TEXT("prompt.servis.open")), PromptY, FontBody, HeadScale,
+				FLinearColor(1.f, 0.85f, 0.4f));
+			ShadowCenterText(CigText::Get(TEXT("hud.prep.hint")), PromptY + LineHeight(FontBody, HeadScale) * 1.2f,
+				FontBody, BodyScale, GDim);
+			return;
+		}
+		if (GM->Days && T == ECigStation::Servis && GM->Days->Phase == ECigPhase::Closing)
+		{
+			ShadowCenterText(CigText::Get(TEXT("prompt.servis.close")), PromptY, FontBody, HeadScale,
+				FLinearColor(1.f, 0.85f, 0.4f));
+			return;
+		}
 		if (bStationLocked)
 		{
 			// Locked station: only the "unlocks at level N" text, dimmed.
@@ -793,13 +897,16 @@ void ACigkofteHUD::DrawPrompt(ACigkofteGameMode* GM)
 			}
 			Prompt = CigText::Format(TEXT("hud.chopprompt"), GM->Inventory->ChopCombo, Needed, GM->Inventory->Stock[CigStockMarul], GM->Inventory->Garnish);
 		}
-		CenterText(Prompt, PromptY, FontBody, HeadScale,
+		ShadowCenterText(Prompt, PromptY, FontBody, HeadScale,
 			bStationLocked ? FLinearColor(0.72f, 0.72f, 0.76f) : FLinearColor(1.f, 1.f, 0.6f));
 	}
 
+	// The key row sits at the very bottom, over the shop floor. It was drawn at
+	// 0.62 grey, which the floor swallowed whole; it is the one line a new player
+	// needs to find, so it gets both the lighter tone and the shadow.
 	const bool bPad = PC && PC->bGamepadActive;
-	CenterText(CigText::Get(bPad ? TEXT("hud.controls.pad") : TEXT("hud.controls.keyboard")),
-		ScreenSize.Y - SX(34.f), FontBody, BodyScale * 0.9f, FLinearColor(0.62f, 0.62f, 0.62f));
+	ShadowCenterText(CigText::Get(bPad ? TEXT("hud.controls.pad") : TEXT("hud.controls.keyboard")),
+		ScreenSize.Y - SX(34.f), FontBody, BodyScale * 0.9f, FLinearColor(0.86f, 0.86f, 0.86f));
 }
 
 // ---------------------------------------------------------------- settings

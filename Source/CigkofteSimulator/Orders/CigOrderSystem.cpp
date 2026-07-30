@@ -1,4 +1,5 @@
 #include "Orders/CigOrderSystem.h"
+#include "Orders/CigToppingVisual.h"
 #include "Core/CigText.h"
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigEventBus.h"
@@ -11,6 +12,7 @@
 #include "World/CigMeshLibrary.h"
 #include "World/CigWorldBuilder.h"
 #include "World/CigkofteStation.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/World.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/StaticMesh.h"
@@ -114,6 +116,7 @@ void UCigOrderSystem::ToggleTopping(ECigTopping T)
 		// A removed topping is thrown away, never put back
 		Wrap.ToppingMask &= ~Bit;
 		GM->AddMessage(CigText::Format(TEXT("msg.order.toppingremoved"), *CigToppingName(T)), FLinearColor(0.8f, 0.8f, 0.8f));
+		UpdateToppingVisuals();
 		return;
 	}
 
@@ -140,6 +143,10 @@ void UCigOrderSystem::ToggleTopping(ECigTopping T)
 
 	Wrap.ToppingMask |= Bit;
 	GM->AddMessage(CigText::Format(TEXT("msg.order.toppingadded"), *CigToppingName(T)), FLinearColor(0.7f, 1.f, 0.7f));
+	// The mask is what the visuals read, so it has to be pushed on the same
+	// keypress. Without this the player added a topping, saw the message, and saw
+	// nothing appear on the flatbread until some other action redrew the wrap.
+	UpdateToppingVisuals();
 }
 
 void UCigOrderSystem::ToggleAyran()
@@ -341,6 +348,7 @@ void UCigOrderSystem::UpdateWrapVisual()
 		{
 			WrapVisual->SetActorHiddenInGame(true);
 		}
+		UpdateToppingVisuals();
 		return;
 	}
 
@@ -367,6 +375,96 @@ void UCigOrderSystem::UpdateWrapVisual()
 	WrapVisual->SetActorScale3D(FVector(Scale));
 	WrapVisual->SetActorLocation(WrapVisualPos() - FVector(0.f, 0.f, (B.Origin.Z - B.BoxExtent.Z) * Scale));
 	WrapVisual->SetActorHiddenInGame(false);
+
+	UpdateToppingVisuals();
+}
+
+void UCigOrderSystem::UpdateToppingVisuals()
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	// Inside a rolled wrap nothing is visible, and an inactive counter shows
+	// nothing at all.
+	const bool bShowAny = Wrap.bActive && !Wrap.bWrapped;
+	const FVector Base = WrapVisualPos();
+
+	// One slot per topping per piece, allocated once and reused.
+	//
+	// The pool is sized from the table rather than from the enum, so adding a
+	// piece to a topping does not need this line changed - and so nothing is
+	// spawned while the player is mid-wrap, which is the one moment they are
+	// pressing keys quickly.
+	const int32 Pieces = CigToppingVisual::MaxPieces();
+	const int32 Slots = (int32)ECigTopping::COUNT * Pieces;
+	if (ToppingVisuals.Num() != Slots)
+	{
+		ToppingVisuals.SetNum(Slots);
+	}
+
+	for (int32 i = 0; i < (int32)ECigTopping::COUNT; ++i)
+	{
+		const ECigTopping T = (ECigTopping)i;
+		const FCigToppingPlacement& P = CigToppingVisual::Placement(T);
+		const bool bWant = bShowAny && Wrap.HasTopping(T);
+
+		for (int32 Piece = 0; Piece < Pieces; ++Piece)
+		{
+			const int32 Slot = i * Pieces + Piece;
+			AStaticMeshActor* A = ToppingVisuals[Slot];
+
+			// A topping that asks for two pieces leaves the rest of its slots
+			// hidden rather than unallocated, so the pool never has to grow.
+			if (!bWant || Piece >= P.Count)
+			{
+				if (A)
+				{
+					A->SetActorHiddenInGame(true);
+				}
+				continue;
+			}
+
+			if (!A)
+			{
+				UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
+				UMaterialInterface* Mat = LoadObject<UMaterialInterface>(nullptr,
+					TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+				if (!Sphere)
+				{
+					continue;
+				}
+				FActorSpawnParameters Params;
+				Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				A = World->SpawnActor<AStaticMeshActor>(Base, FRotator::ZeroRotator, Params);
+				if (!A)
+				{
+					continue;
+				}
+				UStaticMeshComponent* SC = A->GetStaticMeshComponent();
+				SC->SetMobility(EComponentMobility::Movable);
+				SC->SetStaticMesh(Sphere);
+				// A pea of lettuce does not cast. Up to 42 of these sit inside
+				// the counter light's radius, and a movable point light draws six
+				// cube faces for each of them.
+				SC->SetCastShadow(false);
+				A->SetActorEnableCollision(false);
+				if (Mat)
+				{
+					UMaterialInstanceDynamic* MID = UMaterialInstanceDynamic::Create(Mat, A);
+					MID->SetVectorParameterValue(TEXT("Color"), P.Color);
+					SC->SetMaterial(0, MID);
+				}
+				ToppingVisuals[Slot] = A;
+			}
+
+			A->SetActorScale3D(FVector(P.Scale));
+			A->SetActorLocation(Base + CigToppingVisual::PieceOffset(T, Piece));
+			A->SetActorHiddenInGame(false);
+		}
+	}
 }
 
 FCigOrderSpec UCigOrderSystem::MakeOrderSpec(int32 Day, ECigTrait Traits, bool bAllowAyran) const

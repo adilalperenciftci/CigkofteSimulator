@@ -133,7 +133,7 @@ void UCigHygieneSystem::EmptyTrash()
 void UCigHygieneSystem::UpdateSystem(float DeltaSeconds)
 {
 	const UCigDaySystem* Days = GM ? GM->Days.Get() : nullptr;
-	if (!Days || !Days->IsPlaying())
+	if (!Days || !Days->CanWork())
 	{
 		return;
 	}

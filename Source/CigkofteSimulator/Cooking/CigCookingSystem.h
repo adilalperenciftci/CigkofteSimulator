@@ -26,6 +26,17 @@ struct FCigRecipe
 constexpr int32 CigRecipeCount = 8;
 constexpr int32 CigSecretRecipeIndex = 7;
 
+// Servings a finished batch yields. One number, because the ball on the counter
+// has to shrink at the same rate the batch is actually used up - the visual read
+// it as a literal 6 while FinishDough set it, and the two could drift apart
+// without anything failing.
+constexpr int32 CigDoughServings = 6;
+
+// The isot fraction the visual treats as "as hot as it gets". Taken from the
+// hottest recipe's upper band (Çok Acılı, 0.35): a bowl is never a third isot,
+// so normalising against 1 would leave every batch looking equally mild.
+constexpr float CigIsotVisualMax = 0.35f;
+
 // One prepared batch of dough.
 struct FCigDough
 {
@@ -49,6 +60,16 @@ public:
 
 	static const FCigRecipe& Recipe(int32 Index);
 
+	// The recipe's name and blurb, from Config/Text/Strings.csv when it has them.
+	//
+	// The literals in the table stay Turkish deliberately: they are also the
+	// fallback for the JSON balance override, and a balance file that shipped
+	// English defaults would be the wrong default for a game whose first language
+	// is Turkish. Keyed by index, so renaming a recipe cannot silently drop its
+	// translation the way a name-derived key would.
+	static FString RecipeName(int32 Index);
+	static FString RecipeDesc(int32 Index);
+
 	// --- Human recipe wording (the UI never shows raw ratios) ---
 	// e.g. "5 measures bulgur - 3 water - 2 paste - 1 spice"
 	static FString HumanRecipeMix(const FCigRecipe& R);
@@ -69,6 +90,10 @@ public:
 	// Consumes N units and returns the effective quality including freshness (-1 if none).
 	float UseServings(int32 N);
 	float EffectiveQuality() const;
+
+	// What is on the counter, as the station needs to draw it. Public and pure
+	// so the derivation can be checked without a world (Tests/CigDoughVisualTests.cpp).
+	struct FCigDoughVisual CurrentVisual() const;
 
 	// --- Fridge ---
 	void FridgeInteract();
@@ -91,6 +116,11 @@ public:
 
 private:
 	double LastKneadTime = -100.0;
+	// Freshness falls every frame, so the dough has to be redrawn on a clock and
+	// not only when the player touches it. Four times a second is under the eye's
+	// threshold for a slow fade and keeps FindStation off the per-frame path.
+	float VisualRefreshTimer = 0.f;
+	static constexpr float VisualRefreshInterval = 0.25f;
 
 	void FinishDough();
 	void UpdateDoughVisual();

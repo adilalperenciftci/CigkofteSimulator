@@ -8,14 +8,33 @@ sabrı taşmadan yetiştir; kazandığın parayla dükkânı büyüt. Unreal Eng
 
 > Bir **EG Games** yapımı.
 
-![Servis bankosu ve müşteri kuyruğu](docs/screenshots/01_servis.png)
+![Dükkân, oturma alanı, cadde, meydan ve pazar](docs/demo.gif)
+
+*Sabit tur rotasından on iki saniye. Paketli yapıdan `Scripts/Record-Demo.ps1`
+ile kaydedildi; o gün fareyi kimin tuttuğuna göre değil, her seferinde aynı klibi
+üretir.*
+
+![Malzeme tezgâhları ve sağda sıradaki müşterinin siparişi](docs/screenshots/02_mutfak.png)
+
+*Bulgur, isot, salça, su, baharat — her biri ayrı ölçülür; sağda sipariş, solda
+tarif.*
+
+> Ekran görüntüleri İngilizce arayüzle alınmıştır, çünkü aynı görseller İngilizce
+> README'de de kullanılıyor. Oyunun varsayılan dili Türkçedir; dil ayardan
+> değiştirilir.
 
 | | |
 | --- | --- |
-| ![Malzeme tezgâhları](docs/screenshots/02_mutfak.png) | ![Yoğurma tezgâhı](docs/screenshots/03_yogurma.png) |
-| *Bulgur, isot, salça, su, baharat — her tezgâh ayrı ölçek* | *Yoğurma: sol tıkla harcı hazırla* |
+| ![Dükkân cephesi ve cadde](docs/screenshots/01_servis.png) | ![Yoğurma tezgâhı](docs/screenshots/03_yogurma.png) |
+| *Dükkân cephesi, tente ve caddeden gelen kuyruk* | *Yoğurma: sol tıkla harcı hazırla* |
 | ![Tablet — dükkân geliştirmeleri](docs/screenshots/04_tablet_dukkan.png) | ![Tablet — görevler](docs/screenshots/05_tablet_gorevler.png) |
 | *Dükkân geliştirmeleri* | *Günlük görevler, hikâye hedefleri, müdavimler* |
+| ![Doğrama tahtası](docs/screenshots/07_dograma.png) | ![Çırak iş başında](docs/screenshots/08_cirak.png) |
+| *Doğrama: bir garnitürün dört vuruşundan ikisi* | *Çırak, verdiğiniz işin tezgâhında çalışır* |
+| ![Oturma alanı](docs/screenshots/06_salon.png) | ![Dükkânda bekleyen teslimat](docs/screenshots/10_teslimat.png) |
+| *Yerinde yiyen müşteriler masaya oturur* | *Teslimat kasa olarak gelir ve siz boşaltana kadar orada durur* |
+| ![Tablet — stok ve buzdolabı](docs/screenshots/09_tablet_stok.png) | |
+| *Stok ve bütün soğuk ürünlerin paylaştığı tek hacim* | |
 
 ## Oynanış
 

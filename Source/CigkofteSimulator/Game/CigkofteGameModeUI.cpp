@@ -41,6 +41,7 @@
 #include "UI/CigTabletWidget.h"
 #include "GameFramework/GameUserSettings.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/CommandLine.h"
 #include "Engine/Engine.h"
 
 // ---------------------------------------------------------------- tablet
@@ -145,10 +146,8 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 		const bool bIndirim = PC && (PC->IsInputKeyDown(EKeys::LeftShift) || PC->IsInputKeyDown(EKeys::RightShift));
 
 		Pricing->FiyatDegistir(Urun, bIndirim ? -UCigPricingSystem::CarpanAdimi : UCigPricingSystem::CarpanAdimi);
-		AddMessage(FText::Format(
-			NSLOCTEXT("CigTablet", "FiyatGuncellendi", "{0}: {1} TL"),
-			FText::FromString(CigBalance::Pricing(Urun).Label),
-			FText::AsNumber(Pricing->Fiyat(Urun))).ToString(),
+		AddMessage(CigText::Format(TEXT("tablet.pricechanged"),
+			*CigBalance::Pricing(Urun).Label, Pricing->Fiyat(Urun)),
 			FLinearColor(0.8f, 0.9f, 1.f));
 		break;
 	}
@@ -160,7 +159,7 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 			if (Cooking->IsRecipeUnlocked(Idx))
 			{
 				Cooking->CurrentRecipe = Idx;
-				AddMessage(CigText::Format(TEXT("msg.ui.recipeselected"), UCigCookingSystem::Recipe(Idx).Name), FLinearColor(0.8f, 0.7f, 1.f));
+				AddMessage(CigText::Format(TEXT("msg.ui.recipeselected"), *UCigCookingSystem::RecipeName(Idx)), FLinearColor(0.8f, 0.7f, 1.f));
 			}
 			else
 			{
@@ -219,7 +218,7 @@ void ACigkofteGameMode::TabletKey(int32 Num)
 		if (Economy && Idx >= 0 && Idx < CigSupplierCount)
 		{
 			Economy->CurrentSupplier = Idx;
-			AddMessage(CigText::Format(TEXT("msg.ui.supplierselected"), UCigEconomySystem::Supplier(Idx).Name), FLinearColor(0.7f, 0.9f, 1.f));
+			AddMessage(CigText::Format(TEXT("msg.ui.supplierselected"), *UCigEconomySystem::SupplierName(Idx)), FLinearColor(0.7f, 0.9f, 1.f));
 		}
 		else if (Economy && Idx == CigSupplierCount)
 		{
@@ -489,6 +488,16 @@ void ACigkofteGameMode::ApplySettings()
 	// Language: UI text is read from the new language on the next draw.
 	CigText::SetLanguage(Settings.Language);
 
+	// The world's text is not redrawn from a template every frame - a locked
+	// station's sign is set once, when the lock is applied - so changing the
+	// language left "SEVIYE 6" standing over a shop whose HUD had switched to
+	// English. Re-applying the current level rebuilds the signs against the
+	// language that is now selected.
+	if (WorldBuilder && Progression)
+	{
+		WorldBuilder->RefreshUnlocks(Progression->Level, /*bAnnounce=*/false);
+	}
+
 	// Audio
 	if (UCigAudioSubsystem* Audio = GetGameInstance() ? GetGameInstance()->GetSubsystem<UCigAudioSubsystem>() : nullptr)
 	{
@@ -502,10 +511,25 @@ void ACigkofteGameMode::ApplySettings()
 	{
 		if (UGameUserSettings* GUS = GEngine->GetGameUserSettings())
 		{
-			static const FIntPoint Resolutions[4] = { {1280, 720}, {1600, 900}, {1920, 1080}, {2560, 1440} };
-			GUS->SetScreenResolution(Resolutions[FMath::Clamp(Settings.ResolutionIndex, 0, 3)]);
-			const EWindowMode::Type Modes[3] = { EWindowMode::Windowed, EWindowMode::Fullscreen, EWindowMode::WindowedFullscreen };
-			GUS->SetFullscreenMode(Modes[FMath::Clamp(Settings.WindowMode, 0, 2)]);
+			// -ResX/-ResY on the command line wins over the saved resolution.
+			//
+			// This ran at startup and re-applied the settings file over whatever the
+			// command line had just asked for, silently. Measure-Performance.ps1
+			// passes -ResX/-ResY and labels its report with them, so two runs at
+			// "1920x1080" and "1280x720" were rendering the same number of pixels
+			// and reported GPU times 0.03 ms apart - which is what a resolution
+			// experiment looks like when the resolution never changed. Every
+			// resolution label in PERFORMANCE_BUDGET.md written before this was a
+			// statement about the command line, not about the frame.
+			int32 CmdResX = 0;
+			const bool bResFromCmdLine = FParse::Value(FCommandLine::Get(), TEXT("ResX="), CmdResX) && CmdResX > 0;
+			if (!bResFromCmdLine)
+			{
+				static const FIntPoint Resolutions[4] = { {1280, 720}, {1600, 900}, {1920, 1080}, {2560, 1440} };
+				GUS->SetScreenResolution(Resolutions[FMath::Clamp(Settings.ResolutionIndex, 0, 3)]);
+				const EWindowMode::Type Modes[3] = { EWindowMode::Windowed, EWindowMode::Fullscreen, EWindowMode::WindowedFullscreen };
+				GUS->SetFullscreenMode(Modes[FMath::Clamp(Settings.WindowMode, 0, 2)]);
+			}
 			GUS->SetOverallScalabilityLevel(FMath::Clamp(Settings.QualityLevel, 0, 3));
 			GUS->ApplySettings(false);
 		}
