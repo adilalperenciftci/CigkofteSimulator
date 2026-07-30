@@ -13,6 +13,7 @@
 #include "Engine/StaticMeshActor.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/DirectionalLight.h"
+#include "Components/DirectionalLightComponent.h"
 #include "Engine/PointLight.h"
 #include "Engine/SkyLight.h"
 #include "Components/StaticMeshComponent.h"
@@ -89,6 +90,7 @@ AStaticMeshActor* UCigWorldBuilder::SpawnBox(const FVector& Loc, const FVector& 
 		C->SetMaterial(0, MID);
 	}
 	A->SetActorScale3D(Scale);
+	BuiltProps.Add(A);
 	return A;
 }
 
@@ -119,6 +121,7 @@ AStaticMeshActor* UCigWorldBuilder::SpawnProp(UStaticMesh* Mesh, const FVector& 
 		{
 			C->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		}
+		BuiltProps.Add(A);
 		return A;
 	}
 
@@ -170,6 +173,7 @@ AStaticMeshActor* UCigWorldBuilder::SpawnProp(UStaticMesh* Mesh, const FVector& 
 	{
 		C->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
+	BuiltProps.Add(A);
 	return A;
 }
 
@@ -341,11 +345,44 @@ void UCigWorldBuilder::BuildWorld()
 	BuildRivalShops();
 	BuildDistricts();
 	SpawnLights();
+	FinalizeStaticProps();
 
 	if (UWorld* World = GetWorld())
 	{
 		World->SpawnActor<APlayerStart>(FVector(0.f, 0.f, 110.f), FRotator(0.f, 0.f, 0.f));
 	}
+}
+
+void UCigWorldBuilder::FinalizeStaticProps()
+{
+	// Movable is what the world is built with and Static is what it should end as.
+	//
+	// Turning the sun's cascades down halved the shadow-depth draw calls - 372 to
+	// 162 at the shop - and moved the render thread by 0.08 ms in the wrong
+	// direction, which is a clear answer: submission of shadow draws was not what
+	// it was spending its time on. What is left is 629 primitives, every one of
+	// them Movable because the world is assembled at runtime, and a Movable
+	// primitive has its mesh draw commands rebuilt rather than cached.
+	//
+	// Nothing here moves after the build. The ones that do - stations, the crate,
+	// the cat, the customers, the lights - are not props and never enter this list.
+	int32 Sabitlenen = 0;
+	for (const TWeakObjectPtr<AStaticMeshActor>& Weak : BuiltProps)
+	{
+		if (AStaticMeshActor* A = Weak.Get())
+		{
+			if (UStaticMeshComponent* C = A->GetStaticMeshComponent())
+			{
+				if (C->Mobility != EComponentMobility::Static)
+				{
+					C->SetMobility(EComponentMobility::Static);
+					++Sabitlenen;
+				}
+			}
+		}
+	}
+	BuiltProps.Reset();
+	UE_LOG(LogCig, Log, TEXT("Dunya dekoru sabitlendi: %d prop"), Sabitlenen);
 }
 
 void UCigWorldBuilder::BuildKitchen()
@@ -587,6 +624,29 @@ void UCigWorldBuilder::SpawnLights()
 	{
 		Sun->GetLightComponent()->SetMobility(EComponentMobility::Movable);
 		Sun->GetLightComponent()->SetIntensity(6.f);
+
+		// The sun's cascades, narrowed - it is the only shadow caster left and it
+		// was drawing the world three times over.
+		//
+		// Every point light stopped casting in an earlier pass, which left the
+		// render thread at 9.46 ms against its 8 ms target with the cost sitting
+		// almost entirely in one place: 371 shadow-depth draw calls at the shop
+		// against 57 out on the street. A movable directional light defaults to
+		// three cascades over 20000 units, and 20000 units is the whole map, so
+		// every primitive in it was submitted once per cascade.
+		//
+		// Two cascades over 7000 units keeps the shadows where they are read -
+		// the counter, the seating, the pavement in front of the shop - and drops
+		// them from the far end of a street the player sees at a distance and in
+		// motion. The exponent pulls the split inwards so the near cascade, which
+		// is the one covering the counter, keeps its resolution.
+		if (UDirectionalLightComponent* SunComp = Cast<UDirectionalLightComponent>(Sun->GetLightComponent()))
+		{
+			SunComp->DynamicShadowDistanceMovableLight = 7000.f;
+			SunComp->DynamicShadowCascades = 2;
+			SunComp->CascadeDistributionExponent = 2.f;
+			SunComp->MarkRenderStateDirty();
+		}
 	}
 
 	const FVector LightSpots[] = { FVector(150.f, -600.f, 450.f), FVector(150.f, 600.f, 450.f), FVector(-600.f, 0.f, 450.f), FVector(600.f, 0.f, 450.f) };
@@ -885,7 +945,7 @@ void UCigWorldBuilder::BuildCity()
 		SpawnBox(HousePos + FVector(0.f, 0.f, 250.f), FVector(5.f, 5.f, 5.f), FLinearColor(0.92f, 0.85f, 0.70f));
 		if (AStaticMeshActor* Roof = SpawnBox(HousePos + FVector(0.f, 0.f, 545.f), FVector(5.6f, 5.6f, 0.5f), FLinearColor(0.65f, 0.15f, 0.10f))) { Roof->SetActorEnableCollision(false); }
 		if (AStaticMeshActor* Door = SpawnBox(HousePos + FVector(-254.f, 0.f, 110.f), FVector(0.1f, 1.4f, 2.2f), FLinearColor(0.2f, 0.5f, 0.2f))) { Door->SetActorEnableCollision(false); }
-		HouseSign = SpawnWorldText(HousePos + FVector(-300.f, 0.f, 620.f), TEXT("SATILIK EV - 5000 TL"), 60.f, FColor(255, 200, 60), 180.f);
+		HouseSign = SpawnWorldText(HousePos + FVector(-300.f, 0.f, 620.f), CigText::Get(TEXT("world.houseforsale")), 60.f, FColor(255, 200, 60), 180.f);
 	}
 }
 
@@ -1247,7 +1307,7 @@ void UCigWorldBuilder::BuildSchoolPark(FCigDistrictState& D)
 		}
 	}
 	if (AStaticMeshActor* Door = SpawnBox(School + FVector(0.f, -304.f, 110.f), FVector(1.6f, 0.1f, 2.2f), FLinearColor(0.3f, 0.18f, 0.08f))) { Door->SetActorEnableCollision(false); }
-	SpawnWorldText(School + FVector(0.f, -320.f, 560.f), TEXT("MAHALLE OKULU"), 56.f, FColor(240, 230, 210), 0.f);
+	SpawnWorldText(School + FVector(0.f, -320.f, 560.f), CigText::Get(TEXT("world.school")), 56.f, FColor(240, 230, 210), 0.f);
 
 	// Flagpole
 	if (AStaticMeshActor* Pole = SpawnBox(School + FVector(-900.f, -600.f, 350.f), FVector(0.14f, 0.14f, 7.f), FLinearColor(0.85f, 0.85f, 0.88f), CylinderMesh)) { Pole->SetActorEnableCollision(false); }
@@ -1638,7 +1698,7 @@ void UCigWorldBuilder::SetHouseOwned()
 		HouseSign->Destroy();
 		HouseSign = nullptr;
 	}
-	SpawnWorldText(HousePos + FVector(-300.f, 0.f, 620.f), TEXT("EVIN (gunluk +150 TL)"), 50.f, FColor(100, 255, 120), 180.f);
+	SpawnWorldText(HousePos + FVector(-300.f, 0.f, 620.f), CigText::Get(TEXT("world.yourhouse")), 50.f, FColor(100, 255, 120), 180.f);
 }
 
 void UCigWorldBuilder::ApplyUpgradeVisual(int32 UpgradeIndex)
@@ -1650,24 +1710,24 @@ void UCigWorldBuilder::ApplyUpgradeVisual(int32 UpgradeIndex)
 		break;
 	case ECigUpgrade::IkinciYogurma:
 		SpawnBox(FVector(250.f, -450.f, 55.f), FVector(1.0f, 1.0f, 1.1f), FLinearColor(0.72f, 0.72f, 0.76f));
-		SpawnWorldText(FVector(250.f, -450.f, 170.f), TEXT("YOGURMA 2"), 24.f, FColor::White, 180.f);
+		SpawnWorldText(FVector(250.f, -450.f, 170.f), CigText::Get(TEXT("world.knead2")), 24.f, FColor::White, 180.f);
 		break;
 	case ECigUpgrade::HizliDograma:
 		SpawnBox(FVector(600.f, 900.f, 60.f), FVector(0.8f, 0.5f, 1.2f), FLinearColor(0.7f, 0.72f, 0.75f));
 		break;
 	case ECigUpgrade::YeniTabela:
-		SpawnWorldText(FVector(-740.f, 0.f, 540.f), TEXT("* MAHALLENIN EN IYISI *"), 56.f, FColor(255, 220, 90), 180.f);
+		SpawnWorldText(FVector(-740.f, 0.f, 540.f), CigText::Get(TEXT("world.bestonstreet")), 56.f, FColor(255, 220, 90), 180.f);
 		break;
 	case ECigUpgrade::Klima:
 		SpawnBox(FVector(980.f, 500.f, 330.f), FVector(1.4f, 0.5f, 0.5f), FLinearColor(0.9f, 0.92f, 0.95f));
 		break;
 	case ECigUpgrade::MuzikSistemi:
 		SpawnBox(FVector(980.f, -500.f, 330.f), FVector(0.5f, 0.7f, 0.8f), FLinearColor(0.12f, 0.12f, 0.14f));
-		SpawnWorldText(FVector(940.f, -500.f, 380.f), TEXT("MUZIK"), 22.f, FColor(180, 200, 255), 180.f);
+		SpawnWorldText(FVector(940.f, -500.f, 380.f), CigText::Get(TEXT("world.music")), 22.f, FColor(180, 200, 255), 180.f);
 		break;
 	case ECigUpgrade::IkinciKasa:
 		SpawnBox(FVector(-600.f, 450.f, 55.f), FVector(0.9f, 0.9f, 1.1f), FLinearColor(0.50f, 0.30f, 0.15f));
-		SpawnWorldText(FVector(-640.f, 450.f, 170.f), TEXT("KASA 2"), 24.f, FColor::White, 0.f);
+		SpawnWorldText(FVector(-640.f, 450.f, 170.f), CigText::Get(TEXT("world.register2")), 24.f, FColor::White, 0.f);
 		break;
 	case ECigUpgrade::DisOturma:
 		for (float Y : { -350.f, 350.f })
@@ -1701,7 +1761,7 @@ void UCigWorldBuilder::ApplyUpgradeVisual(int32 UpgradeIndex)
 		break;
 	case ECigUpgrade::YeniSube:
 		SpawnBox(FVector(-1000.f, -1800.f, 200.f), FVector(4.f, 4.f, 4.f), FLinearColor(0.9f, 0.6f, 0.3f));
-		SpawnWorldText(FVector(-1210.f, -1800.f, 430.f), TEXT("CIGKOFTECI SUBE 2"), 46.f, FColor(255, 140, 40), 180.f);
+		SpawnWorldText(FVector(-1210.f, -1800.f, 430.f), CigText::Get(TEXT("world.branch2")), 46.f, FColor(255, 140, 40), 180.f);
 		break;
 	default:
 		break;

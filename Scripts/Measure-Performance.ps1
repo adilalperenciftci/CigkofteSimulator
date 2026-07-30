@@ -278,5 +278,23 @@ if ($eventsIdx -ge 0 -and $frameIdx -ge 0) {
 
 Write-Host ''
 Write-Host "  CSV: $($csv.FullName)"
-Write-Host "  etiket: $Label; cozunurluk ${Width}x${Height}; commit $(git rev-parse --short HEAD)"
+# The resolution the frames were actually rendered at, read back from the run.
+#
+# Not the one that was asked for. This is windowed, so a request larger than the
+# desktop work area is clamped, and the report used to print the request - which
+# is how two runs labelled 1920x1080 and 1280x720 came back with GPU times 0.03 ms
+# apart and were compared as if they were a resolution experiment. The log is the
+# only witness to what was drawn.
+$gercek = "${Width}x${Height} (istendi)"
+$resLog = Join-Path $exeDir 'CigkofteSimulator\Saved\Logs\CigkofteSimulator.log'
+if (Test-Path -LiteralPath $resLog) {
+    $rx = Select-String -Path $resLog -Pattern 'systemresolution\.resx="(\d+)"' | Select-Object -Last 1
+    $ry = Select-String -Path $resLog -Pattern 'systemresolution\.resy="(\d+)"' | Select-Object -Last 1
+    if ($rx -and $ry) {
+        $w = $rx.Matches[0].Groups[1].Value
+        $h = $ry.Matches[0].Groups[1].Value
+        $gercek = if ("${w}x${h}" -eq "${Width}x${Height}") { "${w}x${h}" } else { "${w}x${h} (istenen ${Width}x${Height} kirpildi)" }
+    }
+}
+Write-Host "  etiket: $Label; cozunurluk $gercek; commit $(git rev-parse --short HEAD)"
 exit 0

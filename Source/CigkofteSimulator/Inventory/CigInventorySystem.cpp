@@ -398,6 +398,6 @@ void UCigInventorySystem::ChopPress()
 	}
 	else if (GM->WorldBuilder)
 	{
-		GM->WorldBuilder->SpawnFloatText(FVector(600.f, 750.f, 200.f), FString::Printf(TEXT("Doğra! %d/%d"), ChopCombo, NeededChops), FColor(180, 255, 180), 26.f);
+		GM->WorldBuilder->SpawnFloatText(FVector(600.f, 750.f, 200.f), CigText::Format(TEXT("float.chop"), ChopCombo, NeededChops), FColor(180, 255, 180), 26.f);
 	}
 }

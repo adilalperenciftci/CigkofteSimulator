@@ -866,3 +866,13 @@ station.eldiven,ELDIVEN,GLOVES
 station.isotplus,ISOT+,ISOT+
 station.reklam,REKLAM,ADVERT
 station.servis,SERVIS,COUNTER
+world.houseforsale,SATILIK EV - 5000 TL,HOUSE FOR SALE - 5000 TL
+world.school,MAHALLE OKULU,LOCAL SCHOOL
+world.yourhouse,EVIN (gunluk +150 TL),YOUR HOUSE (+150 TL a day)
+world.knead2,YOGURMA 2,KNEADING 2
+world.bestonstreet,* MAHALLENIN EN IYISI *,* BEST ON THE STREET *
+world.music,MUZIK,MUSIC
+world.register2,KASA 2,REGISTER 2
+world.branch2,CIGKOFTECI SUBE 2,CIGKOFTECI BRANCH 2
+float.houseisyours,EV SENIN!,THE HOUSE IS YOURS!
+float.chop,Dogra! {0}/{1},Chop! {0}/{1}

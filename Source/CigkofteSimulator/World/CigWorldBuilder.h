@@ -47,6 +47,18 @@ public:
 	UPROPERTY() TObjectPtr<UMaterialInterface> WallTileMaterial;
 	UPROPERTY() TObjectPtr<UMaterialInterface> BrickMaterial;
 
+	// Settles the mobility of everything SpawnBox/SpawnProp made.
+	//
+	// The world is built at runtime, so every prop is spawned Movable and moved
+	// into place. Once the building is over almost none of them ever move again,
+	// and a Movable primitive costs the render thread its mesh draw commands every
+	// frame; a Static one is cached. Called at the end of BuildWorld and again
+	// after an upgrade adds furniture.
+	void FinalizeStaticProps();
+
+	// Filled by SpawnBox/SpawnProp, drained by FinalizeStaticProps.
+	TArray<TWeakObjectPtr<AStaticMeshActor>> BuiltProps;
+
 	// Places an imported low poly mesh, scaling it from its bounds to the target
 	// height. With a null mesh (no asset) it falls back to a FallbackColor box.
 	AStaticMeshActor* SpawnProp(UStaticMesh* Mesh, const FVector& Loc, float TargetHeight, float Yaw,

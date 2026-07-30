@@ -349,7 +349,7 @@ void UCigEconomySystem::BuyHouse()
 	if (GM->WorldBuilder)
 	{
 		GM->WorldBuilder->SetHouseOwned();
-		GM->WorldBuilder->SpawnFloatText(GM->WorldBuilder->HousePos + FVector(-300.f, 0.f, 400.f), TEXT("EV SENİN!"), FColor(100, 255, 120), 50.f);
+		GM->WorldBuilder->SpawnFloatText(GM->WorldBuilder->HousePos + FVector(-300.f, 0.f, 400.f), CigText::Get(TEXT("float.houseisyours")), FColor(100, 255, 120), 50.f);
 	}
 	GM->AddMessage(CigText::Get(TEXT("msg.economy.housebought")), FLinearColor(0.4f, 1.f, 0.4f));
 	if (GM->Progression)
