@@ -330,13 +330,36 @@ and saying so is the point.
 **Cheats are compiled out too.** `UE_WITH_CHEAT_MANAGER` is `(1 && !UE_BUILD_SHIPPING)`,
 so `CigBench`, `CigShots` and `CigLang` do not exist in Shipping - and
 `Measure-Performance.ps1` and `Record-Demo.ps1` both drive the game through them.
-**Every performance figure in this document is a Development measurement.** That is
-the pessimistic direction: Development carries checks and assertions that Shipping
-does not, so the shipped game is not slower than the numbers here. It is not the
-same game, though, and this is not the same as having measured it. Putting the
-benchmark commands into Shipping would fix the harness by shipping a
-camera-teleporting debug console to players, which is a product decision and not
-one to make quietly.
+Putting them into Shipping would fix the harness by shipping a camera-teleporting
+debug console to players, which is a product decision rather than a cleanup.
+
+The correct answer to that is UE's **Test** configuration: optimised like Shipping,
+but with the log, the stats and the console kept, precisely so a shipping-like
+build can be profiled. It was tried. UBT declines before compiling anything:
+
+```
+Targets cannot be built in the Test configuration with this engine distribution.
+```
+
+A launcher-installed engine ships Development and Shipping binaries and nothing
+else, and this is the same wall the logging attempt hit from the other side - the
+engine is a fixed set of binaries here, so a configuration it was not shipped with
+cannot be produced. `Test` is therefore not offered by the packaging scripts; an
+option that can only fail is worse than none.
+
+So the state of it, precisely:
+
+| Configuration | Buildable here | Logs | Drivable by the harness |
+| --- | --- | --- | --- |
+| Development | yes | yes | yes |
+| Test | **no** — engine distribution | — | — |
+| Shipping | yes | no | no |
+
+**Every performance figure in this document is a Development measurement**, and
+measuring the optimised build needs an engine built from source. Development is the
+pessimistic direction - it carries checks and assertions the shipped game does not,
+so the shipped game is not slower than these numbers - but "not slower than" is not
+a measurement, and nothing here should be quoted as the shipped game's performance.
 
 
 ## Still open
@@ -346,8 +369,9 @@ one to make quietly.
 - The render-thread target was chased twice and is not reachable through
   render-thread work; the row needs replacing with a counter that measures work.
   See above.
-- Shipping has been packaged and smoke-tested, but never *performance* measured:
-  the harness drives the game through cheat commands that Shipping compiles out.
+- The optimised build has never been performance measured, and cannot be from this
+  machine: Shipping cannot be driven and Test cannot be built with a launcher
+  engine. It needs an engine built from source.
 - No minimum-spec machine has been tested. Everything above is one developer
   machine at 1080p, and the GPU budget in particular is that card's budget.
 - Shader hitches are invisible to this route by construction: the capture starts
