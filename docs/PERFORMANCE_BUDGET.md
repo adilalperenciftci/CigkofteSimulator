@@ -54,7 +54,7 @@ compare against, not minimum-spec figures.
 | Texture streaming pool | — | — | 10.9 MB avg / 23.0 MB peak | |
 | Shader hitches | 0 critical hitches in play | — | not measurable here | the capture starts after the world is built |
 | Load time | main-flow target to be set | — | **3.9 s to a playable shop** | measured, Development |
-| Shipping build size | release target to be set | — | **1902 MB archived, ~1673 MB downloaded** | content is 1430 MB of it |
+| Shipping build size | release target to be set | — | **1888.6 MB staged, 1669.1 MB downloaded** | content is 1430 MB of it |
 
 ## What the numbers said, and what was done about it
 
@@ -272,11 +272,13 @@ Shipping has now been packaged. It archives at **1902 MB in 48 files**:
 
 | | Development | Shipping |
 | --- | --- | --- |
-| Archive | 2282 MB | **1902 MB** |
-| Cooked content (`.ucas`) | 1430 MB | 1430 MB |
-| Debug symbols (`.pdb`) | 374 MB | 229 MB |
-| Executable | 331 MB | 169 MB |
-| Engine DLLs | 96 MB | 57 MB |
+| Staged | 2282 MB | **1888.6 MB** (47 files) |
+| Cooked content (`.ucas`) | 1430 MB | 1430.1 MB |
+| Debug symbols (`.pdb`) | 374 MB | 219.4 MB |
+| Executable | 331 MB | 164.8 MB |
+| Engine DLLs | 96 MB | 56.6 MB |
+| **Player archive** | — | **1669.1 MB** (46 entries, no PDB) |
+| Symbols archive | — | 61.2 MB compressed, separately |
 
 Content is identical between the two and is three quarters of the Shipping
 archive. It comes from the asset packs - the bazaar scene, the mannequins, the cat
@@ -289,8 +291,9 @@ them out of the zip and `Archive-Symbols.ps1` packs them separately for
 symbolicating crashes. That was not true until now - the release script zipped the
 build directory whole, while `Verify-Release.ps1` treats a `.pdb` as a forbidden
 artefact and throws on one, so the two halves of the release path contradicted
-each other and the download carried 12% of dead weight. **The number a player
-downloads is about 1673 MB.**
+each other and the download carried 12% of dead weight. **The number a player downloads is 1669.1 MB** - the staged total
+less that one PDB, exactly, and checked by extracting the archive and running
+`Verify-Release.ps1` against it.
 
 ## What a Shipping build can and cannot be told
 

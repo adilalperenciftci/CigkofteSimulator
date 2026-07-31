@@ -189,6 +189,24 @@ the ingredients are called.
 use, rather than by setting the language directly - which is how the second defect
 above was found rather than reasoned about.
 
+## Shipping is verified now
+
+The release configuration compiles out UE_LOG and the cheat manager, so the
+packaged smoke test - every check of which was "the log did not complain" - could
+say nothing about it. `-CigReleaseSelfTest` runs ten checks inside the game after
+InitGame has built the world, writes a report to a path the harness dictates, and
+exits with 0 or the index of the first failure. Shipping now reports process
+liveness, cook coverage and a passing self-test; the checks that genuinely cannot
+run are printed as ATLANDI and never counted as passes.
+
+Two path defects were found by running it rather than by reading it. The report
+first went to `FPaths::ProjectSavedDir()`, which redirects to `%LOCALAPPDATA%` in
+Shipping, so a run that passed everything was reported as unsupported. And the
+release scripts resolved a relative `-BuildDirectory` with
+`[System.IO.Path]::GetFullPath`, which resolves against the .NET process directory
+rather than the shell's - so they archived a different checkout's build. Both
+fixed; `Resolve-CigPath` is the shared helper.
+
 ## Next exact task
 
 **Stage 3.1 — a single placement authority.** Stage 2 is complete, so the next
