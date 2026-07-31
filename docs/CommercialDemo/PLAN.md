@@ -142,7 +142,19 @@ Depends on Stage 1 for the preparation loop it wraps around.
   preparing everything as early as possible is not free either.
 - 2.4 Batch spoilage — **already there.** Freshness decays per recipe, the fridge
   slows it, and Stage 1.3 made it visible on the counter.
-- 2.2 physical stock, 2.3 storage rules, 2.5 closing routine
+- 2.2 Physical stock — **done.** A delivery arrives as an `ACigStockCrate` that
+  stands in the shop until the player unloads it; capacity is checked on unload as
+  well as on order, perishables wilt while they wait, and anything still out at
+  close is put away at the quality it has by then.
+- 2.3 Storage rules — **done.** `CigStorage` gives the dry shelf a per-item limit
+  and the fridge one shared pool, which is what makes the paid fridge upgrade a
+  decision rather than a slower spoilage curve.
+- 2.5 Closing routine — **done.** `ECigPhase::Closing` gives the day a tail: the
+  queue stops, the clock stops, and cleaning and tidying have somewhere to happen
+  before the books close.
+
+**Stage 2 is complete.** 2.1 through 2.5 are done and covered by
+`Cigkofte.Crate`, `Cigkofte.Storage` and `Cigkofte.DayFlow`.
 
 ## Stage 3 — shop customization and build mode
 

@@ -121,7 +121,7 @@ the tablet's Achievements tab with your lifetime statistics.
 
 ## Systems
 
-Eighteen independent systems are what make this a business rather than a
+Twenty-three independent systems are what make this a business rather than a
 click-and-sell loop:
 
 | System | What it does |
@@ -224,7 +224,7 @@ paths resolve against exactly those names (`World/CigMeshLibrary.cpp`).
 
 ## Architecture
 
-`ACigkofteGameMode` is a coordinator; the gameplay is split across 18 systems
+`ACigkofteGameMode` is a coordinator; the gameplay is split across 23 systems
 deriving from `UCigSystem` (a `UObject`), foldered under
 `Source/CigkofteSimulator/`:
 
@@ -269,6 +269,13 @@ a number out does not need a rebuild.
 Customer lines are not requested from an API while playing. They are **generated
 in bulk during development and shipped as data**, so the runtime cost is zero,
 there is no latency, the game works offline, and there is no moderation risk.
+
+This was not always true of the code. A runtime service sat beside the pipeline
+and issued a request per customer served whenever `ANTHROPIC_API_KEY` was present
+in the environment; it was removed, along with the module's HTTP dependency.
+`Tools/check_sources.py` now fails the build on an external endpoint or API-key
+reference in any runtime source file, so the paragraph above is a checked property
+rather than an intention.
 
 The state space is finite: 5 moods × 15 dominant traits × 2⁵ (VIP, regular,
 ayran, hygiene, patience) = **2,400 buckets**. At four variants each, about 9,600

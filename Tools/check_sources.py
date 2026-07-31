@@ -815,6 +815,62 @@ def check_no_runtime_api() -> None:
     print(f"  runtime ag: {sayac} satirda dis servis cagrisi yok")
 
 
+# Dokumanlardaki sayilar koddan turetilir, elle kopyalanmaz.
+#
+# Sistem sayisi dort yerde 18 yazarken GameMode 23 sistem kuruyordu; test sayisi
+# bir yerde 52 iken gercek sayi 93'tu ve ayni cumle, var olan uctan uca testin
+# yoklugunu iddia ediyordu. Sayilari tek tek duzeltmek bunu tekrarlar; kontrol
+# etmek tekrarlamaz.
+DOKUMAN_SAYILARI = [
+    # (regex, gercegi ureten anahtar, insan icin ad)
+    (re.compile(r"(\d+)\s+automation tests"), "test", "otomasyon testi"),
+    (re.compile(r"(\d+)\s+otomasyon testi"), "test", "otomasyon testi"),
+    (re.compile(r"split across\s+(\d+)\s+systems"), "sistem", "sistem"),
+    (re.compile(r"(\d+)\s+independent systems"), "sistem", "sistem"),
+    (re.compile(r"(\d+)\s+bağımsız sistem"), "sistem", "sistem"),
+    (re.compile(r"türevi\s+(\d+)\s+sisteme"), "sistem", "sistem"),
+]
+
+DOKUMAN_DOSYALARI = [
+    "README.md", "README.tr.md",
+    "docs/CommercialDemo/KNOWN_LIMITATIONS.md",
+]
+
+
+def check_doc_counts() -> None:
+    gercek = {}
+
+    test_dir = SOURCE / "CigkofteSimulator" / "Tests"
+    gercek["test"] = sum(
+        len(re.findall(r"IMPLEMENT_[A-Z_]*AUTOMATION_TEST", f.read_text(encoding="utf-8-sig")))
+        for f in test_dir.rglob("*.cpp")
+    )
+
+    gm = SOURCE / "CigkofteSimulator" / "Game" / "CigkofteGameMode.cpp"
+    gercek["sistem"] = len(re.findall(r"CreateSystem\(", gm.read_text(encoding="utf-8-sig")))
+
+    if gercek["test"] == 0 or gercek["sistem"] == 0:
+        fail("Doküman sayıları doğrulanamadı: testler veya sistemler sayılamadı.")
+        return
+
+    kontrol = 0
+    for rel in DOKUMAN_DOSYALARI:
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        for no, satir in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+            for desen, anahtar, ad in DOKUMAN_SAYILARI:
+                for m in desen.finditer(satir):
+                    kontrol += 1
+                    yazan = int(m.group(1))
+                    if yazan != gercek[anahtar]:
+                        fail(f"{rel}:{no}: {yazan} {ad} yazıyor, gerçek sayı "
+                             f"{gercek[anahtar]}. Sayıyı kaynaktan güncelleyin.")
+
+    print(f"  doküman sayıları: {kontrol} atıf doğrulandı "
+          f"({gercek['test']} test, {gercek['sistem']} sistem)")
+
+
 def main() -> int:
     print("Cigkofte kaynak kontrolu")
     check_sources()
@@ -829,6 +885,7 @@ def main() -> int:
     check_config_secrets()
     check_no_loctext()
     check_no_runtime_api()
+    check_doc_counts()
 
     if problems:
         print(f"\n{len(problems)} sorun bulundu:\n")

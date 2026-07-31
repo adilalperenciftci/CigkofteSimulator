@@ -25,9 +25,12 @@ itself stays in the package's `Saved/Profiling/CSV` and is not committed.
 
 ## Results
 
-Both runs: `1920x1080`, packaged **Development**, five stops at six seconds.
-Hardware is the development machine — a baseline to compare against, not
-minimum-spec figures.
+Both runs: packaged **Development**, five stops at six seconds, rendered at
+`1600x900`. The runs asked for `1920x1080` and did not get it — the game is
+windowed on a 1536x864 desktop, and until the reporting was fixed the script
+printed the request rather than the frame. See "What the resolution label was
+actually saying" below. Hardware is the development machine: a baseline to
+compare against, not minimum-spec figures.
 
 - **before** — `stage1-rt-disabled`, 1580 frames
 - **after** — `shadow-casting-off-on-fills`, 2482 frames, same route and seed
@@ -98,8 +101,11 @@ target. System memory peaks at 1.76 GB, which leaves a large margin on a 16 GB
 machine. The texture streaming pool sits at 11 MB, because the shop's textures
 are small and mostly resident rather than streamed.
 
-Primitives drawn averages 2.37 M with an 8.27 M peak, and total RHI draw calls
-485 average against a 1281 peak.
+Primitives drawn averages 2.37 M with an 8.27 M peak. Total RHI draw calls were
+485 average against a 1281 peak **in this capture**, which is the one taken
+straight after the shadow change; the results table above carries 279 average,
+from the later capture after the static-decoration change. They are two different
+runs of the same counter and the table is the current one.
 
 Note that these are read from the capture taken after the shadow change, so the
 memory figures have no before/after pair. They were not measured earlier, which

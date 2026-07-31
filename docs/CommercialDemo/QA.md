@@ -171,7 +171,11 @@ log is caught, a normal log passes. Dry-run and a real editor build both exit 0.
 
 Scenario tests required by the commercial-demo standard that do not exist yet:
 power-cut refrigeration, closure blocking customers, placement round trip,
-pooled seat release, localization placeholder parity.
+pooled seat release.
+
+Localization placeholder parity has since been covered by the `Cigkofte.Localization`
+group, which checks that both languages resolve every routed key and that a
+template may reorder its arguments between them.
 
 A played session still cannot exercise the preparation stations by hand. Doing
 that needs either held-key input simulation or an in-game automation hook.

@@ -107,7 +107,7 @@ devretmeye kadar. Tabletin Başarımlar sekmesinde toplam istatistiklerinle birl
 
 ## Sistemler
 
-18 bağımsız sistem, oyunu bir "tıkla ve sat" döngüsünden çıkarıp işletmeye çeviriyor:
+23 bağımsız sistem, oyunu bir "tıkla ve sat" döngüsünden çıkarıp işletmeye çeviriyor:
 
 | Sistem | Ne yapıyor |
 | --- | --- |
@@ -207,7 +207,7 @@ mesh yolları yukarıdaki klasör adlarına göre çözülür (`World/CigMeshLib
 
 ## Mimari
 
-`ACigkofteGameMode` bir koordinatör; oynanışın tamamı `UCigSystem` (UObject) türevi 18 sisteme
+`ACigkofteGameMode` bir koordinatör; oynanışın tamamı `UCigSystem` (UObject) türevi 23 sisteme
 bölünmüş ve `Source/CigkofteSimulator/` altında klasörlenmiştir:
 
 ```
@@ -249,6 +249,11 @@ olur — depo bu dosyalar silinse de aynı dengeyle oynanır. Oyun açıkken kon
 Müşteri replikleri oyun sırasında API'ye sorularak değil, **geliştirme sırasında toplu üretilip
 veri olarak dağıtılarak** üretilir. Böylece runtime maliyeti sıfır, gecikme sıfır, oyun internetsiz
 çalışır ve moderasyon riski yoktur.
+
+Kod bir dönem bunu karşılamıyordu: hattın yanında, ortamda `ANTHROPIC_API_KEY` varsa servis edilen
+her müşteri için istek atan bir çalışma zamanı servisi duruyordu. Servis de modülün HTTP bağımlılığı
+da kaldırıldı. `Tools/check_sources.py` artık çalışma zamanı kaynaklarında dış uç nokta veya API
+anahtarı görürse build'i düşürüyor; yani yukarıdaki paragraf bir niyet değil, denetlenen bir özellik.
 
 Durum uzayı sonludur: 5 ruh hali × 15 baskın müşteri özelliği × 2⁵ (VIP, müdavim, ayran, hijyen,
 sabır) = **2.400 kova**. Kova başına 4 varyantla ~9.600 replik.
