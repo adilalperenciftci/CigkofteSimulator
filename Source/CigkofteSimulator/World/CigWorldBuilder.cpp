@@ -252,6 +252,19 @@ void UCigWorldBuilder::UpdateSystem(float DeltaSeconds)
 	}
 }
 
+bool UCigWorldBuilder::LabelShouldShow(bool bCurrentlyVisible, float Dist2DSq, float ShowRangeSq, float HideRangeSq)
+{
+	if (Dist2DSq <= ShowRangeSq)
+	{
+		return true;
+	}
+	if (Dist2DSq > HideRangeSq)
+	{
+		return false;
+	}
+	return bCurrentlyVisible;
+}
+
 void UCigWorldBuilder::UpdateStationLabelRange()
 {
 	if (bStationLabelsDebug)
@@ -270,7 +283,8 @@ void UCigWorldBuilder::UpdateStationLabelRange()
 	// floor and so are the counters - and comparing squares avoids twenty square
 	// roots for a test whose answer is a bool.
 	const FVector Here = Pawn->GetActorLocation();
-	constexpr float RangeSq = LabelVisibleRange * LabelVisibleRange;
+	constexpr float ShowSq = LabelShowRange * LabelShowRange;
+	constexpr float HideSq = LabelHideRange * LabelHideRange;
 
 	for (const TPair<ECigStation, TWeakObjectPtr<ACigkofteStation>>& Pair : Stations)
 	{
@@ -281,17 +295,24 @@ void UCigWorldBuilder::UpdateStationLabelRange()
 		}
 
 		const FVector There = S->GetActorLocation();
-		bool bShow = FVector::DistSquared2D(Here, There) <= RangeSq;
+		bool bShow = LabelShouldShow(S->IsLabelVisible(),
+			FVector::DistSquared2D(Here, There), ShowSq, HideSq);
 
 		// Hide a name being read from behind. A UTextRenderComponent seen from
 		// its back side draws mirrored, and the screenshot pass came back with a
 		// street view full of backwards signage - "PAKETLEME" and "LAVAS" spelled
 		// right to left across the front of the shop. Every station label faces
 		// the same way, so one dot product against its forward vector settles it.
-		if (bShow)
+		//
+		// Hysteresed for the same reason as the distance: a hard half-plane
+		// through the station flips the sign at any range, including under the
+		// player's nose. The band is narrow because the layout keeps the player
+		// well to one side of it.
+		if (bShow || S->IsLabelVisible())
 		{
 			const FVector ToPlayer = (Here - There).GetSafeNormal2D();
-			bShow = FVector::DotProduct(ToPlayer, S->LabelFacing()) > 0.f;
+			const float Facing = FVector::DotProduct(ToPlayer, S->LabelFacing());
+			bShow = bShow && (S->IsLabelVisible() ? Facing > -0.05f : Facing > 0.05f);
 		}
 
 		S->SetLabelVisible(bShow);

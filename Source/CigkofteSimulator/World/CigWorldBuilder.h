@@ -99,15 +99,34 @@ public:
 	// text. Follows the debug HUD, so one key controls both.
 	void SetStationLabelsDebug(bool bDebug);
 
-	// Signage is hidden past this distance.
+	// Should a label be showing, given where it is now?
+	//
+	// Pure, so the hysteresis is testable without a world: inside the band the
+	// answer is whatever it already was, which is the whole of the fix. Squared
+	// distances throughout to keep the caller's twenty square roots away.
+	static bool LabelShouldShow(bool bCurrentlyVisible, float Dist2DSq, float ShowRangeSq, float HideRangeSq);
+
+	// Signage appears inside the first distance and does not go away until the
+	// second.
 	//
 	// The counters stand in rows 270uu apart in depth, so from anywhere back in
 	// the room the far row's names project on top of the near row's - "BULGUR"
 	// across the fridge, "BAHARAT" across "BULASIK". Legible while working at a
 	// counter, illegible in every wide shot, which is what a store page is made
-	// of. A label is there to name the thing you are standing at; at 700uu the
+	// of. A label is there to name the thing you are standing at; around 700uu the
 	// nearest row is named and the back wall is quiet.
-	static constexpr float LabelVisibleRange = 700.f;
+	//
+	// One threshold made that a coin toss for anyone moving sideways. The test
+	// runs on a 0.25 s clock, so a player circling at roughly the range - which is
+	// what walking the length of the shop does to the far row - lands on either
+	// side of the line on successive samples and the sign blinks at up to 4 Hz.
+	// Standing still is stable, which is why the screenshot pass never saw it.
+	//
+	// A 100uu band centred on the old value: the framing in every committed
+	// screenshot is unchanged, and at walking speed the band is crossed inside a
+	// single sample, so approaching a counter still shows exactly one transition.
+	static constexpr float LabelShowRange = 650.f;
+	static constexpr float LabelHideRange = 750.f;
 
 	// A locked district: the barrier actors are destroyed on unlock and its
 	// delivery addresses join the address pool at that moment.

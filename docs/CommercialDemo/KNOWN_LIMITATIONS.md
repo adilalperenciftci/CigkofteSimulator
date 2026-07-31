@@ -60,9 +60,17 @@ not fixed yet belong in `PLAN.md`, not here.
 - `CarEngine` is mapped to a metal one-shot and `CatMeow` is unmapped. Both are
   documented in `ASSETS.md` rather than disguised with pitch shifting.
 
+- **The focus highlight is invisible on most stations.** `SetHighlighted` tints
+  `Top`, the coloured primitive tub. With the prop pack installed that component
+  is hidden on every station except the five ingredient ones, so on the rest the
+  player gets no feedback about what they are aiming at. Tinting the imported mesh
+  instead would mean driving a material this project did not author and cannot
+  assume the parameters of; an overlay material would be a new asset. Left as a
+  limitation rather than guessed at.
+
 ## Coverage
 
-- The 93 automation tests cover pure formulas, tables, data integrity and one
+- The 96 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
