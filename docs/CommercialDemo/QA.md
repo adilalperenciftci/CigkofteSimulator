@@ -196,8 +196,11 @@ validated through the editor and both packaged configurations:
 | Focused output-argument parser test | **1 passed, 0 failed** |
 | Full automation | **99 passed, 0 failed** |
 | `ValidateAll.ps1` | static, harness, paths, build, tests and runtime data all passed |
-| Development candidate | **2,339,843,273 bytes**; all eight smoke checks passed; mandatory self-test passed |
+| Development candidate | **2,339,690,706 bytes**; all eight smoke checks passed; mandatory self-test passed |
 | Shipping candidate | **1,981,073,529 bytes**; process, cook coverage and mandatory eleven-check self-test passed |
+| Player release archive | **1,589,032,416 bytes**, 46 entries, zero PDB files |
+| Separate symbol archive | **64,347,504 bytes**, one Shipping PDB |
+| Extracted player release | **1,750,423,673 bytes**, 46 files; `Verify-Release.ps1` PASS |
 
 The packaged negative cases were run against staged copies and restored
 immediately: an explicitly empty output argument, a forbidden `Config` path and
@@ -213,6 +216,12 @@ player controller during `InitGame` and returned `FAIL 11`; it now validates the
 configured controller CDO and treats a runtime instance as an additional check
 only when one exists. Both fixes were rebuilt, and the subsequent Shipping
 package passed.
+
+The player archive was created from `Build/PR6-Shipping`, not the Development
+candidate. Its extracted launcher SHA-256 matches the raw Shipping launcher and
+differs from the Development launcher; the checksum file also passed. Directory
+structure is preserved, and debug symbols exist only in the separate symbol
+archive.
 
 Still manual: held-control kneading and chopping feel, wrap controls, gamepad
 input, focus readability, signage while moving, ambience balance, customer
