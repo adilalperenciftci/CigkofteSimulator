@@ -140,6 +140,10 @@ bool FCigLabelFacingBandHoldsItsAnswer::RunTest(const FString&)
 		UCigWorldBuilder::LabelFacingShouldShow(true, 0.f));
 	TestFalse(TEXT("Gizliyken bantta gizli kalmalı"),
 		UCigWorldBuilder::LabelFacingShouldShow(false, 0.f));
+	TestTrue(TEXT("Pozitif sınırda görünür olmalı"),
+		UCigWorldBuilder::LabelFacingShouldShow(false, Band));
+	TestFalse(TEXT("Negatif sınırda gizli olmalı"),
+		UCigWorldBuilder::LabelFacingShouldShow(true, -Band));
 
 	for (float F = -Band + 0.001f; F < Band; F += 0.005f)
 	{
@@ -176,11 +180,56 @@ bool FCigLabelFacingBandHoldsItsAnswer::RunTest(const FString&)
 	// boundary switches at zero, and the band moves the switch to its outer edge.
 	TestTrue(TEXT("Bandın dış kenarında açılmalı"), FMath::IsNearlyEqual(TurnedOnAt, Band, 0.002f));
 
+	// Reverse direction must also switch once, at the negative edge.
+	Transitions = 0;
+	float TurnedOffAt = 0.f;
+	for (float F = 1.f; F >= -1.f; F -= 0.001f)
+	{
+		const bool bNext = UCigWorldBuilder::LabelFacingShouldShow(bVisible, F);
+		if (bNext != bVisible)
+		{
+			++Transitions;
+			TurnedOffAt = F;
+		}
+		bVisible = bNext;
+	}
+	TestEqual(TEXT("Arkaya dönerken tek geçiş"), Transitions, 1);
+	TestTrue(TEXT("Negatif dış kenarda kapanmalı"),
+		FMath::IsNearlyEqual(TurnedOffAt, -Band, 0.002f));
+
 	// Two samples a thousandth apart either side of the old hard boundary - a
 	// player walking along the half-plane - now give the same answer.
 	TestEqual(TEXT("Bantlı: iki komşu örnek aynı cevabı verir"),
 		UCigWorldBuilder::LabelFacingShouldShow(true, -0.001f),
 		UCigWorldBuilder::LabelFacingShouldShow(true, 0.001f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLabelTriggersKeepIndependentState,
+	"Cigkofte.LabelVisibility.DistanceAndFacingKeepIndependentState",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigLabelTriggersKeepIndependentState::RunTest(const FString&)
+{
+	const float Middle = Sq((UCigWorldBuilder::LabelShowRange + UCigWorldBuilder::LabelHideRange) * 0.5f);
+	FCigLabelVisibilityState State;
+
+	TestFalse(TEXT("Bantta arkaya dönmek etiketi gizler"),
+		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, ShowSq, HideSq, -1.f));
+	TestTrue(TEXT("Bakış değişimi mesafe latch'ini sıfırlamaz"), State.bDistanceVisible);
+	TestFalse(TEXT("Yalnız bakış latch'i gizlidir"), State.bFacingVisible);
+
+	TestTrue(TEXT("Aynı mesafede tekrar öne dönmek etiketi geri getirir"),
+		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, ShowSq, HideSq, 1.f));
+
+	State.bDistanceVisible = false;
+	State.bFacingVisible = false;
+	TestFalse(TEXT("Gizli mesafe latch'i öne bakışla açılmaz"),
+		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, ShowSq, HideSq, 1.f));
+	TestTrue(TEXT("Bakış latch'i mesafeden bağımsız güncellenir"), State.bFacingVisible);
+	TestTrue(TEXT("Gösterme mesafesine girince birleşik sonuç açılır"),
+		UCigWorldBuilder::UpdateLabelVisibilityState(State,
+			Sq(UCigWorldBuilder::LabelShowRange), ShowSq, HideSq, 1.f));
 	return true;
 }
 

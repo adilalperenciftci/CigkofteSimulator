@@ -7,6 +7,17 @@
 #include "CigWorldBuilder.generated.h"
 
 class ACigkofteStation;
+
+// The two visibility triggers retain their own answers. Combining them into a
+// component's final visibility couples the latches: turning behind a label can
+// otherwise reset its distance state while standing inside the distance band.
+struct FCigLabelVisibilityState
+{
+	bool bDistanceVisible = true;
+	bool bFacingVisible = true;
+
+	bool ShouldRender() const { return bDistanceVisible && bFacingVisible; }
+};
 class AStaticMeshActor;
 class ADirectionalLight;
 class APointLight;
@@ -119,6 +130,11 @@ public:
 	// branch that had already decided not to show the label.
 	static bool LabelFacingShouldShow(bool bCurrentlyVisible, float Facing);
 
+	// Advances both latches from the same sample, then combines them. Pure world
+	// geometry only; the caller owns one state per station and applies the result.
+	static bool UpdateLabelVisibilityState(FCigLabelVisibilityState& State,
+		float Dist2DSq, float ShowRangeSq, float HideRangeSq, float Facing);
+
 	// Narrow on purpose: the layout keeps the player well to one side of every
 	// label, so the band only has to cover sampling noise, not a real approach.
 	static constexpr float LabelFacingBand = 0.05f;
@@ -218,6 +234,7 @@ private:
 	float LabelRangeTimer = 0.f;
 	static constexpr float LabelRangeInterval = 0.25f;
 	bool bStationLabelsDebug = false;
+	TMap<ECigStation, FCigLabelVisibilityState> StationLabelVisibility;
 	void UpdateStationLabelRange();
 
 	void BuildKitchen();

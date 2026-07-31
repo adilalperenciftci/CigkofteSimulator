@@ -225,19 +225,10 @@ void UCigWorldBuilder::SetStationLabelsDebug(bool bDebug)
 		if (ACigkofteStation* S = Pair.Value.Get())
 		{
 			S->SetLabelDebug(bDebug);
-		}
-	}
-	// Debug wants every name at once, including the far row - that is the whole
-	// point of the overhead mode. Restore them here rather than waiting for the
-	// next range tick to notice.
-	if (bDebug)
-	{
-		for (const TPair<ECigStation, TWeakObjectPtr<ACigkofteStation>>& Pair : Stations)
-		{
-			if (ACigkofteStation* S = Pair.Value.Get())
-			{
-				S->SetLabelVisible(true);
-			}
+			FCigLabelVisibilityState& State = StationLabelVisibility.FindOrAdd(Pair.Key);
+			// Debug is a render override, not gameplay history. Restoring it must
+			// not seed either hysteresis latch from the debug-forced component.
+			S->SetLabelVisible(bDebug || State.ShouldRender());
 		}
 	}
 }
@@ -267,7 +258,24 @@ bool UCigWorldBuilder::LabelShouldShow(bool bCurrentlyVisible, float Dist2DSq, f
 
 bool UCigWorldBuilder::LabelFacingShouldShow(bool bCurrentlyVisible, float Facing)
 {
-	return Facing > (bCurrentlyVisible ? -LabelFacingBand : LabelFacingBand);
+	if (Facing >= LabelFacingBand)
+	{
+		return true;
+	}
+	if (Facing <= -LabelFacingBand)
+	{
+		return false;
+	}
+	return bCurrentlyVisible;
+}
+
+bool UCigWorldBuilder::UpdateLabelVisibilityState(FCigLabelVisibilityState& State,
+	float Dist2DSq, float ShowRangeSq, float HideRangeSq, float Facing)
+{
+	State.bDistanceVisible = LabelShouldShow(
+		State.bDistanceVisible, Dist2DSq, ShowRangeSq, HideRangeSq);
+	State.bFacingVisible = LabelFacingShouldShow(State.bFacingVisible, Facing);
+	return State.ShouldRender();
 }
 
 void UCigWorldBuilder::UpdateStationLabelRange()
@@ -300,8 +308,6 @@ void UCigWorldBuilder::UpdateStationLabelRange()
 		}
 
 		const FVector There = S->GetActorLocation();
-		bool bShow = LabelShouldShow(S->IsLabelVisible(),
-			FVector::DistSquared2D(Here, There), ShowSq, HideSq);
 
 		// Hide a name being read from behind. A UTextRenderComponent seen from
 		// its back side draws mirrored, and the screenshot pass came back with a
@@ -313,16 +319,14 @@ void UCigWorldBuilder::UpdateStationLabelRange()
 		// through the station flips the sign at any range, including under the
 		// player's nose. The band is narrow because the layout keeps the player
 		// well to one side of it.
-		// Only asked when the distance rule already said yes. The previous form
-		// entered this on `bShow || IsLabelVisible()` and then ANDed the answer
-		// into a bShow that was already false, so for every label out of range it
-		// normalised a vector and took a dot product to discard the result.
-		if (bShow)
-		{
-			const FVector ToPlayer = (Here - There).GetSafeNormal2D();
-			bShow = LabelFacingShouldShow(S->IsLabelVisible(),
-				FVector::DotProduct(ToPlayer, S->LabelFacing()));
-		}
+		// Both latches advance independently even while the other one is false.
+		// Reading the component's combined visibility here would let a facing
+		// transition reset the distance latch (and vice versa) inside its band.
+		const FVector ToPlayer = (Here - There).GetSafeNormal2D();
+		FCigLabelVisibilityState& State = StationLabelVisibility.FindOrAdd(Pair.Key);
+		const bool bShow = UpdateLabelVisibilityState(State,
+			FVector::DistSquared2D(Here, There), ShowSq, HideSq,
+			FVector::DotProduct(ToPlayer, S->LabelFacing()));
 
 		S->SetLabelVisible(bShow);
 	}
