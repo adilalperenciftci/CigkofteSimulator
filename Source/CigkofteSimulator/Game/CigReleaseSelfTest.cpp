@@ -9,6 +9,7 @@
 #include "Core/CigText.h"
 #include "Core/CigBalance.h"
 #include "Core/CigkofteTypes.h"
+#include "Core/CigLog.h"
 
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -34,6 +35,8 @@ namespace
 	// Strings.csv not staged at all, so every label on screen was its own key.
 	constexpr int32 MinimumTextKeys = 500;
 
+	const TCHAR* const HeaderLine = TEXT("CIGRELEASESELFTEST v1\n");
+
 	// Where the verdict goes.
 	//
 	// -CigReleaseSelfTestOut=<path> wins, and the harness always passes it.
@@ -42,29 +45,133 @@ namespace
 	// %LOCALAPPDATA%\<Project>\Saved in Shipping. A caller that has to guess which
 	// one applies gets it wrong, and reads a passing run as a build that does not
 	// support the mode - which is what happened before this argument existed.
-	FString ReportPath()
+	//
+	// The argument is honoured only inside this mode - Run() is the only caller and
+	// InitGame reaches it only through IsRequested() - and it is vetted rather than
+	// trusted. A local user may point it wherever they like; what an ordinary
+	// packaging run must never be able to do is write over data the project reads
+	// back, so Config, Content and Source are refused, and so is a .sav extension:
+	// the report is not a save and nothing that scans for saves should ever find it.
+	bool ResolveReportPath(FString& OutPath, FString& OutError)
 	{
-		FString FromCmdLine;
-		if (FParse::Value(FCommandLine::Get(), TEXT("CigReleaseSelfTestOut="), FromCmdLine)
-			&& !FromCmdLine.IsEmpty())
+		FString Raw;
+		if (FParse::Value(FCommandLine::Get(), TEXT("CigReleaseSelfTestOut="), Raw))
 		{
-			return FromCmdLine;
+			Raw.TrimStartAndEndInline();
+			Raw.TrimQuotesInline();
+			Raw.TrimStartAndEndInline();
+			if (Raw.IsEmpty())
+			{
+				OutError = TEXT("-CigReleaseSelfTestOut= bos");
+				return false;
+			}
 		}
-		return FPaths::ProjectSavedDir() / TEXT("CigReleaseSelfTest.txt");
+		else
+		{
+			Raw = FPaths::ProjectSavedDir() / TEXT("CigReleaseSelfTest.txt");
+		}
+
+		FString Full = FPaths::ConvertRelativePathToFull(Raw);
+		FPaths::NormalizeFilename(Full);
+		FPaths::CollapseRelativeDirectories(Full);
+
+		if (FPaths::GetCleanFilename(Full).IsEmpty())
+		{
+			OutError = FString::Printf(TEXT("dosya adi yok: %s"), *Full);
+			return false;
+		}
+		if (FPaths::GetExtension(Full).Equals(TEXT("sav"), ESearchCase::IgnoreCase))
+		{
+			OutError = FString::Printf(TEXT(".sav uzantisi reddedildi: %s"), *Full);
+			return false;
+		}
+
+		FString ProjectDir = FPaths::ConvertRelativePathToFull(FPaths::ProjectDir());
+		FPaths::NormalizeDirectoryName(ProjectDir);
+		static const TCHAR* const Guarded[] = { TEXT("Config"), TEXT("Content"), TEXT("Source") };
+		for (const TCHAR* Dir : Guarded)
+		{
+			const FString Forbidden = ProjectDir / Dir + TEXT("/");
+			if (Full.StartsWith(Forbidden, ESearchCase::IgnoreCase))
+			{
+				OutError = FString::Printf(TEXT("proje verisinin icine yazilamaz: %s"), *Full);
+				return false;
+			}
+		}
+
+		OutPath = Full;
+		return true;
 	}
 
-	// Written before any check runs, so the harness can tell "this build has no
-	// self-test mode" from "the self-test failed". A build from before this
-	// existed simply starts normally and leaves no file.
-	void WriteHeader()
+	// The report is built in <path>.tmp and renamed over the final name, so the
+	// harness either finds a complete verdict or finds nothing. A run that dies
+	// half way therefore cannot leave a truncated file that reads as a result, and
+	// - the reason this matters most - a previous run's PASS cannot survive a new
+	// run that failed to write: the final name is removed before the checks start.
+	//
+	// Every write is checked. SaveStringToFile returning false was ignored before,
+	// which made "the disk is full" and "every check passed" the same observable
+	// outcome from outside.
+	struct FReportWriter
 	{
-		FFileHelper::SaveStringToFile(FString(TEXT("CIGRELEASESELFTEST v1\n")), *ReportPath(),
-			FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
-	}
+		FString FinalPath;
+		FString TempPath;
+		FString Error;
 
-	void WriteReport(const TArray<FCheck>& Checks, int32 FailedIndex)
+		bool Begin()
+		{
+			if (!ResolveReportPath(FinalPath, Error))
+			{
+				return false;
+			}
+			TempPath = FinalPath + TEXT(".tmp");
+
+			IFileManager& Files = IFileManager::Get();
+			const FString Dir = FPaths::GetPath(FinalPath);
+			if (!Dir.IsEmpty() && !Files.DirectoryExists(*Dir) && !Files.MakeDirectory(*Dir, true))
+			{
+				Error = FString::Printf(TEXT("dizin olusturulamadi: %s"), *Dir);
+				return false;
+			}
+
+			// Order matters: the stale verdict goes before anything can fail.
+			Files.Delete(*FinalPath, false, true, true);
+			Files.Delete(*TempPath, false, true, true);
+
+			// The sentinel proves the path is writable before ten checks run
+			// against it. Writing only at the end would report a full disk as a
+			// self-test that never happened.
+			if (!FFileHelper::SaveStringToFile(FString(HeaderLine), *TempPath,
+					FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
+			{
+				Error = FString::Printf(TEXT("baslik yazilamadi: %s"), *TempPath);
+				return false;
+			}
+			return true;
+		}
+
+		bool Commit(const FString& Body)
+		{
+			if (!FFileHelper::SaveStringToFile(Body, *TempPath,
+					FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM))
+			{
+				Error = FString::Printf(TEXT("rapor yazilamadi: %s"), *TempPath);
+				return false;
+			}
+			// Move replaces on Windows, which is the only platform this project
+			// packages for; no attempt is made to be atomic anywhere else.
+			if (!IFileManager::Get().Move(*FinalPath, *TempPath, true, true))
+			{
+				Error = FString::Printf(TEXT("rapor yerine tasinamadi: %s"), *FinalPath);
+				return false;
+			}
+			return true;
+		}
+	};
+
+	FString FormatReport(const TArray<FCheck>& Checks, int32 FailedIndex)
 	{
-		FString Out = TEXT("CIGRELEASESELFTEST v1\n");
+		FString Out = HeaderLine;
 		for (const FCheck& C : Checks)
 		{
 			Out += FString::Printf(TEXT("%s  %s%s\n"),
@@ -72,7 +179,7 @@ namespace
 				C.Detail.IsEmpty() ? TEXT("") : *FString::Printf(TEXT("  (%s)"), *C.Detail));
 		}
 		Out += FString::Printf(TEXT("RESULT %s %d\n"), FailedIndex == 0 ? TEXT("PASS") : TEXT("FAIL"), FailedIndex);
-		FFileHelper::SaveStringToFile(Out, *ReportPath(), FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+		return Out;
 	}
 
 }
@@ -84,7 +191,15 @@ bool CigReleaseSelfTest::IsRequested()
 
 int32 CigReleaseSelfTest::Run(ACigkofteGameMode& GameMode)
 {
-	WriteHeader();
+	// Before the checks, so a path that cannot be written is reported as that
+	// rather than as ten checks whose verdict nobody can read. The harness treats
+	// an absent report as a failure, and this makes the exit status agree with it.
+	FReportWriter Report;
+	if (!Report.Begin())
+	{
+		UE_LOG(LogCig, Error, TEXT("Sürüm öz-testi raporu hazırlanamadı: %s"), *Report.Error);
+		return ReportUnwritable;
+	}
 
 	TArray<FCheck> Checks;
 	auto Add = [&Checks](const TCHAR* Name, bool bPassed, const FString& Detail = FString())
@@ -206,6 +321,10 @@ int32 CigReleaseSelfTest::Run(ACigkofteGameMode& GameMode)
 		}
 	}
 
-	WriteReport(Checks, FailedIndex);
+	if (!Report.Commit(FormatReport(Checks, FailedIndex)))
+	{
+		UE_LOG(LogCig, Error, TEXT("Sürüm öz-testi raporu yazılamadı: %s"), *Report.Error);
+		return ReportUnwritable;
+	}
 	return FailedIndex;
 }

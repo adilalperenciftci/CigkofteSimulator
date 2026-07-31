@@ -28,9 +28,16 @@ namespace CigReleaseSelfTest
 	// ACigkofteGameMode::InitGame.
 	bool IsRequested();
 
-	// Runs the checks and writes Saved/CigReleaseSelfTest.txt. Returns 0 when
-	// everything passed, otherwise the 1-based index of the first failing check -
-	// so the process exit status alone names which one went.
+	// Returned when the verdict could not be put on disk at all: the path was
+	// refused, its directory could not be created, or a write failed. Above any
+	// check index on purpose, so it can never be read as "check 90 failed", and
+	// non-zero so a harness that only looks at the status still fails.
+	constexpr int32 ReportUnwritable = 90;
+
+	// Runs the checks and writes the report named by -CigReleaseSelfTestOut=.
+	// Returns 0 when everything passed, otherwise the 1-based index of the first
+	// failing check - so the process exit status alone names which one went - or
+	// ReportUnwritable when there is no report to read that status against.
 	//
 	// Must be called with the game mode fully built: systems created, world built.
 	// Writes no save and reads none.
