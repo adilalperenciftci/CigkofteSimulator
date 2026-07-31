@@ -26,6 +26,13 @@ jobs:
       - name: Validate sources and balance data
         run: python Tools/check_sources.py
 
+      - name: Release self-test state machine
+        # The rule that decides whether a package is allowed to ship lives in
+        # PowerShell, so neither the compiler nor the Unreal automation suite has
+        # anything to say about it. It reads fixture files and needs no engine.
+        shell: pwsh
+        run: ./Scripts/Test-SelfTestState.ps1
+
       - name: Line endings
         # .gitattributes says LF in the repository. A file committed with CRLF
         # shows up as un-normalised to git and is caught here.

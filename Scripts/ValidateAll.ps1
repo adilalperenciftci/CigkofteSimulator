@@ -43,6 +43,15 @@ Invoke-CigStage 'static' {
     if ($LASTEXITCODE -ne 0) { throw "check_sources.py exit $LASTEXITCODE" }
 }
 
+# The release self-test decides whether a package ships, and it is PowerShell, so
+# the compiler and the automation suite both say nothing about it. Fixture-driven
+# and a second or two; there is no reason for it not to run with the static checks.
+Invoke-CigStage 'harness' {
+    Write-CigStep 'Surum oz-testi durum makinesi'
+    & (Join-Path $PSScriptRoot 'Test-SelfTestState.ps1') | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "Test-SelfTestState.ps1 exit $LASTEXITCODE" }
+}
+
 Invoke-CigStage 'build' {
     & (Join-Path $PSScriptRoot 'BuildEditor.ps1') -EngineRoot $EngineRoot
     if ($LASTEXITCODE -ne 0) { throw "build exit $LASTEXITCODE" }
