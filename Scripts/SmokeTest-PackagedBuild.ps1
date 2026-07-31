@@ -31,7 +31,15 @@ param(
     [string]$Configuration = 'Development',
     # The self-test is a second launch of the packaged game. Skipping it is for
     # diagnosing the harness itself; a skip is reported, never counted as a pass.
+    # No packaging path passes this - PackageDemo.ps1 and Package-Windows.ps1 both
+    # call this script without it, deliberately.
     [switch]$SkipSelfTest,
+    # For pointing the harness at a package built before -CigReleaseSelfTest
+    # existed. Reports "unsupported", which is neither a pass nor a skip, and is
+    # only ever reachable by asking for it here.
+    [switch]$AllowLegacyPackageWithoutSelfTest,
+    [ValidateRange(10, 900)]
+    [int]$SelfTestTimeoutSeconds = 120,
     [switch]$DryRun
 )
 
@@ -176,43 +184,55 @@ else {
 # redirects to %LOCALAPPDATA%\<Project>\Saved in Shipping, so a harness that
 # guesses reads a passing Shipping run as a build with no self-test at all. The
 # game takes the path as an argument and this is the only caller.
+#
+# Mandatory. The first version of this reported a missing or unreadable report as
+# "unsupported", printed it beside a skip, kept it out of $checks and exited 0 -
+# so the one outcome that most needed to fail packaging was the one that could not.
+# Get-CigSelfTestState now answers only passed or failed, and the two states that
+# are neither are reachable only by asking for them on the command line:
+# -SkipSelfTest for diagnosing this harness, -AllowLegacyPackageWithoutSelfTest for
+# a package built before the mode existed. Both print, neither counts.
 $selfTestFile = Join-Path $package 'CigReleaseSelfTest.txt'
-$selfTestState = 'skipped'
-$selfTestDetail = ''
+$observed = $null
 if (-not $SkipSelfTest) {
-    if (Test-Path $selfTestFile) { Remove-Item $selfTestFile -Force }
     Write-CigStep 'Surum oz-testi calistiriliyor'
+
+    # Clear the way, and prove the path is usable before blaming the game for not
+    # writing to it. A stale report from an earlier run is the one file that could
+    # make a self-test that never started read as a pass.
+    try {
+        $selfTestDir = Split-Path -Parent $selfTestFile
+        if (-not (Test-Path -LiteralPath $selfTestDir)) {
+            $null = New-Item -ItemType Directory -Path $selfTestDir -Force
+        }
+        if (Test-Path -LiteralPath $selfTestFile) { Remove-Item -LiteralPath $selfTestFile -Force }
+        Set-Content -LiteralPath $selfTestFile -Value 'probe' -ErrorAction Stop
+        Remove-Item -LiteralPath $selfTestFile -Force
+    }
+    catch {
+        Write-Error "Oz-test rapor yolu yazilabilir degil: $selfTestFile - $($_.Exception.Message)"
+        exit 1
+    }
+
     $st = Start-Process $exe.FullName -PassThru -WindowStyle Hidden `
         -ArgumentList '-CigReleaseSelfTest', "-CigReleaseSelfTestOut=`"$selfTestFile`"", `
                       '-nullrhi', '-unattended', '-nosplash', '-nosound'
-    if (-not $st.WaitForExit(120000)) {
+    $timedOut = -not $st.WaitForExit($SelfTestTimeoutSeconds * 1000)
+    if ($timedOut) {
         # Same reasoning as the kill above: a survivor locks the next package.
         Stop-Process -Id $st.Id -Force -ErrorAction SilentlyContinue
         Get-Process -Name 'CigkofteSimulator*' -ErrorAction SilentlyContinue |
             Stop-Process -Force -ErrorAction SilentlyContinue
     }
 
-    if (-not (Test-Path $selfTestFile)) {
-        # No file means this package predates the mode. That is not a regression,
-        # and it must not be reported as a pass either.
-        $selfTestState = 'unsupported'
-    }
-    else {
-        $stLines = Get-Content $selfTestFile
-        $result = ($stLines | Where-Object { $_ -like 'RESULT*' } | Select-Object -First 1)
-        $firstFail = ($stLines | Where-Object { $_ -like 'FAIL*' } | Select-Object -First 1)
-        if ($stLines[0] -ne 'CIGRELEASESELFTEST v1') {
-            $selfTestState = 'unsupported'
-        }
-        elseif ($result -eq 'RESULT PASS 0' -and $st.ExitCode -eq 0 -and -not $firstFail) {
-            $selfTestState = 'passed'
-        }
-        else {
-            $selfTestState = 'failed'
-            $selfTestDetail = "$firstFail; cikis kodu $($st.ExitCode)"
-        }
-    }
+    $exitCode = if ($timedOut) { $null } else { $st.ExitCode }
+    $observed = Get-CigSelfTestState -ReportPath $selfTestFile -ProcessExitCode $exitCode -TimedOut:$timedOut
 }
+
+$selfTest = Resolve-CigSelfTestOutcome -SkipSelfTest:$SkipSelfTest `
+    -AllowLegacyPackageWithoutSelfTest:$AllowLegacyPackageWithoutSelfTest -Observed $observed
+$selfTestState = $selfTest.State
+$selfTestDetail = $selfTest.Detail
 
 # Each check names the symptom the player would see, not the internal fault.
 $checks = @(
@@ -235,17 +255,19 @@ $checks += @(
     @{ Name = 'cook kapsami';    Ok = ($emptyDirs.Count -eq 0)
        Fail = "hicbir sey uretmeyen cook girdisi: $($emptyDirs -join ', ')" }
 )
-if ($selfTestState -eq 'passed' -or $selfTestState -eq 'failed') {
+if ($selfTest.CountsAsCheck) {
     $checks += @(
-        @{ Name = 'oz-test';     Ok = ($selfTestState -eq 'passed')
+        @{ Name = 'oz-test';     Ok = $selfTest.IsPass
            Fail = "surum oz-testi basarisiz - $selfTestDetail" }
     )
 }
-
-if ($selfTestState -eq 'skipped' -or $selfTestState -eq 'unsupported') {
-    Write-Host ("  {0,-16} ATLANDI - {1}" -f 'oz-test',
-        $(if ($selfTestState -eq 'skipped') { '-SkipSelfTest verildi' }
-          else { 'bu paket -CigReleaseSelfTest modunu tanimiyor' })) -ForegroundColor Yellow
+else {
+    # Printed with the state's own word rather than a shared "ATLANDI", because
+    # the two mean different things and only one of them was asked for. Neither
+    # is in $checks, so neither can be summed into the pass count.
+    $label = if ($selfTestState -eq 'skipped') { 'ATLANDI' } else { 'DESTEKLENMIYOR' }
+    Write-Host ("  {0,-16} {1} - {2}" -f 'oz-test', $label, $selfTestDetail) -ForegroundColor Yellow
+    Write-Host '  (oz-test dogrulanmadi; bu paket surum icin dogrulanmis sayilmaz)' -ForegroundColor Yellow
 }
 
 $smokeFailed = $false
