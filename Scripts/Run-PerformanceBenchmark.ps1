@@ -14,8 +14,9 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
 $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
-$exe = [System.IO.Path]::GetFullPath($ExecutablePath)
+$exe = Resolve-CigPath $ExecutablePath
 if (-not (Test-Path -LiteralPath $exe -PathType Leaf) -and -not $DryRun) { throw "Paketli EXE bulunamadı: $exe" }
 $outDir = Join-Path $root 'Logs\Insights'
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'

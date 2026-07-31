@@ -6,7 +6,8 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$path = [System.IO.Path]::GetFullPath($InputPath)
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
+$path = Resolve-CigPath $InputPath
 if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Girdi bulunamadı: $path" }
 if ([IO.Path]::GetExtension($path) -eq '.utrace') { throw 'Binary .utrace doğrudan özetlenmez; Insights içinden CSV/stat çıktısı dışa aktarın.' }
 $lines = Get-Content -LiteralPath $path
@@ -32,6 +33,6 @@ $summary = [ordered]@{
 }
 $json = $summary | ConvertTo-Json
 if ($OutputPath) {
-    [IO.File]::WriteAllText([IO.Path]::GetFullPath($OutputPath), $json + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Resolve-CigPath $OutputPath), $json + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
 }
 $json

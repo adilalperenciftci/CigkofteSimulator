@@ -10,8 +10,12 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
 $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
-$file = [System.IO.Path]::GetFullPath($DownloadedFile)
+# Resolved against the shell's location, not the .NET working directory: the
+# AssetWork guard below compares this against $root, and a relative path that
+# resolved somewhere else would be measured against the wrong checkout's tree.
+$file = Resolve-CigPath $DownloadedFile
 $downloads = Join-Path $root 'AssetWork\Downloads'
 if (-not $file.StartsWith($downloads, [StringComparison]::OrdinalIgnoreCase)) { throw 'Dosya AssetWork\Downloads altında olmalı.' }
 if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Dosya bulunamadı: $file" }

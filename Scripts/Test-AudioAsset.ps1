@@ -7,8 +7,10 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
 $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
-$input = [System.IO.Path]::GetFullPath($InputFile)
+# The AssetWork\Audio guard below is only as good as this resolution.
+$input = Resolve-CigPath $InputFile
 if (-not $input.StartsWith((Join-Path $root 'AssetWork\Audio'), [StringComparison]::OrdinalIgnoreCase)) {
     throw 'Ses denetimi yalnız AssetWork\Audio altında çalışır.'
 }

@@ -5,8 +5,10 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
 $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
-$target = [System.IO.Path]::GetFullPath($Path)
+# The Downloads/Quarantine guard below is only as good as this resolution.
+$target = Resolve-CigPath $Path
 $downloads = Join-Path $root 'AssetWork\Downloads'
 $quarantine = Join-Path $root 'AssetWork\Quarantine'
 if (-not ($target.StartsWith($downloads, [StringComparison]::OrdinalIgnoreCase) -or $target.StartsWith($quarantine, [StringComparison]::OrdinalIgnoreCase))) {

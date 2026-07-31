@@ -6,11 +6,12 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
 $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 if (-not $CrashRoot) { $CrashRoot = Join-Path $root 'Saved\Crashes' }
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $root 'Logs\Crashes' }
-$crashRootFull = [System.IO.Path]::GetFullPath($CrashRoot)
-$out = [System.IO.Path]::GetFullPath($OutputDirectory)
+$crashRootFull = Resolve-CigPath $CrashRoot
+$out = Resolve-CigPath $OutputDirectory
 $latest = Get-ChildItem -LiteralPath $crashRootFull -Directory -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
 $zip = Join-Path $out ("CrashBundle-{0:yyyyMMdd-HHmmss}.zip" -f (Get-Date))

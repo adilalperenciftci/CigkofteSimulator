@@ -44,7 +44,7 @@ if (-not $ffmpeg -and -not $DryRun) {
     exit 1
 }
 
-$package = [System.IO.Path]::GetFullPath($PackageDirectory)
+$package = Resolve-CigPath $PackageDirectory
 $exe = Get-ChildItem -LiteralPath $package -Filter 'CigkofteSimulator.exe' -File -Recurse -ErrorAction SilentlyContinue |
     Select-Object -First 1
 if (-not $exe -and -not $DryRun) {

@@ -15,6 +15,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
 $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 $engine = if ($env:CIG_UE_ROOT) { $env:CIG_UE_ROOT } else { 'C:\Program Files\Epic Games\UE_5.8' }
 $uat = Join-Path $engine 'Engine\Build\BatchFiles\RunUAT.bat'
@@ -32,7 +33,7 @@ foreach ($targetFile in @(Get-ChildItem -LiteralPath (Join-Path $root 'Source') 
 $gameTargets = @($gameTargets | Select-Object -Unique)
 if ($gameTargets.Count -ne 1) { throw "Tam bir Game target bekleniyordu; bulunan: $($gameTargets -join ', ')." }
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $root "Build\Windows-$Configuration" }
-$output = [System.IO.Path]::GetFullPath($OutputDirectory)
+$output = Resolve-CigPath $OutputDirectory
 $logDir = Join-Path $root 'Logs\Packaging'
 $log = Join-Path $logDir ("Package-{0}-{1:yyyyMMdd-HHmmss}.log" -f $Configuration, (Get-Date))
 $configText = (Get-Content -LiteralPath (Join-Path $root 'Config\DefaultGame.ini') -Raw) +

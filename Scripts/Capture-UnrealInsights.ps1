@@ -13,6 +13,7 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
 
 $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 $engine = 'C:\Program Files\Epic Games\UE_5.8'
@@ -30,7 +31,7 @@ if ([string]::IsNullOrWhiteSpace($ExecutablePath)) {
     $launchArgs = @("`"$($project.FullName)`"")
 }
 else {
-    $ExecutablePath = [System.IO.Path]::GetFullPath($ExecutablePath)
+    $ExecutablePath = Resolve-CigPath $ExecutablePath
     $launchArgs = @()
 }
 if (-not (Test-Path -LiteralPath $ExecutablePath -PathType Leaf)) { throw "Executable bulunamadı: $ExecutablePath" }
