@@ -79,5 +79,5 @@ if ($SkipSmokeTest) {
 
 # One smoke test, shared with Package-Windows.ps1. It used to live inline here,
 # which is how the other packaging path ended up with a weaker version of it.
-& (Join-Path $PSScriptRoot 'SmokeTest-PackagedBuild.ps1') -PackageDirectory $OutputDir -EngineRoot $engine
+& (Join-Path $PSScriptRoot 'SmokeTest-PackagedBuild.ps1') -PackageDirectory $OutputDir -EngineRoot $engine -Configuration $Configuration
 exit $LASTEXITCODE
