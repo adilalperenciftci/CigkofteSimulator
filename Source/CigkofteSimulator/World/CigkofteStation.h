@@ -71,6 +71,8 @@ public:
 	// owns the reasoning; this end only does what it is told and skips the call
 	// when nothing would change.
 	void SetLabelVisible(bool bVisible);
+	// The builder's hysteresis needs to know what the label is doing now.
+	bool IsLabelVisible() const;
 	// The direction the signage reads from. Text drawn from behind is mirrored,
 	// so the range check needs to know which side is the front.
 	FVector LabelFacing() const;

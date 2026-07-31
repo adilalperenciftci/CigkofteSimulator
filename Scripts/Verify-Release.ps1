@@ -7,7 +7,9 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$build = [System.IO.Path]::GetFullPath($BuildDirectory)
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
+$build = Resolve-CigPath $BuildDirectory
+if ($ChecksumFile) { $ChecksumFile = Resolve-CigPath $ChecksumFile }
 if ($DryRun) {
     Write-Output "Dry-run başarılı: Build='$build'; hash/default-map/EXE/CrashReporter/prereq/secret/debug denetimleri çalıştırılacak."
     exit 0

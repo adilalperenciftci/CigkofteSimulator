@@ -4,7 +4,8 @@
 #include "GameFramework/PlayerController.h"
 #include "CigPlayerController.generated.h"
 
-// A controller that keeps the cheat manager active in every build.
+// The project cheat manager is assigned only outside Shipping; Development
+// packages retain deterministic screenshot and benchmark commands.
 UCLASS()
 class ACigPlayerController : public APlayerController
 {

@@ -95,6 +95,15 @@ struct FCigRuntimeSettings
 	int32 ColorBlindMode = 0;
 };
 
+// Applying the project's runtime settings and writing Unreal's platform config
+// are separate operations. Headless release checks need the former, but must
+// never replace a player's GameUserSettings.ini with their fresh-game defaults.
+enum class ECigSettingsPersistence : uint8
+{
+	RuntimeOnly,
+	PersistPlatformConfig
+};
+
 // The top-level coordinator: it builds the systems, ticks them and routes the
 // flow between them (interaction, tablet, saving). The gameplay rules live in
 // the systems themselves.
@@ -203,7 +212,7 @@ public:
 	void ToggleSettings();
 	void SettingsNav(int32 Dir);
 	void SettingsAdjust(int32 Dir);
-	void ApplySettings();
+	void ApplySettings(ECigSettingsPersistence Persistence = ECigSettingsPersistence::PersistPlatformConfig);
 
 	// --- Pause menu (Esc/P) ---
 	bool bPauseMenuOpen = false;
@@ -243,8 +252,24 @@ public:
 	// with the test world's day 1. Set by FCigTestShop; nothing in the game
 	// turns it on.
 	bool bSaveDisabled = false;
+
+	// The release self-test, and the state it needs to leave the game in.
+	//
+	// Set only from the command line, in InitGame. There is deliberately no
+	// console command and no key binding: a mode that ends the process must not be
+	// reachable from a running game.
+	bool bReleaseSelfTest = false;
+	bool bSelfTestExitPending = false;
+	uint8 SelfTestExitCode = 0;
 	void RequestSave();
 	void RequestLoad();
+	// Are all the systems present, and how many are there?
+	//
+	// The array itself stays private: the question the release self-test needs
+	// answered is an invariant of this class, so it is answered here rather than
+	// by handing out the container.
+	bool HasAllSystems(int32& OutCount) const;
+
 	void CaptureSave(UCigSaveGame& Save) const;
 	void ApplySave(const UCigSaveGame& Save);
 	bool bLoadedFromSave = false;

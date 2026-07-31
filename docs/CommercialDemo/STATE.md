@@ -4,16 +4,17 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 
 | | |
 |---|---|
-| Branch | `feat/stage1-tactile-prep` |
-| Base | `f09b5e0` (master, not rewritten) |
+| Branch | `feat/commercial-demo-completion` |
+| Base | `0a07f2b` (master) |
 | Latest commit | see `git log -1` on the branch |
-| Open PR | #2 — Stage 1: tactile food preparation |
-| Save version | **12** (was 11 at baseline) |
+| Open PR | **#6**, `feat/commercial-demo-completion` → `master` |
+| Save version | **12** |
 
-The previous branch, `feat/commercial-demo-overhaul`, carried Stage 0 and is
-merged; this file pointed at it for several sessions after the work had moved on,
-which made it useless as a resume point. Check the table against
-`git rev-parse --abbrev-ref HEAD` before trusting it.
+This table has gone stale twice, both times by naming a branch that had already
+been merged. It is a resume point and nothing else: check it against
+`git rev-parse --abbrev-ref HEAD` and `gh pr list` before trusting a word of it.
+Everything below the table is a dated record of work already done, not a
+statement about what is currently in flight.
 
 ## Completed vertical slices
 
@@ -100,8 +101,11 @@ of what a reviewer has to read.
 
 ## Current task
 
-**None in flight.** Stage 1 is complete, and Stage 2.1 and 2.2 with it: packaging
-and the smoke test pass, and the performance budget has measurements in it.
+**PR #6 release validation and delivery.** Stage 1 is complete, and Stage 2.1
+and 2.2 with it. The current branch is hardening the mandatory packaged
+self-test, release paths, Shipping cheat isolation and label hysteresis before
+the PR is merged. Stage 3.1 starts only from the updated `master` after that
+merge.
 
 ## Stage 2.1 and 2.2, finished
 
@@ -188,13 +192,42 @@ the ingredients are called.
 use, rather than by setting the language directly - which is how the second defect
 above was found rather than reasoned about.
 
+## Shipping is verified now
+
+The release configuration compiles out UE_LOG and disables the project cheat
+manager: Shipping neither assigns nor creates it, and the self-test verifies that
+the configured controller CDO (and a runtime controller when one exists) has no
+cheat class or manager. `-CigReleaseSelfTest` runs eleven checks inside the game
+after InitGame has built the world, writes a report to a path the harness
+dictates, and exits with 0 or the index of the first failure. Shipping now
+reports process liveness, cook coverage and a complete passing self-test without
+depending on logs. The harness also fingerprints both normal save locations and
+platform settings before and after the run, so the release test cannot silently
+load, write or replace player state.
+
+Two path defects were found by running it rather than by reading it. The report
+first went to `FPaths::ProjectSavedDir()`, which redirects to `%LOCALAPPDATA%` in
+Shipping, so a run that passed everything was reported as unsupported. And the
+release scripts resolved a relative `-BuildDirectory` with
+`[System.IO.Path]::GetFullPath`, which resolves against the .NET process directory
+rather than the shell's - so they archived a different checkout's build. Both
+fixed; `Resolve-CigPath` is the shared helper.
+
 ## Next exact task
 
-**Stage 2.3** — batch spoilage. See `PLAN.md`.
+**Stage 3.1 — a single placement authority.** Stage 2 is complete, so the next
+dependency in `PLAN.md` is the one Stage 3 rests on: one authority that owns where
+an object may stand, before categories, layout consequences or persistence are
+built on top of it. The crates from 2.2 are the first placeable objects it has to
+account for.
 
-Two older items still stand: the shop interior is the measured performance problem
-(74 FPS in the room the game is played in against 88 across the whole route), and
-nobody has played this branch.
+Standing items that are not tasks in that chain:
+
+- The preparation stations have never been driven by hand; see
+  `KNOWN_LIMITATIONS.md`.
+- Performance measurements describe a packaged **Development** build. The
+  optimised build cannot be measured with a launcher-installed engine; see
+  `PERFORMANCE_BUDGET.md`.
 
 ## What the last three slices found
 
@@ -244,7 +277,7 @@ Six defects, all found by reading the branch rather than by a test:
 .\Scripts\PackageDemo.ps1 -Configuration Development
 ```
 
-`BUILD SUCCESSFUL` in 3m 4s, 924.2 MB archived, and all four smoke checks green:
+`BUILD SUCCESSFUL` in 3m 4s, 924.2 MB archived, and all four smoke checks green (2026-07-26; the check set and the package have both grown since — see the current figures at the end of this file):
 `metin tablosu`, `denge verisi`, `ses varliklari`, `olumcul hata`. The staged log
 has 14 of 14 `Denge dosyası uygulandı`, zero `Ses bulunamadı` and zero
 `LogCig: Error`. Both halves of `4af66e0` do what they claim.
@@ -516,6 +549,12 @@ comparing the two costs one command and would have saved re-deriving the whole
 diagnosis.
 
 ## Last successful build
+
+> Superseded. As of the current branch the Development archive is **2282 MB** and
+> Shipping is **1902 MB** (about **1673 MB** downloaded, symbols excluded), and
+> the packaged check set is seven for Development and two for Shipping. The run
+> recorded below is kept as history; `docs/PERFORMANCE_BUDGET.md` carries the
+> current figures.
 
 ```
 .\Scripts\ValidateAll.ps1

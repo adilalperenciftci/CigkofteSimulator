@@ -30,7 +30,7 @@
 #include "Save/CigSaveGame.h"
 #include "Save/CigSaveSubsystem.h"
 #include "Audio/CigAudioSubsystem.h"
-#include "AI/CigAIServiceSubsystem.h"
+#include "Game/CigReleaseSelfTest.h"
 #include "Core/CigLog.h"
 #include "Core/CigUnlocks.h"
 #include "Core/CigRandomSubsystem.h"
@@ -52,6 +52,15 @@ void ACigkofteGameMode::InitGame(const FString& MapName, const FString& Options,
 {
 	Super::InitGame(MapName, Options, ErrorMessage);
 
+	// Before CreateSystems, because saving is reachable the moment a day can be
+	// broadcast. The test harness sets the same flag in the same place and for the
+	// same reason - a headless run once replaced a real save with its own day one.
+	bReleaseSelfTest = CigReleaseSelfTest::IsRequested();
+	if (bReleaseSelfTest)
+	{
+		bSaveDisabled = true;
+	}
+
 	CreateSystems();
 
 	WorldBuilder->BuildWorld();
@@ -66,16 +75,31 @@ void ACigkofteGameMode::InitGame(const FString& MapName, const FString& Options,
 	// Starting locks (level 1): later stations and districts are closed
 	WorldBuilder->RefreshUnlocks(Progression ? Progression->Level : 1, false);
 
-	// Load a save if there is one
-	if (UCigSaveSubsystem* SaveSys = GetGameInstance() ? GetGameInstance()->GetSubsystem<UCigSaveSubsystem>() : nullptr)
+	// Load a save if there is one.
+	//
+	// Skipped entirely under the self-test: bSaveDisabled stops the writes, but a
+	// check whose result depends on whatever is in the developer's day-14 save is
+	// not a check. The self-test verifies a fresh game.
+	if (!bReleaseSelfTest)
 	{
-		if (SaveSys->HasSave())
+		if (UCigSaveSubsystem* SaveSys = GetGameInstance() ? GetGameInstance()->GetSubsystem<UCigSaveSubsystem>() : nullptr)
 		{
-			bLoadedFromSave = SaveSys->LoadInto(this);
+			if (SaveSys->HasSave())
+			{
+				bLoadedFromSave = SaveSys->LoadInto(this);
+			}
 		}
 	}
-	ApplySettings();
+	ApplySettings(bReleaseSelfTest
+		? ECigSettingsPersistence::RuntimeOnly
+		: ECigSettingsPersistence::PersistPlatformConfig);
 	RefreshTabletWidget();
+
+	if (bReleaseSelfTest)
+	{
+		SelfTestExitCode = (uint8)CigReleaseSelfTest::Run(*this);
+		bSelfTestExitPending = true;
+	}
 
 	UE_LOG(LogCig, Log, TEXT("Oyun kuruldu (%d sistem, kayıt: %s)"), AllSystems.Num(), bLoadedFromSave ? TEXT("yüklendi") : TEXT("yok"));
 }
@@ -116,9 +140,46 @@ void ACigkofteGameMode::CreateSystems()
 	}
 }
 
+bool ACigkofteGameMode::HasAllSystems(int32& OutCount) const
+{
+	OutCount = AllSystems.Num();
+	if (OutCount == 0)
+	{
+		return false;
+	}
+	for (const UCigSystem* S : AllSystems)
+	{
+		if (!S)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 void ACigkofteGameMode::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+	// The self-test exits here rather than at the end of InitGame.
+	//
+	// InitGame runs inside LoadMap, so requesting exit there unwinds a half-loaded
+	// map. Reaching the first Tick proves the map finished and the game loop
+	// started, which is itself the strongest liveness evidence a build with no log
+	// can produce, and it costs one frame. The report is already on disk, so even
+	// a failure during shutdown leaves a readable verdict. The return keeps that
+	// one frame from advancing any system.
+	//
+	// Forced, because the unforced form does not carry the status. Measured: with
+	// Force=false a run whose report said RESULT FAIL 6 still left the process
+	// with exit code 0, which would have made the harness read every failure as a
+	// pass. Forcing is safe here precisely because the report is already on disk.
+	if (bSelfTestExitPending)
+	{
+		bSelfTestExitPending = false;
+		FPlatformMisc::RequestExitWithStatus(true, SelfTestExitCode, TEXT("CigReleaseSelfTest"));
+		return;
+	}
 
 	for (int32 i = Messages.Num() - 1; i >= 0; --i)
 	{
@@ -172,15 +233,6 @@ void ACigkofteGameMode::BroadcastDayStart(int32 Day)
 		if (Sys && Sys != Days.Get())
 		{
 			Sys->OnDayStart(Day);
-		}
-	}
-
-	// New day: refresh the AI dialogue budget (the daily request cap resets).
-	if (UGameInstance* GI = GetGameInstance())
-	{
-		if (UCigAIServiceSubsystem* AI = GI->GetSubsystem<UCigAIServiceSubsystem>())
-		{
-			AI->ResetDailyBudget();
 		}
 	}
 

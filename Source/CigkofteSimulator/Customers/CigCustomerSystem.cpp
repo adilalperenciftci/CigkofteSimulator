@@ -22,7 +22,7 @@
 #include "Core/CigRandomSubsystem.h"
 #include "Core/CigBalance.h"
 #include "Core/CigLog.h"
-#include "AI/CigAIServiceSubsystem.h"
+#include "AI/CigOfflineDialogueProvider.h"
 #include "Engine/GameInstance.h"
 #include "Components/TextRenderComponent.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -592,10 +592,7 @@ void UCigCustomerSystem::FinishCustomerVisit(ACigkofteCustomer* C)
 void UCigCustomerSystem::RequestServeDialogue(ACigkofteCustomer* C, const FCigWrapBuild& Teslim,
 	float Accuracy, float Quality, int32 FinalPrice, bool bTipped)
 {
-	if (!C || !GM || !GM->GetGameInstance()) { return; }
-
-	UCigAIServiceSubsystem* AI = GM->GetGameInstance()->GetSubsystem<UCigAIServiceSubsystem>();
-	if (!AI) { return; }
+	if (!C || !GM) { return; }
 
 	// Fill in the context.
 	FCigDialogueContext Ctx;
@@ -625,22 +622,19 @@ void UCigCustomerSystem::RequestServeDialogue(ACigkofteCustomer* C, const FCigWr
 		}
 	}
 
-	// Post to the HUD when the reply arrives. GM is captured weakly for async safety.
-	TWeakObjectPtr<ACigkofteGameMode> WeakGM(GM);
-	FCigDialogueDelegate OnDone;
-	OnDone.BindLambda([WeakGM](const FCigDialogueResult& R)
+	// Resolved here and now, from data.
+	//
+	// This used to hand the context to a subsystem that issued an HTTP request to
+	// a hosted model and fell back to the table when it failed, which is why the
+	// call was asynchronous and the game mode was captured weakly. The shipped
+	// game does not make that request, so the line is simply looked up - which
+	// also means it cannot arrive after the customer has left.
+	const FString Line = FCigOfflineDialogueProvider::PickLine(Ctx);
+	if (!Line.IsEmpty())
 	{
-		if (ACigkofteGameMode* Mode = WeakGM.Get())
-		{
-			if (!R.Line.IsEmpty())
-			{
-				Mode->AddMessage(CigText::Format(TEXT("msg.customer.dialogue"), *R.Line),
-					R.bFromAI ? FLinearColor(0.7f, 0.9f, 1.f) : FLinearColor(0.85f, 0.85f, 0.85f));
-			}
-		}
-	});
-
-	AI->RequestLine(Ctx, OnDone);
+		GM->AddMessage(CigText::Format(TEXT("msg.customer.dialogue"), *Line),
+			FLinearColor(0.85f, 0.85f, 0.85f));
+	}
 }
 
 void UCigCustomerSystem::OnDayStart(int32 Day)

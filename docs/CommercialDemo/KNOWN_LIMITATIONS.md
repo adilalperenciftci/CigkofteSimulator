@@ -22,11 +22,15 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Verification
 
-- **Nobody has played the game on this branch.** Every check is static analysis,
-  a compile, headless automation or log inspection. No PIE session and no human
-  looking at a screen. So the player-facing consequences of these changes — the
-  prices on the tablet, the renamed event, the new review wording, the fourteen
-  dialogue lines — are unseen.
+- **The preparation stations have never been driven by hand.** One PIE session
+  exists and is recorded in `QA.md`: a full 180-second day through Slate's real
+  input path, with committed screenshots. What it could not do is work a station,
+  because the tooling driving it cannot hold a key down — so kneading rhythm,
+  chopping and wrap assembly have been exercised by automation and by the
+  screenshot pass, and never by a person with their hands on the controls.
+- **No branch since that session has had a human playthrough.** Stage 2, the
+  localization pass and the performance work were verified by automation,
+  packaged smoke tests and deterministic screenshots.
 - **Nobody has listened to the ambience beds.** Format, loop-seam arithmetic, the
   looping flag and path resolution are all verified; whether the night bed reads
   as night, and whether the layer sits right against the Kenney one-shots, is not.
@@ -56,11 +60,23 @@ not fixed yet belong in `PLAN.md`, not here.
 - `CarEngine` is mapped to a metal one-shot and `CatMeow` is unmapped. Both are
   documented in `ASSETS.md` rather than disguised with pitch shifting.
 
+- **The focus highlight is invisible on most stations.** `SetHighlighted` tints
+  `Top`, the coloured primitive tub. With the prop pack installed that component
+  is hidden on every station except the five ingredient ones, so on the rest the
+  player gets no feedback about what they are aiming at. Tinting the imported mesh
+  instead would mean driving a material this project did not author and cannot
+  assume the parameters of; an overlay material would be a new asset. Left as a
+  limitation rather than guessed at.
+
 ## Coverage
 
-- The 52 automation tests cover pure formulas, tables and data integrity. There is
-  no end-to-end scenario test yet that opens a day, prepares a wrap, serves a
-  customer and asserts the resulting money, reputation and review.
+- The 99 automation tests cover pure formulas, tables, data integrity and one
+  end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
+  dough, wrap, customer, sale, day end and save/load). What they do not cover is
+  anything that needs a renderer or a real input device — interaction tracing,
+  animation, audio mixing and UI layout are all outside the harness.
+- The count above is checked rather than copied: `Tools/check_sources.py` derives
+  it from the test macros and fails when a document disagrees.
 
 ## Platform
 

@@ -10,10 +10,11 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
 $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
-$build = [System.IO.Path]::GetFullPath($BuildDirectory)
+$build = Resolve-CigPath $BuildDirectory
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $root 'Releases' }
-$out = [System.IO.Path]::GetFullPath($OutputDirectory)
+$out = Resolve-CigPath $OutputDirectory
 $commit = (git -C $root rev-parse HEAD).Trim()
 $utc = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssZ')
 $base = "CigkofteSimulator-$Version-$utc"

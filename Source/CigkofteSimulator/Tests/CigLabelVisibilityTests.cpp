@@ -1,0 +1,236 @@
+// When a station's name is on screen.
+//
+// The rule had one threshold, and the check runs on a 0.25 s clock. A player
+// moving sideways at roughly that distance - which is what walking the length of
+// the shop does to the far row of counters - lands on either side of the line on
+// successive samples, and the sign blinks. Standing still is stable, which is why
+// a screenshot pass could never catch it.
+//
+// The property these tests are really about is the middle one: inside the band,
+// the answer is whatever it already was. That sentence is the fix.
+//
+// Running headless:
+//   UnrealEditor-Cmd <project>.uproject -ExecCmds="Automation RunTests Cigkofte.LabelVisibility; Quit" -unattended -nop4 -nullrhi
+
+#include "Misc/AutomationTest.h"
+#include "World/CigWorldBuilder.h"
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+namespace
+{
+	// The shipped thresholds, squared, as the caller passes them.
+	constexpr float ShowSq = UCigWorldBuilder::LabelShowRange * UCigWorldBuilder::LabelShowRange;
+	constexpr float HideSq = UCigWorldBuilder::LabelHideRange * UCigWorldBuilder::LabelHideRange;
+
+	float Sq(float Distance) { return Distance * Distance; }
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLabelBandHoldsItsAnswer,
+	"Cigkofte.LabelVisibility.InsideTheBandNothingChanges",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigLabelBandHoldsItsAnswer::RunTest(const FString&)
+{
+	// Halfway between the two thresholds: the sample that used to decide the
+	// question on its own now defers to what was already true.
+	const float Middle = Sq((UCigWorldBuilder::LabelShowRange + UCigWorldBuilder::LabelHideRange) * 0.5f);
+
+	TestTrue(TEXT("Görünürken bantta görünür kalmalı"),
+		UCigWorldBuilder::LabelShouldShow(true, Middle, ShowSq, HideSq));
+	TestFalse(TEXT("Gizliyken bantta gizli kalmalı"),
+		UCigWorldBuilder::LabelShouldShow(false, Middle, ShowSq, HideSq));
+
+	// The whole band, not just its centre.
+	for (float D = UCigWorldBuilder::LabelShowRange + 1.f; D <= UCigWorldBuilder::LabelHideRange; D += 5.f)
+	{
+		TestTrue(FString::Printf(TEXT("%.0f: görünür kalmalı"), D),
+			UCigWorldBuilder::LabelShouldShow(true, Sq(D), ShowSq, HideSq));
+		TestFalse(FString::Printf(TEXT("%.0f: gizli kalmalı"), D),
+			UCigWorldBuilder::LabelShouldShow(false, Sq(D), ShowSq, HideSq));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLabelSwitchesOnce,
+	"Cigkofte.LabelVisibility.ApproachingAndLeavingEachSwitchOnce",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigLabelSwitchesOnce::RunTest(const FString&)
+{
+	// Walking in from well outside. One transition, and it happens at the near
+	// threshold - a player who keeps walking towards a counter must not see the
+	// name appear, vanish and appear again.
+	bool bVisible = false;
+	int32 Transitions = 0;
+	float TurnedOnAt = 0.f;
+	for (float D = 1200.f; D >= 0.f; D -= 1.f)
+	{
+		const bool bNext = UCigWorldBuilder::LabelShouldShow(bVisible, Sq(D), ShowSq, HideSq);
+		if (bNext != bVisible)
+		{
+			++Transitions;
+			TurnedOnAt = D;
+		}
+		bVisible = bNext;
+	}
+	TestEqual(TEXT("Yaklaşırken tek geçiş"), Transitions, 1);
+	TestTrue(TEXT("Yakın eşikte açılmalı"),
+		FMath::IsNearlyEqual(TurnedOnAt, UCigWorldBuilder::LabelShowRange, 2.f));
+	TestTrue(TEXT("Tezgâhın başında görünür"), bVisible);
+
+	// And back out. One transition, at the far threshold.
+	Transitions = 0;
+	float TurnedOffAt = 0.f;
+	for (float D = 0.f; D <= 1200.f; D += 1.f)
+	{
+		const bool bNext = UCigWorldBuilder::LabelShouldShow(bVisible, Sq(D), ShowSq, HideSq);
+		if (bNext != bVisible)
+		{
+			++Transitions;
+			TurnedOffAt = D;
+		}
+		bVisible = bNext;
+	}
+	TestEqual(TEXT("Uzaklaşırken tek geçiş"), Transitions, 1);
+	TestTrue(TEXT("Uzak eşikte kapanmalı"),
+		FMath::IsNearlyEqual(TurnedOffAt, UCigWorldBuilder::LabelHideRange, 2.f));
+	TestFalse(TEXT("Uzakta gizli"), bVisible);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLabelNoBandIsTheOldBehaviour,
+	"Cigkofte.LabelVisibility.EqualThresholdsReproduceTheOldFlicker",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigLabelNoBandIsTheOldBehaviour::RunTest(const FString&)
+{
+	// Collapsing the band gives back exactly the rule that flickered, which is
+	// what makes this suite evidence that the band is the only difference.
+	const float Single = Sq(700.f);
+
+	TestTrue(TEXT("Eşikte açık"), UCigWorldBuilder::LabelShouldShow(false, Sq(699.f), Single, Single));
+	TestFalse(TEXT("Eşiğin bir birim ötesinde kapalı"),
+		UCigWorldBuilder::LabelShouldShow(true, Sq(701.f), Single, Single));
+
+	// Two samples a metre apart either side of the line - a player moving
+	// sideways at that radius - flip the answer with no band and hold it with one.
+	TestNotEqual(TEXT("Bantsız: iki örnek farklı cevap verir"),
+		UCigWorldBuilder::LabelShouldShow(true, Sq(699.f), Single, Single),
+		UCigWorldBuilder::LabelShouldShow(true, Sq(701.f), Single, Single));
+	TestEqual(TEXT("Bantlı: aynı iki örnek aynı cevabı verir"),
+		UCigWorldBuilder::LabelShouldShow(true, Sq(699.f), ShowSq, HideSq),
+		UCigWorldBuilder::LabelShouldShow(true, Sq(701.f), ShowSq, HideSq));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLabelFacingBandHoldsItsAnswer,
+	"Cigkofte.LabelVisibility.FacingBandHoldsItsAnswer",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigLabelFacingBandHoldsItsAnswer::RunTest(const FString&)
+{
+	// The second trigger, and the one the first version of this shipped without a
+	// test. Same property: inside the band the answer is whatever it already was,
+	// so a player walking along the half-plane through a label does not make it
+	// blink at the sampling rate.
+	constexpr float Band = UCigWorldBuilder::LabelFacingBand;
+
+	TestTrue(TEXT("Görünürken bantta görünür kalmalı"),
+		UCigWorldBuilder::LabelFacingShouldShow(true, 0.f));
+	TestFalse(TEXT("Gizliyken bantta gizli kalmalı"),
+		UCigWorldBuilder::LabelFacingShouldShow(false, 0.f));
+	TestTrue(TEXT("Pozitif sınırda görünür olmalı"),
+		UCigWorldBuilder::LabelFacingShouldShow(false, Band));
+	TestFalse(TEXT("Negatif sınırda gizli olmalı"),
+		UCigWorldBuilder::LabelFacingShouldShow(true, -Band));
+
+	for (float F = -Band + 0.001f; F < Band; F += 0.005f)
+	{
+		TestTrue(FString::Printf(TEXT("%.3f: görünür kalmalı"), F),
+			UCigWorldBuilder::LabelFacingShouldShow(true, F));
+		TestFalse(FString::Printf(TEXT("%.3f: gizli kalmalı"), F),
+			UCigWorldBuilder::LabelFacingShouldShow(false, F));
+	}
+
+	// Outside the band both states agree, whichever side they are on.
+	TestTrue(TEXT("Tam önden görünür"), UCigWorldBuilder::LabelFacingShouldShow(false, 1.f));
+	TestTrue(TEXT("Tam önden görünür kalır"), UCigWorldBuilder::LabelFacingShouldShow(true, 1.f));
+	TestFalse(TEXT("Tam arkadan gizli"), UCigWorldBuilder::LabelFacingShouldShow(false, -1.f));
+	TestFalse(TEXT("Tam arkadan gizli kalır"), UCigWorldBuilder::LabelFacingShouldShow(true, -1.f));
+
+	// Crossing the half-plane once, the way walking round a counter does: one
+	// transition, on the far edge of the band rather than at zero.
+	bool bVisible = false;
+	int32 Transitions = 0;
+	float TurnedOnAt = 0.f;
+	for (float F = -1.f; F <= 1.f; F += 0.001f)
+	{
+		const bool bNext = UCigWorldBuilder::LabelFacingShouldShow(bVisible, F);
+		if (bNext != bVisible)
+		{
+			++Transitions;
+			TurnedOnAt = F;
+		}
+		bVisible = bNext;
+	}
+	TestEqual(TEXT("Öne dönerken tek geçiş"), Transitions, 1);
+
+	// This assertion is the one that fails if the band is taken out: a hard
+	// boundary switches at zero, and the band moves the switch to its outer edge.
+	TestTrue(TEXT("Bandın dış kenarında açılmalı"), FMath::IsNearlyEqual(TurnedOnAt, Band, 0.002f));
+
+	// Reverse direction must also switch once, at the negative edge.
+	Transitions = 0;
+	float TurnedOffAt = 0.f;
+	for (float F = 1.f; F >= -1.f; F -= 0.001f)
+	{
+		const bool bNext = UCigWorldBuilder::LabelFacingShouldShow(bVisible, F);
+		if (bNext != bVisible)
+		{
+			++Transitions;
+			TurnedOffAt = F;
+		}
+		bVisible = bNext;
+	}
+	TestEqual(TEXT("Arkaya dönerken tek geçiş"), Transitions, 1);
+	TestTrue(TEXT("Negatif dış kenarda kapanmalı"),
+		FMath::IsNearlyEqual(TurnedOffAt, -Band, 0.002f));
+
+	// Two samples a thousandth apart either side of the old hard boundary - a
+	// player walking along the half-plane - now give the same answer.
+	TestEqual(TEXT("Bantlı: iki komşu örnek aynı cevabı verir"),
+		UCigWorldBuilder::LabelFacingShouldShow(true, -0.001f),
+		UCigWorldBuilder::LabelFacingShouldShow(true, 0.001f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLabelTriggersKeepIndependentState,
+	"Cigkofte.LabelVisibility.DistanceAndFacingKeepIndependentState",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigLabelTriggersKeepIndependentState::RunTest(const FString&)
+{
+	const float Middle = Sq((UCigWorldBuilder::LabelShowRange + UCigWorldBuilder::LabelHideRange) * 0.5f);
+	FCigLabelVisibilityState State;
+
+	TestFalse(TEXT("Bantta arkaya dönmek etiketi gizler"),
+		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, ShowSq, HideSq, -1.f));
+	TestTrue(TEXT("Bakış değişimi mesafe latch'ini sıfırlamaz"), State.bDistanceVisible);
+	TestFalse(TEXT("Yalnız bakış latch'i gizlidir"), State.bFacingVisible);
+
+	TestTrue(TEXT("Aynı mesafede tekrar öne dönmek etiketi geri getirir"),
+		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, ShowSq, HideSq, 1.f));
+
+	State.bDistanceVisible = false;
+	State.bFacingVisible = false;
+	TestFalse(TEXT("Gizli mesafe latch'i öne bakışla açılmaz"),
+		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, ShowSq, HideSq, 1.f));
+	TestTrue(TEXT("Bakış latch'i mesafeden bağımsız güncellenir"), State.bFacingVisible);
+	TestTrue(TEXT("Gösterme mesafesine girince birleşik sonuç açılır"),
+		UCigWorldBuilder::UpdateLabelVisibilityState(State,
+			Sq(UCigWorldBuilder::LabelShowRange), ShowSq, HideSq, 1.f));
+	return true;
+}
+
+#endif // WITH_DEV_AUTOMATION_TESTS

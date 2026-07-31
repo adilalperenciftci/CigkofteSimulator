@@ -25,9 +25,12 @@ itself stays in the package's `Saved/Profiling/CSV` and is not committed.
 
 ## Results
 
-Both runs: `1920x1080`, packaged **Development**, five stops at six seconds.
-Hardware is the development machine — a baseline to compare against, not
-minimum-spec figures.
+Both runs: packaged **Development**, five stops at six seconds, rendered at
+`1600x900`. The runs asked for `1920x1080` and did not get it — the game is
+windowed on a 1536x864 desktop, and until the reporting was fixed the script
+printed the request rather than the frame. See "What the resolution label was
+actually saying" below. Hardware is the development machine: a baseline to
+compare against, not minimum-spec figures.
 
 - **before** — `stage1-rt-disabled`, 1580 frames
 - **after** — `shadow-casting-off-on-fills`, 2482 frames, same route and seed
@@ -51,7 +54,7 @@ minimum-spec figures.
 | Texture streaming pool | — | — | 10.9 MB avg / 23.0 MB peak | |
 | Shader hitches | 0 critical hitches in play | — | not measurable here | the capture starts after the world is built |
 | Load time | main-flow target to be set | — | **3.9 s to a playable shop** | measured, Development |
-| Shipping build size | release target to be set | — | **1902 MB archived, ~1673 MB downloaded** | content is 1430 MB of it |
+| Shipping build size | release target to be set | — | **1888.6 MB staged, 1669.1 MB downloaded** | content is 1430 MB of it |
 
 ## What the numbers said, and what was done about it
 
@@ -98,8 +101,11 @@ target. System memory peaks at 1.76 GB, which leaves a large margin on a 16 GB
 machine. The texture streaming pool sits at 11 MB, because the shop's textures
 are small and mostly resident rather than streamed.
 
-Primitives drawn averages 2.37 M with an 8.27 M peak, and total RHI draw calls
-485 average against a 1281 peak.
+Primitives drawn averages 2.37 M with an 8.27 M peak. Total RHI draw calls were
+485 average against a 1281 peak **in this capture**, which is the one taken
+straight after the shadow change; the results table above carries 279 average,
+from the later capture after the static-decoration change. They are two different
+runs of the same counter and the table is the current one.
 
 Note that these are read from the capture taken after the shadow change, so the
 memory figures have no before/after pair. They were not measured earlier, which
@@ -266,11 +272,13 @@ Shipping has now been packaged. It archives at **1902 MB in 48 files**:
 
 | | Development | Shipping |
 | --- | --- | --- |
-| Archive | 2282 MB | **1902 MB** |
-| Cooked content (`.ucas`) | 1430 MB | 1430 MB |
-| Debug symbols (`.pdb`) | 374 MB | 229 MB |
-| Executable | 331 MB | 169 MB |
-| Engine DLLs | 96 MB | 57 MB |
+| Staged | 2282 MB | **1888.6 MB** (47 files) |
+| Cooked content (`.ucas`) | 1430 MB | 1430.1 MB |
+| Debug symbols (`.pdb`) | 374 MB | 219.4 MB |
+| Executable | 331 MB | 164.8 MB |
+| Engine DLLs | 96 MB | 56.6 MB |
+| **Player archive** | — | **1669.1 MB** (46 entries, no PDB) |
+| Symbols archive | — | 61.2 MB compressed, separately |
 
 Content is identical between the two and is three quarters of the Shipping
 archive. It comes from the asset packs - the bazaar scene, the mannequins, the cat
@@ -283,8 +291,9 @@ them out of the zip and `Archive-Symbols.ps1` packs them separately for
 symbolicating crashes. That was not true until now - the release script zipped the
 build directory whole, while `Verify-Release.ps1` treats a `.pdb` as a forbidden
 artefact and throws on one, so the two halves of the release path contradicted
-each other and the download carried 12% of dead weight. **The number a player
-downloads is about 1673 MB.**
+each other and the download carried 12% of dead weight. **The number a player downloads is 1669.1 MB** - the staged total
+less that one PDB, exactly, and checked by extracting the archive and running
+`Verify-Release.ps1` against it.
 
 ## What a Shipping build can and cannot be told
 
@@ -327,11 +336,12 @@ Result: `surec ayakta OK`, `cook kapsami OK`, and an explicit line saying the
 log-based checks could not run. That is less verification than Development gets,
 and saying so is the point.
 
-**Cheats are compiled out too.** `UE_WITH_CHEAT_MANAGER` is `(1 && !UE_BUILD_SHIPPING)`,
-so `CigBench`, `CigShots` and `CigLang` do not exist in Shipping - and
-`Measure-Performance.ps1` and `Record-Demo.ps1` both drive the game through them.
-Putting them into Shipping would fix the harness by shipping a camera-teleporting
-debug console to players, which is a product decision rather than a cleanup.
+**The cheat manager is disabled in Shipping.** `UE_WITH_CHEAT_MANAGER` is
+`(1 && !UE_BUILD_SHIPPING)`, and the project controller assigns and creates its
+manager only behind the same Shipping boundary. The packaged release self-test
+also asserts that both the manager instance and its class are null. `CigBench`,
+`CigShots` and `CigLang` therefore remain Development tooling; neither benchmark
+script is allowed to turn a retail build into a camera-teleporting debug console.
 
 The correct answer to that is UE's **Test** configuration: optimised like Shipping,
 but with the log, the stats and the console kept, precisely so a shipping-like

@@ -769,6 +769,182 @@ def check_no_loctext() -> None:
     print(f"  yerelleştirme: {sayac} satırda LOCTEXT yok")
 
 
+# Runtime modulu bir dis servise baglanamaz.
+#
+# Oyun icindeki musteri replikleri Config/Dialogue/Lines.csv'den gelir; replikleri
+# ureten ucretli adim Tools/generate_dialogue.py'dir ve gelistirme sirasinda
+# calisir. Bir donem bunun yaninda calisma zamaninda da bir HTTP istegi vardi:
+# oyuncunun ortaminda ANTHROPIC_API_KEY varsa paketlenmis oyun her servis edilen
+# musteri icin api.anthropic.com'a istek atiyordu. Shipping'de derleme disi
+# birakan bir koruma da yoktu. Geri gelmesin diye kural.
+YASAK_RUNTIME_DESENLERI = [
+    ("api.anthropic.com", "calisma zamaninda dis LLM ucnoktasi"),
+    ("ANTHROPIC_API_KEY", "calisma zamaninda API anahtari"),
+    ("api.openai.com", "calisma zamaninda dis LLM ucnoktasi"),
+]
+
+# WITH_EDITOR ile korunan gelistirme araclari haric; oradaki ucret ve anahtar
+# gelistiricinin kendi makinesinde kalir.
+EDITOR_ONLY_DOSYALAR = {"CigkofteSimulator/AI/CigDialogueGenerator.cpp"}
+
+
+def check_no_runtime_api() -> None:
+    sayac = 0
+    for path in sorted(list(SOURCE.rglob("*.cpp")) + list(SOURCE.rglob("*.h"))):
+        rel = path.relative_to(SOURCE).as_posix()
+        if rel in EDITOR_ONLY_DOSYALAR:
+            # Muafiyet dosya adina degil, dosyanin gercekten editor-only olmasina
+            # baglidir. Aksi halde guard birgun kaldirildiginda API anahtarina
+            # dokunan dosya pakete girer ve bu kontrol susar.
+            if "#if WITH_EDITOR" not in path.read_text(encoding="utf-8-sig"):
+                fail(f"{path.relative_to(ROOT).as_posix()}: muafiyet listesinde ama "
+                     f"#if WITH_EDITOR yok. Ya guard'i geri koyun ya da muafiyeti kaldirin.")
+            continue
+        for no, satir in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+            for desen, neden in YASAK_RUNTIME_DESENLERI:
+                if desen in satir:
+                    fail(f"{path.relative_to(ROOT).as_posix()}:{no}: {desen} — {neden}. "
+                         f"Paketlenen oyun ag baglantisi gerektirmez; ucretli uretim "
+                         f"Tools/generate_dialogue.py ile gelistirme sirasinda yapilir.")
+            sayac += 1
+
+    # HTTP modulu de bagimlilik listesinde olmamali; olsaydi yukaridaki desenler
+    # olmadan da bir istemci geri eklenebilirdi.
+    build_cs = SOURCE / "CigkofteSimulator.Build.cs"
+    if build_cs.is_file():
+        metin = build_cs.read_text(encoding="utf-8-sig")
+        for satir_no, satir in enumerate(metin.splitlines(), 1):
+            temiz = satir.split("//")[0]
+            if '"HTTP"' in temiz or '"HttpNetworkReplayStreaming"' in temiz:
+                fail(f"Source/CigkofteSimulator.Build.cs:{satir_no}: HTTP bagimliligi — "
+                     f"paketlenen oyun ag istegi yapmaz.")
+    print(f"  runtime ag: {sayac} satirda dis servis cagrisi yok")
+
+
+def check_shipping_debug_guards() -> None:
+    """Shipping controller must neither assign nor create the cheat manager."""
+    path = SOURCE / "CigkofteSimulator" / "Player" / "CigPlayerController.cpp"
+    if not path.is_file():
+        fail("CigPlayerController.cpp yok; Shipping cheat korumasi dogrulanamadi.")
+        return
+
+    markers = {
+        "UCigCheatManager::StaticClass()": 0,
+        "AddCheats(true)": 0,
+    }
+    guards: list[str] = []
+    for no, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+        stripped = line.strip()
+        if stripped.startswith("#if "):
+            guards.append(stripped[4:].strip())
+            continue
+        if stripped.startswith("#ifdef "):
+            guards.append(stripped[7:].strip())
+            continue
+        if stripped.startswith("#ifndef "):
+            guards.append("!" + stripped[8:].strip())
+            continue
+        if stripped == "#else" and guards:
+            guards[-1] = "!(" + guards[-1] + ")"
+            continue
+        if stripped == "#endif" and guards:
+            guards.pop()
+            continue
+
+        code = line.split("//", 1)[0]
+        for marker in markers:
+            if marker not in code:
+                continue
+            markers[marker] += 1
+            if "!UE_BUILD_SHIPPING" not in guards:
+                fail(f"{path.relative_to(ROOT).as_posix()}:{no}: {marker} "
+                     "Shipping disinda birakilmamis.")
+
+    for marker, count in markers.items():
+        if count != 1:
+            fail(f"{path.relative_to(ROOT).as_posix()}: {marker} tam bir kez "
+                 f"bekleniyordu, {count} bulundu.")
+
+    print("  Shipping debug: cheat manager atamasi ve kurulumu derleme disi")
+
+
+# Dokumanlardaki sayilar koddan turetilir, elle kopyalanmaz.
+#
+# Sistem sayisi dort yerde 18 yazarken GameMode 23 sistem kuruyordu; test sayisi
+# bir yerde 52 iken gercek sayi 93'tu ve ayni cumle, var olan uctan uca testin
+# yoklugunu iddia ediyordu. Sayilari tek tek duzeltmek bunu tekrarlar; kontrol
+# etmek tekrarlamaz.
+DOKUMAN_SAYILARI = [
+    # (regex, gercegi ureten anahtar, insan icin ad)
+    (re.compile(r"(\d+)\s+automation tests"), "test", "otomasyon testi"),
+    (re.compile(r"(\d+)\s+otomasyon testi"), "test", "otomasyon testi"),
+    (re.compile(r"split across\s+(\d+)\s+systems"), "sistem", "sistem"),
+    (re.compile(r"(\d+)\s+independent systems"), "sistem", "sistem"),
+    (re.compile(r"(\d+)\s+bağımsız sistem"), "sistem", "sistem"),
+    (re.compile(r"türevi\s+(\d+)\s+sisteme"), "sistem", "sistem"),
+]
+
+DOKUMAN_DOSYALARI = [
+    "README.md", "README.tr.md",
+    "docs/CommercialDemo/KNOWN_LIMITATIONS.md",
+]
+
+# Rakamla yazilmayan sayi kontrol edilemez.
+#
+# README.md "Twenty-three independent systems" diyordu; yukaridaki desenler rakam
+# bekledigi icin o satir hicbir zaman dogrulanmadi. Sayilarin kaynaktan turetildigi
+# iddiasini yanlis yapan sey tam olarak buydu: kontrolun gormedigi tek yazim, en
+# gorunur yerdeki cumleydi. Bu desen yaziyla yazilmis sayiyi yakalar ve rakama
+# cevrilmesini ister; "these systems" gibi siradan cumleleri etkilemez cunku
+# yalnizca sayi sozcukleri listelenmistir.
+SAYI_SOZCUKLERI = {
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+    "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty",
+    "sixty", "seventy", "eighty", "ninety", "hundred",
+}
+YAZIYLA_SAYI = re.compile(r"\b([A-Za-z]+(?:-[A-Za-z]+)?)\s+(?:independent systems|automation tests)\b")
+
+
+def check_doc_counts() -> None:
+    gercek = {}
+
+    test_dir = SOURCE / "CigkofteSimulator" / "Tests"
+    gercek["test"] = sum(
+        len(re.findall(r"IMPLEMENT_[A-Z_]*AUTOMATION_TEST", f.read_text(encoding="utf-8-sig")))
+        for f in test_dir.rglob("*.cpp")
+    )
+
+    gm = SOURCE / "CigkofteSimulator" / "Game" / "CigkofteGameMode.cpp"
+    gercek["sistem"] = len(re.findall(r"CreateSystem\(", gm.read_text(encoding="utf-8-sig")))
+
+    if gercek["test"] == 0 or gercek["sistem"] == 0:
+        fail("Doküman sayıları doğrulanamadı: testler veya sistemler sayılamadı.")
+        return
+
+    kontrol = 0
+    for rel in DOKUMAN_DOSYALARI:
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        for no, satir in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+            for desen, anahtar, ad in DOKUMAN_SAYILARI:
+                for m in desen.finditer(satir):
+                    kontrol += 1
+                    yazan = int(m.group(1))
+                    if yazan != gercek[anahtar]:
+                        fail(f"{rel}:{no}: {yazan} {ad} yazıyor, gerçek sayı "
+                             f"{gercek[anahtar]}. Sayıyı kaynaktan güncelleyin.")
+            for m in YAZIYLA_SAYI.finditer(satir):
+                ilk = m.group(1).split("-")[0].lower()
+                if ilk in SAYI_SOZCUKLERI:
+                    fail(f"{rel}:{no}: '{m.group(0)}' sayıyı yazıyla veriyor, bu yüzden "
+                         f"doğrulanamıyor. Rakamla yazın.")
+
+    print(f"  doküman sayıları: {kontrol} atıf doğrulandı "
+          f"({gercek['test']} test, {gercek['sistem']} sistem)")
+
+
 def main() -> int:
     print("Cigkofte kaynak kontrolu")
     check_sources()
@@ -782,6 +958,9 @@ def main() -> int:
     check_repo_files()
     check_config_secrets()
     check_no_loctext()
+    check_no_runtime_api()
+    check_shipping_debug_guards()
+    check_doc_counts()
 
     if problems:
         print(f"\n{len(problems)} sorun bulundu:\n")

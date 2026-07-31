@@ -441,6 +441,11 @@ void ACigkofteStation::SetLabelVisible(bool bVisible)
 	}
 }
 
+bool ACigkofteStation::IsLabelVisible() const
+{
+	return Label && Label->IsVisible();
+}
+
 void ACigkofteStation::UpdateTickState()
 {
 	// Kneading always ticks; the rest only while something is running.
@@ -581,6 +586,23 @@ void ACigkofteStation::ApplyStationMesh(UStaticMesh* Mesh, const FVector& BaseSc
 
 	Visual->SetStaticMesh(Mesh);
 	Visual->SetVisibility(true);
+
+	// The model the player can see is the model the player can aim at.
+	//
+	// Interaction is a line trace on the Visibility channel from the camera
+	// (CigkoftePlayerCharacter::UpdateFocus). Only Base blocked it, and Base is a
+	// 90-unit cube that this function then hides - so with the pack installed the
+	// player aimed at a two-metre counter and hit an invisible box in the middle
+	// of it. Worse than a miss: the ray carried on through the visible surface and
+	// could land on the station in the row behind, so aiming at one counter could
+	// act on another.
+	//
+	// Query only, and only this channel. Base keeps its own collision untouched,
+	// so where the player can stand does not move - which is the invariant that
+	// kept the model out of the collision box in the first place.
+	Visual->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	Visual->SetCollisionResponseToAllChannels(ECR_Ignore);
+	Visual->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
 	// Fit the model inside the box on all three axes, not just height. Fitting
 	// to height alone looked right in principle and was wrong on screen: a

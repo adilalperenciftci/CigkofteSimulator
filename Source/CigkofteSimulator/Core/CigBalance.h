@@ -82,4 +82,9 @@ namespace CigBalance
 	// Re-reads the balance files. `CigReloadBalance` calls this from the console
 	// so numbers can be tried out without restarting the game.
 	void Reload();
+
+	// Balance files parsed and applied by the last load. Zero means the game is
+	// running entirely on the C++ defaults - which is a valid state to play in and
+	// an invalid one to ship.
+	int32 LoadedCsvFileCount();
 }

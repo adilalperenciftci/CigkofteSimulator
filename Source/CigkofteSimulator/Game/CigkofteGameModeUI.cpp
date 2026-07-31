@@ -483,7 +483,7 @@ bool ACigkofteGameMode::KeybindCaptureKey(const FKey& PressedKey)
 	return true;
 }
 
-void ACigkofteGameMode::ApplySettings()
+void ACigkofteGameMode::ApplySettings(ECigSettingsPersistence Persistence)
 {
 	// Language: UI text is read from the new language on the next draw.
 	CigText::SetLanguage(Settings.Language);
@@ -506,8 +506,12 @@ void ACigkofteGameMode::ApplySettings()
 		Audio->MusicVolume = Settings.MusicVolume;
 	}
 
-	// Video
-	if (GEngine)
+	// UGameUserSettings::ApplySettings also saves GameUserSettings.ini. The
+	// release self-test deliberately starts from fresh defaults, so persisting
+	// that branch would overwrite a real user's platform settings even though
+	// normal CigSave writes are disabled. Runtime-only application keeps the
+	// language, signage and audio work above, and leaves platform config alone.
+	if (Persistence == ECigSettingsPersistence::PersistPlatformConfig && GEngine)
 	{
 		if (UGameUserSettings* GUS = GEngine->GetGameUserSettings())
 		{

@@ -171,7 +171,59 @@ log is caught, a normal log passes. Dry-run and a real editor build both exit 0.
 
 Scenario tests required by the commercial-demo standard that do not exist yet:
 power-cut refrigeration, closure blocking customers, placement round trip,
-pooled seat release, localization placeholder parity.
+pooled seat release.
+
+Localization placeholder parity has since been covered by the `Cigkofte.Localization`
+group, which checks that both languages resolve every routed key and that a
+template may reorder its arguments between them.
 
 A played session still cannot exercise the preparation stations by hand. Doing
 that needs either held-key input simulation or an in-game automation hook.
+
+## 2026-08-01 — PR #6 release-hardening checkpoint
+
+This is machine verification, not a human playtest. The current continuation was
+validated through the editor and both packaged configurations:
+
+| Check | Result |
+|---|---|
+| Static source rules | clean — **99** automation tests and **23** systems discovered |
+| Self-test classifier fixture | **49/49** assertions passed |
+| Path helper fixture | **7/7** assertions passed |
+| PowerShell syntax | all modified release scripts parsed successfully |
+| Editor build | succeeded |
+| Focused label tests | **5 passed, 0 failed** |
+| Focused output-argument parser test | **1 passed, 0 failed** |
+| Full automation | **99 passed, 0 failed** |
+| `ValidateAll.ps1` | static, harness, paths, build, tests and runtime data all passed |
+| Development candidate | **2,339,690,706 bytes**; all eight smoke checks passed; mandatory self-test passed |
+| Shipping candidate | **1,981,073,529 bytes**; process, cook coverage and mandatory eleven-check self-test passed |
+| Player release archive | **1,589,032,416 bytes**, 46 entries, zero PDB files |
+| Separate symbol archive | **64,347,504 bytes**, one Shipping PDB |
+| Extracted player release | **1,750,423,673 bytes**, 46 files; `Verify-Release.ps1` PASS |
+
+The packaged negative cases were run against staged copies and restored
+immediately: an explicitly empty output argument, a forbidden `Config` path and
+an unwritable parent all exited with the stable report-unwritable code **90**;
+removing the balance directory produced a complete `RESULT FAIL 6`; and deleting
+a previously valid report before classification produced `failed/missing-report`.
+The PowerShell fixture separately covers timeout and exit/report disagreement.
+
+Two defects were found during the Shipping runs. The first Shipping-only
+controller branch initially lacked the complete `UCheatManager` type and failed
+to compile. After that was corrected, the self-test incorrectly required a live
+player controller during `InitGame` and returned `FAIL 11`; it now validates the
+configured controller CDO and treats a runtime instance as an additional check
+only when one exists. Both fixes were rebuilt, and the subsequent Shipping
+package passed.
+
+The player archive was created from `Build/PR6-Shipping`, not the Development
+candidate. Its extracted launcher SHA-256 matches the raw Shipping launcher and
+differs from the Development launcher; the checksum file also passed. Directory
+structure is preserved, and debug symbols exist only in the separate symbol
+archive.
+
+Still manual: held-control kneading and chopping feel, wrap controls, gamepad
+input, focus readability, signage while moving, ambience balance, customer
+animation quality, lighting, price-policy queue balance, visible save/load and a
+full played day. The packaged self-test does not substitute for those checks.

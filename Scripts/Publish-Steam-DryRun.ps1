@@ -6,7 +6,8 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$vdf = [System.IO.Path]::GetFullPath($AppBuildVdf)
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
+$vdf = Resolve-CigPath $AppBuildVdf
 if (-not (Test-Path -LiteralPath $vdf -PathType Leaf)) { throw "VDF bulunamadı: $vdf" }
 $text = Get-Content -LiteralPath $vdf -Raw
 if ($text -match 'APP_ID_HERE|DEPOT_ID_HERE|VERSION_HERE') {

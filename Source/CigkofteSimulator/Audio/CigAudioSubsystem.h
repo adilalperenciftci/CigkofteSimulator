@@ -71,6 +71,13 @@ private:
 	UPROPERTY() TMap<int32, TObjectPtr<USoundBase>> OrtamSesleri;
 
 	USoundBase* ResolveSound(ECigSound Sound);
+
+public:
+	// Whether the asset behind a sound is present and loadable. Keeps the path
+	// table in its one home rather than repeating a path at the call site.
+	bool HasSound(ECigSound Sound) { return ResolveSound(Sound) != nullptr; }
+
+private:
 	USoundBase* ResolveOrtam(int32 OrtamIndex);
 	void PlayInternal(ECigSound Sound, float Volume, float Pitch);
 };
