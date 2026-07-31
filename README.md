@@ -121,7 +121,7 @@ the tablet's Achievements tab with your lifetime statistics.
 
 ## Systems
 
-Twenty-three independent systems are what make this a business rather than a
+23 independent systems are what make this a business rather than a
 click-and-sell loop:
 
 | System | What it does |

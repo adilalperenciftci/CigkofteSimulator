@@ -793,6 +793,12 @@ def check_no_runtime_api() -> None:
     for path in sorted(list(SOURCE.rglob("*.cpp")) + list(SOURCE.rglob("*.h"))):
         rel = path.relative_to(SOURCE).as_posix()
         if rel in EDITOR_ONLY_DOSYALAR:
+            # Muafiyet dosya adina degil, dosyanin gercekten editor-only olmasina
+            # baglidir. Aksi halde guard birgun kaldirildiginda API anahtarina
+            # dokunan dosya pakete girer ve bu kontrol susar.
+            if "#if WITH_EDITOR" not in path.read_text(encoding="utf-8-sig"):
+                fail(f"{path.relative_to(ROOT).as_posix()}: muafiyet listesinde ama "
+                     f"#if WITH_EDITOR yok. Ya guard'i geri koyun ya da muafiyeti kaldirin.")
             continue
         for no, satir in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
             for desen, neden in YASAK_RUNTIME_DESENLERI:
@@ -836,6 +842,22 @@ DOKUMAN_DOSYALARI = [
     "docs/CommercialDemo/KNOWN_LIMITATIONS.md",
 ]
 
+# Rakamla yazilmayan sayi kontrol edilemez.
+#
+# README.md "Twenty-three independent systems" diyordu; yukaridaki desenler rakam
+# bekledigi icin o satir hicbir zaman dogrulanmadi. Sayilarin kaynaktan turetildigi
+# iddiasini yanlis yapan sey tam olarak buydu: kontrolun gormedigi tek yazim, en
+# gorunur yerdeki cumleydi. Bu desen yaziyla yazilmis sayiyi yakalar ve rakama
+# cevrilmesini ister; "these systems" gibi siradan cumleleri etkilemez cunku
+# yalnizca sayi sozcukleri listelenmistir.
+SAYI_SOZCUKLERI = {
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+    "seventeen", "eighteen", "nineteen", "twenty", "thirty", "forty", "fifty",
+    "sixty", "seventy", "eighty", "ninety", "hundred",
+}
+YAZIYLA_SAYI = re.compile(r"\b([A-Za-z]+(?:-[A-Za-z]+)?)\s+(?:independent systems|automation tests)\b")
+
 
 def check_doc_counts() -> None:
     gercek = {}
@@ -866,6 +888,11 @@ def check_doc_counts() -> None:
                     if yazan != gercek[anahtar]:
                         fail(f"{rel}:{no}: {yazan} {ad} yazıyor, gerçek sayı "
                              f"{gercek[anahtar]}. Sayıyı kaynaktan güncelleyin.")
+            for m in YAZIYLA_SAYI.finditer(satir):
+                ilk = m.group(1).split("-")[0].lower()
+                if ilk in SAYI_SOZCUKLERI:
+                    fail(f"{rel}:{no}: '{m.group(0)}' sayıyı yazıyla veriyor, bu yüzden "
+                         f"doğrulanamıyor. Rakamla yazın.")
 
     print(f"  doküman sayıları: {kontrol} atıf doğrulandı "
           f"({gercek['test']} test, {gercek['sistem']} sistem)")
