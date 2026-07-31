@@ -265,6 +265,11 @@ bool UCigWorldBuilder::LabelShouldShow(bool bCurrentlyVisible, float Dist2DSq, f
 	return bCurrentlyVisible;
 }
 
+bool UCigWorldBuilder::LabelFacingShouldShow(bool bCurrentlyVisible, float Facing)
+{
+	return Facing > (bCurrentlyVisible ? -LabelFacingBand : LabelFacingBand);
+}
+
 void UCigWorldBuilder::UpdateStationLabelRange()
 {
 	if (bStationLabelsDebug)
@@ -308,11 +313,15 @@ void UCigWorldBuilder::UpdateStationLabelRange()
 		// through the station flips the sign at any range, including under the
 		// player's nose. The band is narrow because the layout keeps the player
 		// well to one side of it.
-		if (bShow || S->IsLabelVisible())
+		// Only asked when the distance rule already said yes. The previous form
+		// entered this on `bShow || IsLabelVisible()` and then ANDed the answer
+		// into a bShow that was already false, so for every label out of range it
+		// normalised a vector and took a dot product to discard the result.
+		if (bShow)
 		{
 			const FVector ToPlayer = (Here - There).GetSafeNormal2D();
-			const float Facing = FVector::DotProduct(ToPlayer, S->LabelFacing());
-			bShow = bShow && (S->IsLabelVisible() ? Facing > -0.05f : Facing > 0.05f);
+			bShow = LabelFacingShouldShow(S->IsLabelVisible(),
+				FVector::DotProduct(ToPlayer, S->LabelFacing()));
 		}
 
 		S->SetLabelVisible(bShow);

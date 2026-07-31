@@ -106,6 +106,23 @@ public:
 	// distances throughout to keep the caller's twenty square roots away.
 	static bool LabelShouldShow(bool bCurrentlyVisible, float Dist2DSq, float ShowRangeSq, float HideRangeSq);
 
+	// The same question for the half-plane through the station.
+	//
+	// A UTextRenderComponent seen from behind draws mirrored, so a label is hidden
+	// once the player is round the back of it - and a hard boundary flips on the
+	// sample noise of somebody walking along the line, exactly as the distance one
+	// did. Facing is the dot product of the direction to the player with the
+	// label's forward vector, so the boundary is at zero and the band straddles it.
+	//
+	// Pure and separate from the distance rule because it is a second trigger with
+	// its own state, and because the version this replaced computed it inside a
+	// branch that had already decided not to show the label.
+	static bool LabelFacingShouldShow(bool bCurrentlyVisible, float Facing);
+
+	// Narrow on purpose: the layout keeps the player well to one side of every
+	// label, so the band only has to cover sampling noise, not a real approach.
+	static constexpr float LabelFacingBand = 0.05f;
+
 	// Signage appears inside the first distance and does not go away until the
 	// second.
 	//

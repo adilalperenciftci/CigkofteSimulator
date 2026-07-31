@@ -124,4 +124,64 @@ bool FCigLabelNoBandIsTheOldBehaviour::RunTest(const FString&)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLabelFacingBandHoldsItsAnswer,
+	"Cigkofte.LabelVisibility.FacingBandHoldsItsAnswer",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigLabelFacingBandHoldsItsAnswer::RunTest(const FString&)
+{
+	// The second trigger, and the one the first version of this shipped without a
+	// test. Same property: inside the band the answer is whatever it already was,
+	// so a player walking along the half-plane through a label does not make it
+	// blink at the sampling rate.
+	constexpr float Band = UCigWorldBuilder::LabelFacingBand;
+
+	TestTrue(TEXT("Görünürken bantta görünür kalmalı"),
+		UCigWorldBuilder::LabelFacingShouldShow(true, 0.f));
+	TestFalse(TEXT("Gizliyken bantta gizli kalmalı"),
+		UCigWorldBuilder::LabelFacingShouldShow(false, 0.f));
+
+	for (float F = -Band + 0.001f; F < Band; F += 0.005f)
+	{
+		TestTrue(FString::Printf(TEXT("%.3f: görünür kalmalı"), F),
+			UCigWorldBuilder::LabelFacingShouldShow(true, F));
+		TestFalse(FString::Printf(TEXT("%.3f: gizli kalmalı"), F),
+			UCigWorldBuilder::LabelFacingShouldShow(false, F));
+	}
+
+	// Outside the band both states agree, whichever side they are on.
+	TestTrue(TEXT("Tam önden görünür"), UCigWorldBuilder::LabelFacingShouldShow(false, 1.f));
+	TestTrue(TEXT("Tam önden görünür kalır"), UCigWorldBuilder::LabelFacingShouldShow(true, 1.f));
+	TestFalse(TEXT("Tam arkadan gizli"), UCigWorldBuilder::LabelFacingShouldShow(false, -1.f));
+	TestFalse(TEXT("Tam arkadan gizli kalır"), UCigWorldBuilder::LabelFacingShouldShow(true, -1.f));
+
+	// Crossing the half-plane once, the way walking round a counter does: one
+	// transition, on the far edge of the band rather than at zero.
+	bool bVisible = false;
+	int32 Transitions = 0;
+	float TurnedOnAt = 0.f;
+	for (float F = -1.f; F <= 1.f; F += 0.001f)
+	{
+		const bool bNext = UCigWorldBuilder::LabelFacingShouldShow(bVisible, F);
+		if (bNext != bVisible)
+		{
+			++Transitions;
+			TurnedOnAt = F;
+		}
+		bVisible = bNext;
+	}
+	TestEqual(TEXT("Öne dönerken tek geçiş"), Transitions, 1);
+
+	// This assertion is the one that fails if the band is taken out: a hard
+	// boundary switches at zero, and the band moves the switch to its outer edge.
+	TestTrue(TEXT("Bandın dış kenarında açılmalı"), FMath::IsNearlyEqual(TurnedOnAt, Band, 0.002f));
+
+	// Two samples a thousandth apart either side of the old hard boundary - a
+	// player walking along the half-plane - now give the same answer.
+	TestEqual(TEXT("Bantlı: iki komşu örnek aynı cevabı verir"),
+		UCigWorldBuilder::LabelFacingShouldShow(true, -0.001f),
+		UCigWorldBuilder::LabelFacingShouldShow(true, 0.001f));
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
