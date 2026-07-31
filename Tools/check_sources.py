@@ -769,6 +769,52 @@ def check_no_loctext() -> None:
     print(f"  yerelleştirme: {sayac} satırda LOCTEXT yok")
 
 
+# Runtime modulu bir dis servise baglanamaz.
+#
+# Oyun icindeki musteri replikleri Config/Dialogue/Lines.csv'den gelir; replikleri
+# ureten ucretli adim Tools/generate_dialogue.py'dir ve gelistirme sirasinda
+# calisir. Bir donem bunun yaninda calisma zamaninda da bir HTTP istegi vardi:
+# oyuncunun ortaminda ANTHROPIC_API_KEY varsa paketlenmis oyun her servis edilen
+# musteri icin api.anthropic.com'a istek atiyordu. Shipping'de derleme disi
+# birakan bir koruma da yoktu. Geri gelmesin diye kural.
+YASAK_RUNTIME_DESENLERI = [
+    ("api.anthropic.com", "calisma zamaninda dis LLM ucnoktasi"),
+    ("ANTHROPIC_API_KEY", "calisma zamaninda API anahtari"),
+    ("api.openai.com", "calisma zamaninda dis LLM ucnoktasi"),
+]
+
+# WITH_EDITOR ile korunan gelistirme araclari haric; oradaki ucret ve anahtar
+# gelistiricinin kendi makinesinde kalir.
+EDITOR_ONLY_DOSYALAR = {"CigkofteSimulator/AI/CigDialogueGenerator.cpp"}
+
+
+def check_no_runtime_api() -> None:
+    sayac = 0
+    for path in sorted(list(SOURCE.rglob("*.cpp")) + list(SOURCE.rglob("*.h"))):
+        rel = path.relative_to(SOURCE).as_posix()
+        if rel in EDITOR_ONLY_DOSYALAR:
+            continue
+        for no, satir in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+            for desen, neden in YASAK_RUNTIME_DESENLERI:
+                if desen in satir:
+                    fail(f"{path.relative_to(ROOT).as_posix()}:{no}: {desen} — {neden}. "
+                         f"Paketlenen oyun ag baglantisi gerektirmez; ucretli uretim "
+                         f"Tools/generate_dialogue.py ile gelistirme sirasinda yapilir.")
+            sayac += 1
+
+    # HTTP modulu de bagimlilik listesinde olmamali; olsaydi yukaridaki desenler
+    # olmadan da bir istemci geri eklenebilirdi.
+    build_cs = SOURCE / "CigkofteSimulator.Build.cs"
+    if build_cs.is_file():
+        metin = build_cs.read_text(encoding="utf-8-sig")
+        for satir_no, satir in enumerate(metin.splitlines(), 1):
+            temiz = satir.split("//")[0]
+            if '"HTTP"' in temiz or '"HttpNetworkReplayStreaming"' in temiz:
+                fail(f"Source/CigkofteSimulator.Build.cs:{satir_no}: HTTP bagimliligi — "
+                     f"paketlenen oyun ag istegi yapmaz.")
+    print(f"  runtime ag: {sayac} satirda dis servis cagrisi yok")
+
+
 def main() -> int:
     print("Cigkofte kaynak kontrolu")
     check_sources()
@@ -782,6 +828,7 @@ def main() -> int:
     check_repo_files()
     check_config_secrets()
     check_no_loctext()
+    check_no_runtime_api()
 
     if problems:
         print(f"\n{len(problems)} sorun bulundu:\n")

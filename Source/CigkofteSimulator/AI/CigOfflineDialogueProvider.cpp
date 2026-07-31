@@ -94,11 +94,3 @@ FString FCigOfflineDialogueProvider::PickLine(const FCigDialogueContext& Context
 	}
 	return Base;
 }
-
-void FCigOfflineDialogueProvider::RequestLine(const FCigDialogueContext& Context, FCigDialogueDelegate OnComplete)
-{
-	FCigDialogueResult Result;
-	Result.Line = PickLine(Context);
-	Result.bFromAI = false;
-	OnComplete.ExecuteIfBound(Result);
-}

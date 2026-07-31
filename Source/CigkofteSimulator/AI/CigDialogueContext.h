@@ -150,13 +150,3 @@ struct FCigDialogueContext
 			OrderMatched(), Hygiene < 50.f, PatienceFrac < 0.25f);
 	}
 };
-
-// The one-sentence reply from the AI or offline provider.
-struct FCigDialogueResult
-{
-	FString Line;
-	bool bFromAI = false;   // true: came from the provider, false: offline fallback
-	bool bCached = false;   // true: served from the cache
-};
-
-DECLARE_DELEGATE_OneParam(FCigDialogueDelegate, const FCigDialogueResult&);

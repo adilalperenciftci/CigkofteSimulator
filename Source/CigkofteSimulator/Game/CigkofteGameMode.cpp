@@ -30,7 +30,6 @@
 #include "Save/CigSaveGame.h"
 #include "Save/CigSaveSubsystem.h"
 #include "Audio/CigAudioSubsystem.h"
-#include "AI/CigAIServiceSubsystem.h"
 #include "Core/CigLog.h"
 #include "Core/CigUnlocks.h"
 #include "Core/CigRandomSubsystem.h"
@@ -172,15 +171,6 @@ void ACigkofteGameMode::BroadcastDayStart(int32 Day)
 		if (Sys && Sys != Days.Get())
 		{
 			Sys->OnDayStart(Day);
-		}
-	}
-
-	// New day: refresh the AI dialogue budget (the daily request cap resets).
-	if (UGameInstance* GI = GetGameInstance())
-	{
-		if (UCigAIServiceSubsystem* AI = GI->GetSubsystem<UCigAIServiceSubsystem>())
-		{
-			AI->ResetDailyBudget();
 		}
 	}
 

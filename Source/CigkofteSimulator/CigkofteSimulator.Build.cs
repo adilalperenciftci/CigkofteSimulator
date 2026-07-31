@@ -26,12 +26,14 @@ public class CigkofteSimulator : ModuleRules
 			"SlateCore"
 		});
 
-		// The AI customer dialogue path: an async HTTP request to the provider plus
-		// JSON parsing. The API key comes from the environment and is never
-		// committed to the repo.
+		// Json reads Config/CigRecipes.json and writes the dialogue prompt file.
+		//
+		// HTTP was here for a runtime request to a hosted language model. The
+		// shipped game makes no network request, so the dependency is gone: a
+		// retail client that cannot reach the internet is a property worth being
+		// unable to break by accident.
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
-			"HTTP",
 			"Json"
 		});
 	}
