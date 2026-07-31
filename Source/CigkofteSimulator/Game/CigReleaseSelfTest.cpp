@@ -34,8 +34,22 @@ namespace
 	// Strings.csv not staged at all, so every label on screen was its own key.
 	constexpr int32 MinimumTextKeys = 500;
 
+	// Where the verdict goes.
+	//
+	// -CigReleaseSelfTestOut=<path> wins, and the harness always passes it.
+	// FPaths::ProjectSavedDir() is the fallback and is not a fixed location: it
+	// sits beside the executable in Development and redirects to
+	// %LOCALAPPDATA%\<Project>\Saved in Shipping. A caller that has to guess which
+	// one applies gets it wrong, and reads a passing run as a build that does not
+	// support the mode - which is what happened before this argument existed.
 	FString ReportPath()
 	{
+		FString FromCmdLine;
+		if (FParse::Value(FCommandLine::Get(), TEXT("CigReleaseSelfTestOut="), FromCmdLine)
+			&& !FromCmdLine.IsEmpty())
+		{
+			return FromCmdLine;
+		}
 		return FPaths::ProjectSavedDir() / TEXT("CigReleaseSelfTest.txt");
 	}
 

@@ -10,10 +10,11 @@ param(
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'CigCommon.ps1')
 $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
-$build = [System.IO.Path]::GetFullPath($BuildDirectory)
+$build = Resolve-CigPath $BuildDirectory
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $root 'Releases\Symbols' }
-$zip = Join-Path ([System.IO.Path]::GetFullPath($OutputDirectory)) "CigkofteSimulator-$Version-symbols.zip"
+$zip = Join-Path (Resolve-CigPath $OutputDirectory) "CigkofteSimulator-$Version-symbols.zip"
 $symbols = @(Get-ChildItem -LiteralPath $build -File -Recurse -Include '*.pdb','*.debug','*.sym' -ErrorAction SilentlyContinue)
 if ($DryRun) {
     Write-Output "Dry-run başarılı: Build='$build'; SymbolCount=$($symbols.Count); Archive='$zip'."

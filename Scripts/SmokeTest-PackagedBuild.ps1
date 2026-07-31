@@ -40,7 +40,7 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'CigCommon.ps1')
 
-$package = [System.IO.Path]::GetFullPath($PackageDirectory)
+$package = Resolve-CigPath $PackageDirectory
 $exe = Get-ChildItem -LiteralPath $package -Filter 'CigkofteSimulator.exe' -File -Recurse -ErrorAction SilentlyContinue |
     Select-Object -First 1
 
@@ -170,14 +170,21 @@ else {
 #
 # This is the only positive evidence available about a Shipping build. Its checks
 # run inside the game, so they need neither the log nor the cheat manager.
-$selfTestFile = Join-Path (Split-Path -Parent $exe.FullName) 'CigkofteSimulator\Saved\CigReleaseSelfTest.txt'
+# The report path is dictated, not discovered.
+#
+# FPaths::ProjectSavedDir() sits beside the executable in Development and
+# redirects to %LOCALAPPDATA%\<Project>\Saved in Shipping, so a harness that
+# guesses reads a passing Shipping run as a build with no self-test at all. The
+# game takes the path as an argument and this is the only caller.
+$selfTestFile = Join-Path $package 'CigReleaseSelfTest.txt'
 $selfTestState = 'skipped'
 $selfTestDetail = ''
 if (-not $SkipSelfTest) {
     if (Test-Path $selfTestFile) { Remove-Item $selfTestFile -Force }
     Write-CigStep 'Surum oz-testi calistiriliyor'
     $st = Start-Process $exe.FullName -PassThru -WindowStyle Hidden `
-        -ArgumentList '-CigReleaseSelfTest', '-nullrhi', '-unattended', '-nosplash', '-nosound'
+        -ArgumentList '-CigReleaseSelfTest', "-CigReleaseSelfTestOut=`"$selfTestFile`"", `
+                      '-nullrhi', '-unattended', '-nosplash', '-nosound'
     if (-not $st.WaitForExit(120000)) {
         # Same reasoning as the kill above: a survivor locks the next package.
         Stop-Process -Id $st.Id -Force -ErrorAction SilentlyContinue
@@ -186,8 +193,8 @@ if (-not $SkipSelfTest) {
     }
 
     if (-not (Test-Path $selfTestFile)) {
-        # No file at all means this package predates the mode. That is not a
-        # regression, and it must not be reported as a pass either.
+        # No file means this package predates the mode. That is not a regression,
+        # and it must not be reported as a pass either.
         $selfTestState = 'unsupported'
     }
     else {

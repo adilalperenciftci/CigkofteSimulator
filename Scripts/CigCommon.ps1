@@ -33,3 +33,24 @@ function Write-CigStep {
     Write-Host ''
     Write-Host "==> $Text" -ForegroundColor Cyan
 }
+
+function Resolve-CigPath {
+    <#
+    .SYNOPSIS
+    Turns a possibly relative path into an absolute one, against the shell's
+    location.
+
+    .DESCRIPTION
+    [System.IO.Path]::GetFullPath resolves against the .NET process working
+    directory, which is not PowerShell's location and does not follow Set-Location.
+    Passing -BuildDirectory 'Build\WindowsDemo' from one checkout therefore
+    resolved against whichever directory the host process happened to start in -
+    and Create-ReleaseArchive.ps1 built a release zip out of a different
+    checkout's packaged build, quietly and with a plausible-looking result.
+    #>
+    param([Parameter(Mandatory)][string]$Path)
+    if ([System.IO.Path]::IsPathRooted($Path)) {
+        return [System.IO.Path]::GetFullPath($Path)
+    }
+    return [System.IO.Path]::GetFullPath((Join-Path (Get-Location).ProviderPath $Path))
+}

@@ -39,7 +39,7 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'CigCommon.ps1')
 
-$package = [System.IO.Path]::GetFullPath($PackageDirectory)
+$package = Resolve-CigPath $PackageDirectory
 $reuseCsv = [bool]$CsvPath
 $exe = Get-ChildItem -LiteralPath $package -Filter 'CigkofteSimulator.exe' -File -Recurse -ErrorAction SilentlyContinue |
     Select-Object -First 1
