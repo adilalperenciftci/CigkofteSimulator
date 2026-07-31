@@ -13,6 +13,10 @@ struct FCigPendingOrder
 	float TimeLeft = 25.f;
 	int32 Supplier = 0;
 	float Quality = 1.f;
+	// Runtime-only lifecycle identity. Pending orders and floor crates do not
+	// survive the day, so this deliberately does not change the save schema.
+	uint32 PlacementSerial = 0;
+	bool bArrivalBlockedNotified = false;
 };
 
 // Stock, courier orders and chopping (garnish prep).
@@ -65,5 +69,6 @@ public:
 	static constexpr int32 MaxGarnish = 10;
 
 private:
-	void SpawnCrate(const FCigPendingOrder& Order);
+	bool SpawnCrate(FCigPendingOrder& Order);
+	uint32 NextCratePlacementSerial = 1;
 };

@@ -236,6 +236,8 @@ private:
 	bool bStationLabelsDebug = false;
 	TMap<ECigStation, FCigLabelVisibilityState> StationLabelVisibility;
 	void UpdateStationLabelRange();
+	void RegisterStationPlacement(ECigStation Type, const FVector& Loc, float LabelYaw);
+	void RegisterFixedFixture(FName StableId, const FVector& Loc, const FVector2D& Size, float Yaw = 0.f);
 
 	void BuildKitchen();
 	void BuildFurniture();

@@ -1,5 +1,6 @@
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigEventBus.h"
+#include "Placement/CigPlacementSystem.h"
 #include "Game/CigDaySystem.h"
 #include "World/CigWorldBuilder.h"
 #include "World/CigkofteStation.h"
@@ -109,6 +110,7 @@ void ACigkofteGameMode::CreateSystems()
 	// Build the systems in dependency order. The bus goes first: everything
 	// below subscribes to it during InitSystem.
 	CreateSystem(Bus);
+	CreateSystem(Placement);
 	CreateSystem(WorldBuilder);
 	CreateSystem(Days);
 	CreateSystem(Inventory);
