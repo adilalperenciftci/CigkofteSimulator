@@ -11,7 +11,8 @@ $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 $target = Resolve-CigPath $Path
 $downloads = Join-Path $root 'AssetWork\Downloads'
 $quarantine = Join-Path $root 'AssetWork\Quarantine'
-if (-not ($target.StartsWith($downloads, [StringComparison]::OrdinalIgnoreCase) -or $target.StartsWith($quarantine, [StringComparison]::OrdinalIgnoreCase))) {
+if (-not ((Test-CigPathWithinDirectory -Path $target -Directory $downloads -AllowDirectoryItself) -or
+          (Test-CigPathWithinDirectory -Path $target -Directory $quarantine -AllowDirectoryItself))) {
     throw 'Defender taraması yalnız AssetWork Downloads/Quarantine altında çalışır.'
 }
 $defender = Join-Path $env:ProgramFiles 'Windows Defender\MpCmdRun.exe'

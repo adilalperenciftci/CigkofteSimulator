@@ -24,9 +24,25 @@ class ACigkofteGameMode;
 // running game, and there is nothing in it a player could be given.
 namespace CigReleaseSelfTest
 {
+	// Result of reading the one value-bearing option owned by this mode. Kept
+	// separate from path validation so exact command-line token behaviour can be
+	// covered by fast automation without starting a packaged game.
+	enum class EOutputArgumentState : uint8
+	{
+		NotProvided,
+		Provided,
+		Invalid
+	};
+
 	// True when -CigReleaseSelfTest is on the command line. The only reader is
 	// ACigkofteGameMode::InitGame.
 	bool IsRequested();
+
+	// Reads exactly -CigReleaseSelfTestOut=<value> from CommandLine. A similarly
+	// named token is ignored; a missing assignment, empty/whitespace value,
+	// malformed quoting, or any duplicate is Invalid. Quoted paths retain their
+	// spaces and are returned without the surrounding quotes.
+	EOutputArgumentState ParseOutputArgument(const TCHAR* CommandLine, FString& OutValue, FString& OutError);
 
 	// Returned when the verdict could not be put on disk at all: the path was
 	// refused, its directory could not be created, or a write failed. Above any

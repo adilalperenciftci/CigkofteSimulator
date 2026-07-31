@@ -296,5 +296,7 @@ if (Test-Path -LiteralPath $resLog) {
         $gercek = if ("${w}x${h}" -eq "${Width}x${Height}") { "${w}x${h}" } else { "${w}x${h} (istenen ${Width}x${Height} kirpildi)" }
     }
 }
-Write-Host "  etiket: $Label; cozunurluk $gercek; commit $(git rev-parse --short HEAD)"
+$commit = (git -C $RepoRoot rev-parse --short HEAD).Trim()
+if ($LASTEXITCODE -ne 0 -or -not $commit) { throw 'Repo commit kimligi okunamadi.' }
+Write-Host "  etiket: $Label; cozunurluk $gercek; commit $commit"
 exit 0

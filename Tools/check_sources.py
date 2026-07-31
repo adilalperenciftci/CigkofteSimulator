@@ -821,6 +821,53 @@ def check_no_runtime_api() -> None:
     print(f"  runtime ag: {sayac} satirda dis servis cagrisi yok")
 
 
+def check_shipping_debug_guards() -> None:
+    """Shipping controller must neither assign nor create the cheat manager."""
+    path = SOURCE / "CigkofteSimulator" / "Player" / "CigPlayerController.cpp"
+    if not path.is_file():
+        fail("CigPlayerController.cpp yok; Shipping cheat korumasi dogrulanamadi.")
+        return
+
+    markers = {
+        "UCigCheatManager::StaticClass()": 0,
+        "AddCheats(true)": 0,
+    }
+    guards: list[str] = []
+    for no, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+        stripped = line.strip()
+        if stripped.startswith("#if "):
+            guards.append(stripped[4:].strip())
+            continue
+        if stripped.startswith("#ifdef "):
+            guards.append(stripped[7:].strip())
+            continue
+        if stripped.startswith("#ifndef "):
+            guards.append("!" + stripped[8:].strip())
+            continue
+        if stripped == "#else" and guards:
+            guards[-1] = "!(" + guards[-1] + ")"
+            continue
+        if stripped == "#endif" and guards:
+            guards.pop()
+            continue
+
+        code = line.split("//", 1)[0]
+        for marker in markers:
+            if marker not in code:
+                continue
+            markers[marker] += 1
+            if "!UE_BUILD_SHIPPING" not in guards:
+                fail(f"{path.relative_to(ROOT).as_posix()}:{no}: {marker} "
+                     "Shipping disinda birakilmamis.")
+
+    for marker, count in markers.items():
+        if count != 1:
+            fail(f"{path.relative_to(ROOT).as_posix()}: {marker} tam bir kez "
+                 f"bekleniyordu, {count} bulundu.")
+
+    print("  Shipping debug: cheat manager atamasi ve kurulumu derleme disi")
+
+
 # Dokumanlardaki sayilar koddan turetilir, elle kopyalanmaz.
 #
 # Sistem sayisi dort yerde 18 yazarken GameMode 23 sistem kuruyordu; test sayisi
@@ -912,6 +959,7 @@ def main() -> int:
     check_config_secrets()
     check_no_loctext()
     check_no_runtime_api()
+    check_shipping_debug_guards()
     check_doc_counts()
 
     if problems:

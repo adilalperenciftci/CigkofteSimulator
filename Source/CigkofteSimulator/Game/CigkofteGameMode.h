@@ -95,6 +95,15 @@ struct FCigRuntimeSettings
 	int32 ColorBlindMode = 0;
 };
 
+// Applying the project's runtime settings and writing Unreal's platform config
+// are separate operations. Headless release checks need the former, but must
+// never replace a player's GameUserSettings.ini with their fresh-game defaults.
+enum class ECigSettingsPersistence : uint8
+{
+	RuntimeOnly,
+	PersistPlatformConfig
+};
+
 // The top-level coordinator: it builds the systems, ticks them and routes the
 // flow between them (interaction, tablet, saving). The gameplay rules live in
 // the systems themselves.
@@ -203,7 +212,7 @@ public:
 	void ToggleSettings();
 	void SettingsNav(int32 Dir);
 	void SettingsAdjust(int32 Dir);
-	void ApplySettings();
+	void ApplySettings(ECigSettingsPersistence Persistence = ECigSettingsPersistence::PersistPlatformConfig);
 
 	// --- Pause menu (Esc/P) ---
 	bool bPauseMenuOpen = false;

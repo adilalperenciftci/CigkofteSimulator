@@ -17,7 +17,7 @@ $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 # resolved somewhere else would be measured against the wrong checkout's tree.
 $file = Resolve-CigPath $DownloadedFile
 $downloads = Join-Path $root 'AssetWork\Downloads'
-if (-not $file.StartsWith($downloads, [StringComparison]::OrdinalIgnoreCase)) { throw 'Dosya AssetWork\Downloads altında olmalı.' }
+if (-not (Test-CigPathWithinDirectory -Path $file -Directory $downloads)) { throw 'Dosya AssetWork\Downloads altında olmalı.' }
 if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw "Dosya bulunamadı: $file" }
 $record = [ordered]@{
     url = $Url.AbsoluteUri

@@ -55,9 +55,52 @@ function Resolve-CigPath {
     return [System.IO.Path]::GetFullPath((Join-Path (Get-Location).ProviderPath $Path))
 }
 
+function Test-CigPathWithinDirectory {
+    <#
+    .SYNOPSIS
+    Tests path containment with an actual directory boundary.
+
+    .DESCRIPTION
+    A raw StartsWith check lets a sibling such as Downloads-Evil through a guard
+    intended for Downloads. Both sides are resolved the same way as other script
+    inputs, then the directory separator is made part of the comparison.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Directory,
+        [switch]$AllowDirectoryItself
+    )
+
+    $fullPath = Resolve-CigPath $Path
+    $fullDirectory = Resolve-CigPath $Directory
+    $separators = [char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+    $fullDirectory = $fullDirectory.TrimEnd($separators)
+
+    if ($AllowDirectoryItself -and
+        [string]::Equals($fullPath, $fullDirectory, [StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+
+    $prefix = $fullDirectory + [IO.Path]::DirectorySeparatorChar
+    return $fullPath.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)
+}
+
 # ------------------------------------------------------------ release self-test
 
 $script:CigSelfTestHeader = 'CIGRELEASESELFTEST v1'
+$script:CigSelfTestChecks = @(
+    'sistemler',
+    'dunya',
+    'metin-tablosu',
+    'metin-tr',
+    'metin-en',
+    'denge-verisi',
+    'ses-varliklari',
+    'mesh-varliklari',
+    'kayit-surumu',
+    'kayit-turu',
+    'shipping-hileleri'
+)
 
 function Get-CigSelfTestState {
     <#
@@ -109,28 +152,67 @@ function Get-CigSelfTestState {
         return New-State 'bad-header' "rapor basligi gecersiz: '$first' (beklenen '$($script:CigSelfTestHeader)')"
     }
 
-    $result = @($lines | Where-Object { $_ -like 'RESULT *' }) | Select-Object -First 1
-    if (-not $result) {
+    $resultLines = @($lines | Where-Object { $_ -match '^RESULT(?:\s|$)' })
+    if ($resultLines.Count -eq 0) {
         # The report is written to a temporary file and renamed into place, so a
         # header with no verdict means the rename produced a truncated file or
         # something wrote the path underneath us. Either way it is not a result.
         return New-State 'no-result' 'raporda RESULT satiri yok - oz-test tamamlanmadan bitti'
     }
+    if ($resultLines.Count -ne 1) {
+        return New-State 'duplicate-result' "raporda tam bir RESULT satiri olmali, $($resultLines.Count) bulundu"
+    }
+    $result = $resultLines[0]
     if ($result -notmatch '^RESULT (PASS|FAIL) (\d+)$') {
         return New-State 'bad-result' "RESULT satiri cozulemedi: '$result'"
     }
 
     $verdict = $Matches[1]
     $index = [int]$Matches[2]
-    $firstFail = @($lines | Where-Object { $_ -like 'FAIL *' }) | Select-Object -First 1
 
     # The verdict and its index have to agree with each other before either is
     # compared with the process.
     if (($verdict -eq 'PASS') -ne ($index -eq 0)) {
         return New-State 'inconsistent-result' "RESULT $verdict $index kendi icinde tutarsiz"
     }
-    if ($verdict -eq 'PASS' -and $firstFail) {
+    $nonEmptyLines = @($lines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($nonEmptyLines[-1] -ne $result) {
+        return New-State 'result-not-final' 'RESULT raporun son bos olmayan satiri degil'
+    }
+
+    # A header and verdict alone do not prove that the packaged executable ran
+    # its release checks. Every v1 check must appear exactly once, in the stable
+    # order emitted by CigReleaseSelfTest::FormatReport.
+    $checkLines = @($nonEmptyLines | Select-Object -Skip 1 | Select-Object -SkipLast 1)
+    if ($checkLines.Count -ne $script:CigSelfTestChecks.Count) {
+        return New-State 'incomplete-checks' "raporda $($script:CigSelfTestChecks.Count) kontrol bekleniyordu, $($checkLines.Count) bulundu"
+    }
+
+    $checkVerdicts = @()
+    for ($i = 0; $i -lt $script:CigSelfTestChecks.Count; $i++) {
+        $line = $checkLines[$i]
+        if ($line -notmatch '^(PASS|FAIL)  ([^ ]+)(?:  \(.*\))?$') {
+            return New-State 'bad-check' "kontrol satiri cozulemedi: '$line'"
+        }
+        $actualName = $Matches[2]
+        $expectedName = $script:CigSelfTestChecks[$i]
+        if ($actualName -ne $expectedName) {
+            return New-State 'incomplete-checks' "kontrol $($i + 1) '$expectedName' olmaliydi, '$actualName' bulundu"
+        }
+        $checkVerdicts += $Matches[1]
+    }
+
+    $failedIndexes = @()
+    for ($i = 0; $i -lt $checkVerdicts.Count; $i++) {
+        if ($checkVerdicts[$i] -eq 'FAIL') { $failedIndexes += ($i + 1) }
+    }
+    $firstFail = if ($failedIndexes.Count -gt 0) { $checkLines[$failedIndexes[0] - 1] } else { $null }
+    if ($verdict -eq 'PASS' -and $failedIndexes.Count -gt 0) {
         return New-State 'inconsistent-result' "RESULT PASS ama raporda basarisiz kontrol var: $firstFail"
+    }
+    if ($verdict -eq 'FAIL' -and ($failedIndexes.Count -eq 0 -or $failedIndexes[0] -ne $index)) {
+        $found = if ($failedIndexes.Count -gt 0) { $failedIndexes[0] } else { 'yok' }
+        return New-State 'inconsistent-result' "RESULT FAIL $index ama ilk basarisiz kontrol $found"
     }
 
     # The exit code carries the same verdict through a second channel. They

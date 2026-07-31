@@ -11,12 +11,16 @@ $ErrorActionPreference = 'Stop'
 $root = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 # The AssetWork\Audio guard below is only as good as this resolution.
 $input = Resolve-CigPath $InputFile
-if (-not $input.StartsWith((Join-Path $root 'AssetWork\Audio'), [StringComparison]::OrdinalIgnoreCase)) {
+$audioRoot = Join-Path $root 'AssetWork\Audio'
+if (-not (Test-CigPathWithinDirectory -Path $input -Directory $audioRoot)) {
     throw 'Ses denetimi yalnız AssetWork\Audio altında çalışır.'
 }
 if (-not $FfmpegPath) {
     $projectFfmpeg = Get-ChildItem -LiteralPath (Join-Path $root 'Tools\FFmpeg') -Filter 'ffmpeg.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
     $FfmpegPath = if ($projectFfmpeg) { $projectFfmpeg.FullName } else { (Get-Command ffmpeg -ErrorAction Stop).Source }
+}
+else {
+    $FfmpegPath = Resolve-CigPath $FfmpegPath
 }
 $ffprobe = Join-Path (Split-Path -Parent $FfmpegPath) 'ffprobe.exe'
 if (-not (Test-Path -LiteralPath $ffprobe -PathType Leaf)) { throw "ffprobe bulunamadı: $ffprobe" }

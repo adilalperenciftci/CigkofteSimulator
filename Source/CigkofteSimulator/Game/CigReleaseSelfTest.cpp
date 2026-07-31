@@ -16,6 +16,8 @@
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "HAL/FileManager.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/CheatManager.h"
 
 namespace
 {
@@ -55,20 +57,15 @@ namespace
 	bool ResolveReportPath(FString& OutPath, FString& OutError)
 	{
 		FString Raw;
-		if (FParse::Value(FCommandLine::Get(), TEXT("CigReleaseSelfTestOut="), Raw))
+		switch (CigReleaseSelfTest::ParseOutputArgument(FCommandLine::Get(), Raw, OutError))
 		{
-			Raw.TrimStartAndEndInline();
-			Raw.TrimQuotesInline();
-			Raw.TrimStartAndEndInline();
-			if (Raw.IsEmpty())
-			{
-				OutError = TEXT("-CigReleaseSelfTestOut= bos");
-				return false;
-			}
-		}
-		else
-		{
+		case CigReleaseSelfTest::EOutputArgumentState::Invalid:
+			return false;
+		case CigReleaseSelfTest::EOutputArgumentState::NotProvided:
 			Raw = FPaths::ProjectSavedDir() / TEXT("CigReleaseSelfTest.txt");
+			break;
+		case CigReleaseSelfTest::EOutputArgumentState::Provided:
+			break;
 		}
 
 		FString Full = FPaths::ConvertRelativePathToFull(Raw);
@@ -91,8 +88,10 @@ namespace
 		static const TCHAR* const Guarded[] = { TEXT("Config"), TEXT("Content"), TEXT("Source") };
 		for (const TCHAR* Dir : Guarded)
 		{
-			const FString Forbidden = ProjectDir / Dir + TEXT("/");
-			if (Full.StartsWith(Forbidden, ESearchCase::IgnoreCase))
+			FString Forbidden = ProjectDir / Dir;
+			FPaths::NormalizeDirectoryName(Forbidden);
+			if (Full.Equals(Forbidden, ESearchCase::IgnoreCase)
+				|| Full.StartsWith(Forbidden + TEXT("/"), ESearchCase::IgnoreCase))
 			{
 				OutError = FString::Printf(TEXT("proje verisinin icine yazilamaz: %s"), *Full);
 				return false;
@@ -134,11 +133,25 @@ namespace
 				return false;
 			}
 
-			// Order matters: the stale verdict goes before anything can fail.
-			Files.Delete(*FinalPath, false, true, true);
-			Files.Delete(*TempPath, false, true, true);
+			// Order matters: the stale verdict goes before anything can fail. A
+			// failed deletion is itself unwritable; continuing would allow an old
+			// PASS to survive a run that returns ReportUnwritable.
+			auto DeleteStale = [this, &Files](const FString& Path, const TCHAR* What)
+			{
+				if (Files.FileExists(*Path)
+					&& (!Files.Delete(*Path, false, true, true) || Files.FileExists(*Path)))
+				{
+					Error = FString::Printf(TEXT("eski %s silinemedi: %s"), What, *Path);
+					return false;
+				}
+				return true;
+			};
+			if (!DeleteStale(FinalPath, TEXT("rapor")) || !DeleteStale(TempPath, TEXT("gecici rapor")))
+			{
+				return false;
+			}
 
-			// The sentinel proves the path is writable before ten checks run
+			// The sentinel proves the path is writable before the checks run
 			// against it. Writing only at the end would report a full disk as a
 			// self-test that never happened.
 			if (!FFileHelper::SaveStringToFile(FString(HeaderLine), *TempPath,
@@ -162,7 +175,16 @@ namespace
 			// packages for; no attempt is made to be atomic anywhere else.
 			if (!IFileManager::Get().Move(*FinalPath, *TempPath, true, true))
 			{
+				// A failed move must not expose a partial or stale final verdict.
+				IFileManager::Get().Delete(*FinalPath, false, true, true);
 				Error = FString::Printf(TEXT("rapor yerine tasinamadi: %s"), *FinalPath);
+				return false;
+			}
+			if (!IFileManager::Get().FileExists(*FinalPath)
+				|| IFileManager::Get().FileExists(*TempPath))
+			{
+				IFileManager::Get().Delete(*FinalPath, false, true, true);
+				Error = FString::Printf(TEXT("rapor tasimasi dogrulanamadi: %s"), *FinalPath);
 				return false;
 			}
 			return true;
@@ -182,6 +204,81 @@ namespace
 		return Out;
 	}
 
+}
+
+CigReleaseSelfTest::EOutputArgumentState CigReleaseSelfTest::ParseOutputArgument(
+	const TCHAR* CommandLine, FString& OutValue, FString& OutError)
+{
+	OutValue.Reset();
+	OutError.Reset();
+
+	int32 MatchCount = 0;
+	bool bHadAssignment = false;
+	FString RawValue;
+	// Validate quoting and the overall CLI grammar first. Token() below is then
+	// used for this one option because, unlike a value parser, it preserves the
+	// boundary between `-Option=` and a following switch.
+	const FParse::FGrammarBasedParseResult ParseResult = FParse::GrammarBasedCLIParse(
+		CommandLine ? CommandLine : TEXT(""), [](FStringView, FStringView) {});
+
+	if (ParseResult.ErrorCode != FParse::EGrammarBasedParseErrorCode::Succeeded)
+	{
+		OutError = TEXT("komut satiri bicimi gecersiz");
+		return EOutputArgumentState::Invalid;
+	}
+
+	const FString Option = TEXT("-CigReleaseSelfTestOut");
+	const TCHAR* Cursor = CommandLine ? CommandLine : TEXT("");
+	while (*Cursor)
+	{
+		FString Token;
+		if (!FParse::Token(Cursor, Token, false))
+		{
+			break;
+		}
+
+		const bool bBare = Token.Equals(Option, ESearchCase::IgnoreCase);
+		const bool bAssigned = Token.Len() > Option.Len()
+			&& Token[Option.Len()] == TEXT('=')
+			&& Token.Left(Option.Len()).Equals(Option, ESearchCase::IgnoreCase);
+		if (!bBare && !bAssigned)
+		{
+			continue;
+		}
+
+		++MatchCount;
+		if (MatchCount == 1)
+		{
+			bHadAssignment = bAssigned;
+			RawValue = bAssigned ? Token.Mid(Option.Len() + 1) : FString();
+		}
+	}
+	if (MatchCount == 0)
+	{
+		return EOutputArgumentState::NotProvided;
+	}
+	if (MatchCount != 1)
+	{
+		OutError = TEXT("-CigReleaseSelfTestOut birden fazla verilemez");
+		return EOutputArgumentState::Invalid;
+	}
+	if (!bHadAssignment)
+	{
+		OutError = TEXT("-CigReleaseSelfTestOut deger atamasi olmadan verildi");
+		return EOutputArgumentState::Invalid;
+	}
+
+	RawValue.TrimStartAndEndInline();
+	RawValue.TrimQuotesInline();
+	RawValue.TrimStartAndEndInline();
+	if (RawValue.IsEmpty())
+	{
+		OutError = TEXT("-CigReleaseSelfTestOut verildi ama bos");
+		return EOutputArgumentState::Invalid;
+	}
+
+	OutValue = MoveTemp(RawValue);
+	return EOutputArgumentState::Provided;
 }
 
 bool CigReleaseSelfTest::IsRequested()
@@ -309,6 +406,34 @@ int32 CigReleaseSelfTest::Run(ACigkofteGameMode& GameMode)
 				&& A->UrunCarpanlari.Num() == B->UrunCarpanlari.Num();
 		}
 		Add(TEXT("kayit-turu"), bOk, bOk ? TEXT("") : TEXT("capture/apply ayni durumu vermedi"));
+	}
+
+	// 11. A Shipping controller must have neither an instance nor a class from
+	//     which one could be created. Development keeps deterministic capture and
+	//     benchmark commands; UE_WITH_CHEAT_MANAGER disables the retail path and
+	//     the project controller explicitly clears its class as defence in depth.
+	{
+#if UE_BUILD_SHIPPING
+		const APlayerController* RuntimePC = GameMode.GetWorld()
+			? GameMode.GetWorld()->GetFirstPlayerController() : nullptr;
+		// InitGame runs before the first controller is guaranteed to exist. The
+		// configured class default proves what every future controller starts with;
+		// if one already exists, verify the live instance as well.
+		const APlayerController* ControllerDefault = GameMode.PlayerControllerClass
+			? GameMode.PlayerControllerClass->GetDefaultObject<APlayerController>() : nullptr;
+		const bool bDefaultSafe = ControllerDefault
+			&& ControllerDefault->CheatManager == nullptr
+			&& ControllerDefault->CheatClass == nullptr;
+		const bool bRuntimeSafe = !RuntimePC
+			|| (RuntimePC->CheatManager == nullptr && RuntimePC->CheatClass == nullptr);
+		const bool bOk = bDefaultSafe && bRuntimeSafe;
+		Add(TEXT("shipping-hileleri"), bOk,
+			bOk ? TEXT("") : FString::Printf(TEXT("default=%s runtime=%s"),
+				bDefaultSafe ? TEXT("guvenli") : TEXT("hile-sinifi"),
+				bRuntimeSafe ? TEXT("guvenli/yok") : TEXT("hile-manager")));
+#else
+		Add(TEXT("shipping-hileleri"), true, TEXT("Shipping disi yapida uygulanmaz"));
+#endif
 	}
 
 	int32 FailedIndex = 0;

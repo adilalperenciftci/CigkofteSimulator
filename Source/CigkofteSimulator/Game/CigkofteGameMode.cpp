@@ -90,7 +90,9 @@ void ACigkofteGameMode::InitGame(const FString& MapName, const FString& Options,
 			}
 		}
 	}
-	ApplySettings();
+	ApplySettings(bReleaseSelfTest
+		? ECigSettingsPersistence::RuntimeOnly
+		: ECigSettingsPersistence::PersistPlatformConfig);
 	RefreshTabletWidget();
 
 	if (bReleaseSelfTest)

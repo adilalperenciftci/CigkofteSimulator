@@ -178,6 +178,42 @@ else {
 #
 # This is the only positive evidence available about a Shipping build. Its checks
 # run inside the game, so they need neither the log nor the cheat manager.
+# Snapshot both save roots before that launch. Development writes beside its
+# executable while Shipping normally redirects to LocalAppData; checking both
+# makes the assertion independent of which path policy this engine build chose.
+$packagedSaved = Join-Path (Split-Path -Parent $exe.FullName) 'CigkofteSimulator\Saved'
+$localSaved = Join-Path $env:LOCALAPPDATA 'CigkofteSimulator\Saved'
+$persistencePaths = @(
+    (Join-Path $packagedSaved 'SaveGames\CigSave.sav'),
+    (Join-Path $packagedSaved 'Config\Windows\GameUserSettings.ini'),
+    (Join-Path $localSaved 'SaveGames\CigSave.sav'),
+    (Join-Path $localSaved 'Config\Windows\GameUserSettings.ini')
+) | Select-Object -Unique
+
+function Get-CigPersistenceSnapshot {
+    param([string[]]$Paths)
+    $snapshot = @{}
+    foreach ($path in $Paths) {
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            $item = Get-Item -LiteralPath $path
+            $snapshot[$path] = [pscustomobject]@{
+                Exists = $true
+                Length = $item.Length
+                LastWriteTicks = $item.LastWriteTimeUtc.Ticks
+                Hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+            }
+        }
+        else {
+            $snapshot[$path] = [pscustomobject]@{
+                Exists = $false; Length = 0; LastWriteTicks = 0; Hash = ''
+            }
+        }
+    }
+    return $snapshot
+}
+
+$persistenceBefore = Get-CigPersistenceSnapshot -Paths $persistencePaths
+
 # The report path is dictated, not discovered.
 #
 # FPaths::ProjectSavedDir() sits beside the executable in Development and
@@ -227,6 +263,24 @@ if (-not $SkipSelfTest) {
 
     $exitCode = if ($timedOut) { $null } else { $st.ExitCode }
     $observed = Get-CigSelfTestState -ReportPath $selfTestFile -ProcessExitCode $exitCode -TimedOut:$timedOut
+
+    $persistenceAfter = Get-CigPersistenceSnapshot -Paths $persistencePaths
+    $changedPersistence = @()
+    foreach ($path in $persistencePaths) {
+        $before = $persistenceBefore[$path]
+        $after = $persistenceAfter[$path]
+        if ($before.Exists -ne $after.Exists -or $before.Length -ne $after.Length `
+            -or $before.LastWriteTicks -ne $after.LastWriteTicks -or $before.Hash -ne $after.Hash) {
+            $changedPersistence += $path
+        }
+    }
+    if ($changedPersistence.Count -gt 0) {
+        $observed = [pscustomobject]@{
+            State = 'failed'
+            Reason = 'persistence-changed'
+            Detail = "surum oz-testi kalici oyuncu verisini degistirdi: $($changedPersistence -join ', ')"
+        }
+    }
 }
 
 $selfTest = Resolve-CigSelfTestOutcome -SkipSelfTest:$SkipSelfTest `

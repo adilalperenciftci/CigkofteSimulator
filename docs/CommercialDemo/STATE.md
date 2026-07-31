@@ -7,7 +7,7 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 | Branch | `feat/commercial-demo-completion` |
 | Base | `0a07f2b` (master) |
 | Latest commit | see `git log -1` on the branch |
-| Open PR | none merged-pending; #1–#5 are all merged |
+| Open PR | **#6**, `feat/commercial-demo-completion` → `master` |
 | Save version | **12** |
 
 This table has gone stale twice, both times by naming a branch that had already
@@ -101,8 +101,11 @@ of what a reviewer has to read.
 
 ## Current task
 
-**None in flight.** Stage 1 is complete, and Stage 2.1 and 2.2 with it: packaging
-and the smoke test pass, and the performance budget has measurements in it.
+**PR #6 release validation and delivery.** Stage 1 is complete, and Stage 2.1
+and 2.2 with it. The current branch is hardening the mandatory packaged
+self-test, release paths, Shipping cheat isolation and label hysteresis before
+the PR is merged. Stage 3.1 starts only from the updated `master` after that
+merge.
 
 ## Stage 2.1 and 2.2, finished
 
@@ -191,13 +194,16 @@ above was found rather than reasoned about.
 
 ## Shipping is verified now
 
-The release configuration compiles out UE_LOG and the cheat manager, so the
-packaged smoke test - every check of which was "the log did not complain" - could
-say nothing about it. `-CigReleaseSelfTest` runs ten checks inside the game after
-InitGame has built the world, writes a report to a path the harness dictates, and
-exits with 0 or the index of the first failure. Shipping now reports process
-liveness, cook coverage and a passing self-test; the checks that genuinely cannot
-run are printed as ATLANDI and never counted as passes.
+The release configuration compiles out UE_LOG and disables the project cheat
+manager: Shipping neither assigns nor creates it, and the self-test verifies that
+the configured controller CDO (and a runtime controller when one exists) has no
+cheat class or manager. `-CigReleaseSelfTest` runs eleven checks inside the game
+after InitGame has built the world, writes a report to a path the harness
+dictates, and exits with 0 or the index of the first failure. Shipping now
+reports process liveness, cook coverage and a complete passing self-test without
+depending on logs. The harness also fingerprints both normal save locations and
+platform settings before and after the run, so the release test cannot silently
+load, write or replace player state.
 
 Two path defects were found by running it rather than by reading it. The report
 first went to `FPaths::ProjectSavedDir()`, which redirects to `%LOCALAPPDATA%` in

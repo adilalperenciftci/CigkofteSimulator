@@ -25,6 +25,8 @@ param(
 
 . (Join-Path $PSScriptRoot 'CigCommon.ps1')
 
+$OutputDir = Resolve-CigPath $OutputDir
+
 $engine = Get-CigEngineRoot -Override $EngineRoot
 $uat = Join-Path $engine 'Engine\Build\BatchFiles\RunUAT.bat'
 

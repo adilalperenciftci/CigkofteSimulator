@@ -336,11 +336,12 @@ Result: `surec ayakta OK`, `cook kapsami OK`, and an explicit line saying the
 log-based checks could not run. That is less verification than Development gets,
 and saying so is the point.
 
-**Cheats are compiled out too.** `UE_WITH_CHEAT_MANAGER` is `(1 && !UE_BUILD_SHIPPING)`,
-so `CigBench`, `CigShots` and `CigLang` do not exist in Shipping - and
-`Measure-Performance.ps1` and `Record-Demo.ps1` both drive the game through them.
-Putting them into Shipping would fix the harness by shipping a camera-teleporting
-debug console to players, which is a product decision rather than a cleanup.
+**The cheat manager is disabled in Shipping.** `UE_WITH_CHEAT_MANAGER` is
+`(1 && !UE_BUILD_SHIPPING)`, and the project controller assigns and creates its
+manager only behind the same Shipping boundary. The packaged release self-test
+also asserts that both the manager instance and its class are null. `CigBench`,
+`CigShots` and `CigLang` therefore remain Development tooling; neither benchmark
+script is allowed to turn a retail build into a camera-teleporting debug console.
 
 The correct answer to that is UE's **Test** configuration: optimised like Shipping,
 but with the log, the stats and the console kept, precisely so a shipping-like

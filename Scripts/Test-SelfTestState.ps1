@@ -58,7 +58,15 @@ $passReport = @(
     'CIGRELEASESELFTEST v1'
     'PASS  sistemler  (23 sistem)'
     'PASS  dunya'
+    'PASS  metin-tablosu'
+    'PASS  metin-tr'
+    'PASS  metin-en'
+    'PASS  denge-verisi  (14/14 csv)'
+    'PASS  ses-varliklari'
+    'PASS  mesh-varliklari'
+    'PASS  kayit-surumu  (1 -> 12, hedef 12)'
     'PASS  kayit-turu'
+    'PASS  shipping-hileleri  (Shipping disi yapida uygulanmaz)'
     'RESULT PASS 0'
 )
 $failReport = @(
@@ -69,6 +77,11 @@ $failReport = @(
     'PASS  metin-tr'
     'PASS  metin-en'
     'FAIL  denge-verisi  (0/14 csv)'
+    'PASS  ses-varliklari'
+    'PASS  mesh-varliklari'
+    'PASS  kayit-surumu  (1 -> 12, hedef 12)'
+    'PASS  kayit-turu'
+    'PASS  shipping-hileleri  (Shipping disi yapida uygulanmaz)'
     'RESULT FAIL 6'
 )
 
@@ -81,6 +94,24 @@ try {
     $p = New-CigReportFixture -Name 'pass' -Lines $passReport
     $s = Get-CigSelfTestState -ReportPath $p -ProcessExitCode 0
     Assert-CigEqual 'gecerli PASS raporu + cikis 0 -> passed' 'passed' $s.State
+
+    $p = New-CigReportFixture -Name 'incomplete-pass' -Lines @(
+        'CIGRELEASESELFTEST v1', 'PASS  sistemler', 'RESULT PASS 0')
+    $s = Get-CigSelfTestState -ReportPath $p -ProcessExitCode 0
+    Assert-CigEqual 'eksik PASS raporu -> failed' 'failed' $s.State
+    Assert-CigEqual 'eksik PASS raporu -> incomplete-checks' 'incomplete-checks' $s.Reason
+
+    $p = New-CigReportFixture -Name 'result-not-final' -Lines ($passReport + 'PASS  fazladan')
+    $s = Get-CigSelfTestState -ReportPath $p -ProcessExitCode 0
+    Assert-CigEqual 'RESULT son satir degil -> failed' 'failed' $s.State
+    Assert-CigEqual 'RESULT son satir degil -> result-not-final' 'result-not-final' $s.Reason
+
+    $duplicateCheck = @($passReport)
+    $duplicateCheck[2] = 'PASS  sistemler'
+    $p = New-CigReportFixture -Name 'duplicate-check' -Lines $duplicateCheck
+    $s = Get-CigSelfTestState -ReportPath $p -ProcessExitCode 0
+    Assert-CigEqual 'yinelenen kontrol -> failed' 'failed' $s.State
+    Assert-CigEqual 'yinelenen kontrol -> incomplete-checks' 'incomplete-checks' $s.Reason
 
     # --- Everything else is a failure ---------------------------------------
     $missing = Join-Path $fixtureRoot 'never-written.txt'
@@ -134,6 +165,25 @@ try {
     $p = New-CigReportFixture -Name 'garbage-result' -Lines @('CIGRELEASESELFTEST v1', 'RESULT MAYBE')
     $s = Get-CigSelfTestState -ReportPath $p -ProcessExitCode 0
     Assert-CigEqual 'RESULT cozulemiyor -> failed' 'failed' $s.State
+    Assert-CigEqual 'RESULT cozulemiyor -> bad-result' 'bad-result' $s.Reason
+
+    $p = New-CigReportFixture -Name 'duplicate-same-result' -Lines @(
+        'CIGRELEASESELFTEST v1', 'RESULT PASS 0', 'RESULT PASS 0')
+    $s = Get-CigSelfTestState -ReportPath $p -ProcessExitCode 0
+    Assert-CigEqual 'ayni RESULT tekrari -> failed' 'failed' $s.State
+    Assert-CigEqual 'ayni RESULT tekrari -> duplicate-result' 'duplicate-result' $s.Reason
+
+    $p = New-CigReportFixture -Name 'duplicate-conflicting-result' -Lines @(
+        'CIGRELEASESELFTEST v1', 'FAIL  denge-verisi', 'RESULT PASS 0', 'RESULT FAIL 6')
+    $s = Get-CigSelfTestState -ReportPath $p -ProcessExitCode 0
+    Assert-CigEqual 'celisen RESULT tekrari -> failed' 'failed' $s.State
+    Assert-CigEqual 'celisen RESULT tekrari -> duplicate-result' 'duplicate-result' $s.Reason
+
+    $p = New-CigReportFixture -Name 'fail-zero' -Lines @(
+        'CIGRELEASESELFTEST v1', 'FAIL  sistemler', 'RESULT FAIL 0')
+    $s = Get-CigSelfTestState -ReportPath $p -ProcessExitCode 0
+    Assert-CigEqual 'RESULT FAIL 0 -> failed' 'failed' $s.State
+    Assert-CigEqual 'RESULT FAIL 0 -> inconsistent-result' 'inconsistent-result' $s.Reason
 
     # Timeout beats everything, including a report left behind by an earlier run.
     $p = New-CigReportFixture -Name 'timeout' -Lines $passReport
@@ -147,6 +197,20 @@ try {
     $p = New-CigReportFixture -Name 'no-exit' -Lines $passReport
     $s = Get-CigSelfTestState -ReportPath $p -ProcessExitCode $null
     Assert-CigEqual 'cikis kodu yok -> failed' 'failed' $s.State
+    Assert-CigEqual 'cikis kodu yok -> no-exit-code' 'no-exit-code' $s.Reason
+
+    # Windows mandatory locks let the unreadable branch be exercised without
+    # changing ACLs. Unix locks are advisory, so that platform skips this one.
+    if ($IsWindows) {
+        $p = New-CigReportFixture -Name 'locked' -Lines $passReport
+        $lock = [IO.File]::Open($p, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+        try {
+            $s = Get-CigSelfTestState -ReportPath $p -ProcessExitCode 0
+            Assert-CigEqual 'okunamayan rapor -> failed' 'failed' $s.State
+            Assert-CigEqual 'okunamayan rapor -> unreadable-report' 'unreadable-report' $s.Reason
+        }
+        finally { $lock.Dispose() }
+    }
 
     # --- The two outcomes that are neither -----------------------------------
     $o = Resolve-CigSelfTestOutcome -SkipSelfTest

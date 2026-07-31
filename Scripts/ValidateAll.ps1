@@ -52,6 +52,12 @@ Invoke-CigStage 'harness' {
     if ($LASTEXITCODE -ne 0) { throw "Test-SelfTestState.ps1 exit $LASTEXITCODE" }
 }
 
+Invoke-CigStage 'paths' {
+    Write-CigStep 'Script path safety'
+    & (Join-Path $PSScriptRoot 'Test-CigPathHelpers.ps1') | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "Test-CigPathHelpers.ps1 exit $LASTEXITCODE" }
+}
+
 Invoke-CigStage 'build' {
     & (Join-Path $PSScriptRoot 'BuildEditor.ps1') -EngineRoot $EngineRoot
     if ($LASTEXITCODE -ne 0) { throw "build exit $LASTEXITCODE" }
@@ -65,7 +71,7 @@ Invoke-CigStage 'tests' {
 if ($results['tests'] -eq 'PASS') {
     Invoke-CigStage 'data' {
     Write-CigStep 'Runtime data load'
-    $log = Join-Path $RepoRoot 'Saved\Logs\CigkofteSimulator.log'
+    $log = Join-Path $RepoRoot 'Logs\RunUnrealTests-latest.log'
     if (-not (Test-Path $log)) { throw 'no log from the test run' }
 
     # This stage reads the log the test run wrote. If the tests never produced

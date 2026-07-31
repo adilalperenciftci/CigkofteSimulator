@@ -33,6 +33,10 @@ jobs:
         shell: pwsh
         run: ./Scripts/Test-SelfTestState.ps1
 
+      - name: Script path safety
+        shell: pwsh
+        run: ./Scripts/Test-CigPathHelpers.ps1
+
       - name: Line endings
         # .gitattributes says LF in the repository. A file committed with CRLF
         # shows up as un-normalised to git and is caught here.
