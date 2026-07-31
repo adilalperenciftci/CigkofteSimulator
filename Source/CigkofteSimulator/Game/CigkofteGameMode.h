@@ -243,8 +243,24 @@ public:
 	// with the test world's day 1. Set by FCigTestShop; nothing in the game
 	// turns it on.
 	bool bSaveDisabled = false;
+
+	// The release self-test, and the state it needs to leave the game in.
+	//
+	// Set only from the command line, in InitGame. There is deliberately no
+	// console command and no key binding: a mode that ends the process must not be
+	// reachable from a running game.
+	bool bReleaseSelfTest = false;
+	bool bSelfTestExitPending = false;
+	uint8 SelfTestExitCode = 0;
 	void RequestSave();
 	void RequestLoad();
+	// Are all the systems present, and how many are there?
+	//
+	// The array itself stays private: the question the release self-test needs
+	// answered is an invariant of this class, so it is answered here rather than
+	// by handing out the container.
+	bool HasAllSystems(int32& OutCount) const;
+
 	void CaptureSave(UCigSaveGame& Save) const;
 	void ApplySave(const UCigSaveGame& Save);
 	bool bLoadedFromSave = false;

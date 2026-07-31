@@ -47,6 +47,14 @@ namespace
 		}
 	};
 
+	// How many balance files were actually parsed and applied.
+	//
+	// Staged and applied are different questions: a file can be present and fail
+	// to parse, and the game plays on silently with the pre-tuning C++ defaults.
+	// The release self-test needs to distinguish those, and nothing else exposed
+	// it.
+	int32 GAppliedCsvFiles = 0;
+
 	// Reads one balance file and calls Visit for each data row. Returns quietly
 	// when the file is absent: playing on the defaults is a valid state.
 	void ForEachCsvRow(const TCHAR* FileName, TFunctionRef<void(const FCigCsvRow&)> Visit)
@@ -94,6 +102,7 @@ namespace
 			Visit(Row);
 			++Applied;
 		}
+		++GAppliedCsvFiles;
 		UE_LOG(LogCig, Log, TEXT("Denge dosyası uygulandı: %s (%d satır)"), FileName, Applied);
 	}
 
@@ -540,6 +549,7 @@ namespace
 
 		void Load()
 		{
+			GAppliedCsvFiles = 0;
 			Skills = DefaultSkills();
 			Upgrades = DefaultUpgrades();
 			Traits = DefaultTraits();
@@ -872,5 +882,11 @@ namespace CigBalance
 	{
 		Tables().Load();
 		UE_LOG(LogCig, Log, TEXT("Denge tabloları yeniden yüklendi."));
+	}
+
+	int32 LoadedCsvFileCount()
+	{
+		Tables(); // forces the lazy load, so a caller before first use gets the truth
+		return GAppliedCsvFiles;
 	}
 }

@@ -29,6 +29,9 @@ param(
     # good build into a failed smoke test or the reverse.
     [ValidateSet('Development', 'Shipping')]
     [string]$Configuration = 'Development',
+    # The self-test is a second launch of the packaged game. Skipping it is for
+    # diagnosing the harness itself; a skip is reported, never counted as a pass.
+    [switch]$SkipSelfTest,
     [switch]$DryRun
 )
 
@@ -158,6 +161,52 @@ else {
     }
 }
 
+# The release self-test: a second, separate run.
+#
+# Deliberately not folded into the run above. That one's whole value is that it
+# survived $TimeoutSeconds of ordinary startup; a self-test run exits on purpose
+# within seconds and would fail 'surec ayakta' every time. They answer different
+# questions.
+#
+# This is the only positive evidence available about a Shipping build. Its checks
+# run inside the game, so they need neither the log nor the cheat manager.
+$selfTestFile = Join-Path (Split-Path -Parent $exe.FullName) 'CigkofteSimulator\Saved\CigReleaseSelfTest.txt'
+$selfTestState = 'skipped'
+$selfTestDetail = ''
+if (-not $SkipSelfTest) {
+    if (Test-Path $selfTestFile) { Remove-Item $selfTestFile -Force }
+    Write-CigStep 'Surum oz-testi calistiriliyor'
+    $st = Start-Process $exe.FullName -PassThru -WindowStyle Hidden `
+        -ArgumentList '-CigReleaseSelfTest', '-nullrhi', '-unattended', '-nosplash', '-nosound'
+    if (-not $st.WaitForExit(120000)) {
+        # Same reasoning as the kill above: a survivor locks the next package.
+        Stop-Process -Id $st.Id -Force -ErrorAction SilentlyContinue
+        Get-Process -Name 'CigkofteSimulator*' -ErrorAction SilentlyContinue |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+    }
+
+    if (-not (Test-Path $selfTestFile)) {
+        # No file at all means this package predates the mode. That is not a
+        # regression, and it must not be reported as a pass either.
+        $selfTestState = 'unsupported'
+    }
+    else {
+        $stLines = Get-Content $selfTestFile
+        $result = ($stLines | Where-Object { $_ -like 'RESULT*' } | Select-Object -First 1)
+        $firstFail = ($stLines | Where-Object { $_ -like 'FAIL*' } | Select-Object -First 1)
+        if ($stLines[0] -ne 'CIGRELEASESELFTEST v1') {
+            $selfTestState = 'unsupported'
+        }
+        elseif ($result -eq 'RESULT PASS 0' -and $st.ExitCode -eq 0 -and -not $firstFail) {
+            $selfTestState = 'passed'
+        }
+        else {
+            $selfTestState = 'failed'
+            $selfTestDetail = "$firstFail; cikis kodu $($st.ExitCode)"
+        }
+    }
+}
+
 # Each check names the symptom the player would see, not the internal fault.
 $checks = @(
     @{ Name = 'surec ayakta';    Ok = (-not $exitedEarly)
@@ -179,6 +228,18 @@ $checks += @(
     @{ Name = 'cook kapsami';    Ok = ($emptyDirs.Count -eq 0)
        Fail = "hicbir sey uretmeyen cook girdisi: $($emptyDirs -join ', ')" }
 )
+if ($selfTestState -eq 'passed' -or $selfTestState -eq 'failed') {
+    $checks += @(
+        @{ Name = 'oz-test';     Ok = ($selfTestState -eq 'passed')
+           Fail = "surum oz-testi basarisiz - $selfTestDetail" }
+    )
+}
+
+if ($selfTestState -eq 'skipped' -or $selfTestState -eq 'unsupported') {
+    Write-Host ("  {0,-16} ATLANDI - {1}" -f 'oz-test',
+        $(if ($selfTestState -eq 'skipped') { '-SkipSelfTest verildi' }
+          else { 'bu paket -CigReleaseSelfTest modunu tanimiyor' })) -ForegroundColor Yellow
+}
 
 $smokeFailed = $false
 foreach ($c in $checks) {
@@ -197,10 +258,10 @@ if ($smokeFailed) {
 }
 
 if ($haveLog) {
-    Write-Host 'Smoke test passed.' -ForegroundColor Green
+    Write-Host "Smoke test passed (oz-test: $selfTestState)." -ForegroundColor Green
 }
 else {
-    Write-Host 'Smoke test passed (Shipping: surec + cook kapsami; log tabanli kontroller yapilamadi).' -ForegroundColor Green
+    Write-Host "Smoke test passed (Shipping: surec + cook kapsami + oz-test: $selfTestState; log tabanli kontroller yapilamadi)." -ForegroundColor Green
 }
 Write-Host 'Still needs a human: launch it, switch language, load a save, navigate with a gamepad.'
 # Explicit, because callers read $LASTEXITCODE. Falling off the end would leave
