@@ -9,6 +9,15 @@ checks and needs disk space, so it is opt-in.
 param(
     [string]$EngineRoot,
     [string]$OutputDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'Build\WindowsDemo'),
+    # Test is deliberately absent.
+    #
+    # It is the configuration this project's performance work wants - optimised
+    # like Shipping, but with the log, the stats and the console kept, so CigBench
+    # exists and Measure-Performance.ps1 can drive it. UBT refuses it outright
+    # here: "Targets cannot be built in the Test configuration with this engine
+    # distribution." A launcher-installed engine ships Development and Shipping
+    # binaries and nothing else. Offering the option would only produce that error
+    # a minute later; see docs/PERFORMANCE_BUDGET.md.
     [ValidateSet('Development', 'Shipping')]
     [string]$Configuration = 'Shipping',
     [switch]$SkipSmokeTest
