@@ -113,6 +113,12 @@ transient storage. This is runtime-only metadata, so save version 12 did not
 change. Layout consequences, navigation and persistence remain later slices;
 Stage 3 as a whole is not complete.
 
+Local delivery gates are complete at runtime commit `956073e`: static checks,
+the Editor build, 30/30 placement automation, 129/129 full automation and all
+`ValidateAll.ps1` stages passed. Exact-head Development and Shipping packages
+also passed their mandatory release self-tests; `QA.md` records their sizes and
+runtime executable hashes. Package output remains outside the repository.
+
 ## Stage 2.1 and 2.2, finished
 
 - **2.1 A day with a shape.** `ECigPhase` splits the day into Intro, Opening,
@@ -221,12 +227,11 @@ fixed; `Resolve-CigPath` is the shared helper.
 
 ## Next exact task
 
-**Finish Stage 3.2 delivery.** Run the full validation and exact-head Development
-and Shipping packages, record the machine-readable self-test evidence, then open
-a focused pull request. Wait for CI, inspect comments and review threads, and
-merge with a merge commit only when every gate is green. After the merge, start
-Stage 3.3 layout consequences from the new `origin/master`; do not add them to
-this branch.
+**Publish Stage 3.2 for review.** Commit the recorded validation evidence, push
+`feat/stage3-placement-categories` and open a focused pull request. Wait for CI,
+inspect comments and review threads, and merge with a merge commit only when
+every gate is green. After the merge, start Stage 3.3 layout consequences from
+the new `origin/master`; do not add them to this branch.
 
 Standing items that are not tasks in that chain:
 
