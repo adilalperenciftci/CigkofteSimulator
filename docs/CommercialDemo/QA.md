@@ -238,10 +238,10 @@ it is not a human build-mode or navigation playtest.
 | Static source rules | clean — **121** automation tests, **24** systems, 889 bilingual keys |
 | Placement automation | **22 passed, 0 failed** |
 | Full automation | **121 passed, 0 failed** |
-| `ValidateAll.ps1` | static, harness, paths, build, tests and 14/14 runtime data all passed |
+| `ValidateAll.ps1` | static, harness, paths, build, tests and 14/14 runtime data all passed at `283b825`; the review fix then reran static checks, Editor build and all 121 tests |
 | Cook policy fixture | **7/7** assertions passed without Unreal |
-| Development package | **714,143,424 bytes**, 73 files, zero PDB; eight smoke checks and mandatory self-test passed |
-| Shipping package | **504,254,016 bytes**, 49 files, zero PDB; process, cook coverage and mandatory self-test passed |
+| Development package | **714,038,226 bytes**, 70 files, zero PDB; eight smoke checks and mandatory self-test passed; game EXE SHA-256 `A9B4EC34CDE4038CBEA45AE002851481E836D7CA041AA0E1756485C884C7CB77` |
+| Shipping package | **504,254,016 bytes**, 49 files, zero PDB; process, cook coverage and mandatory self-test passed; game EXE SHA-256 `CC6DE1FC9A4D1CE2034538CED9D1934723A370E2649D4383E028E0540682F19C` |
 
 The real-shop integration registered all 22 stations plus five authored seating
 fixtures, selected the first valid declared delivery spot, spawned a physical
@@ -251,11 +251,22 @@ protected entrance/queue/service/station routes, duplicate and move identities,
 deterministic failure precedence, all delivery alternatives occupied, rollback,
 remove/reuse and missing-mesh fallback.
 
-The packages were built from detached commit `33e8251` in a clean D: validation
+The final packages were built from detached commit `a96d012` in a clean D: validation
 worktree containing only public repository assets. Both containers held 19
 repository-owned Audio and 64 LowPoly assets. Thirty absent licensed/Fab cook
 paths used the documented primitive fallback; no Marketplace files were copied
-or committed.
+or committed. Both machine-readable reports used `CIGRELEASESELFTEST v1` and
+ended in `RESULT PASS 0`; neither smoke run used skip or legacy compatibility.
+
+Review found that the sofa visual was spawned at 90 degrees while its non-square
+placement footprint used the default zero yaw. Passing the visual yaw to the
+authority exposed a second fact that the old wrong rectangle had hidden: the
+correctly rotated footprint extended 40 cm outside the shop. The first focused
+rerun therefore failed 1 of 22 placement tests with `OutsideShopBounds`; it is
+not counted as a pass. The visual and footprint now share one location and yaw,
+50 cm farther inside the shop, and the real-shop integration test pins the
+registered 90-degree transform. Static checks, Editor build, 22/22 placement
+tests, 121/121 full automation and both packages then passed.
 
 That public-checkout run found a real harness defect: the smoke test treated
 every absent optional asset directory and every expected optional-mesh warning
