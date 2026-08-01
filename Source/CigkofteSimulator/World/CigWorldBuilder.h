@@ -7,6 +7,7 @@
 #include "CigWorldBuilder.generated.h"
 
 class ACigkofteStation;
+enum class ECigPlacementCategory : uint8;
 
 // The two visibility triggers retain their own answers. Combining them into a
 // component's final visibility couples the latches: turning behind a label can
@@ -237,7 +238,8 @@ private:
 	TMap<ECigStation, FCigLabelVisibilityState> StationLabelVisibility;
 	void UpdateStationLabelRange();
 	void RegisterStationPlacement(ECigStation Type, const FVector& Loc, float LabelYaw);
-	void RegisterFixedFixture(FName StableId, const FVector& Loc, const FVector2D& Size, float Yaw = 0.f);
+	void RegisterFixturePlacement(FName StableId, ECigPlacementCategory Category,
+		const FVector& Loc, const FVector2D& Size, float Yaw = 0.f);
 
 	void BuildKitchen();
 	void BuildFurniture();

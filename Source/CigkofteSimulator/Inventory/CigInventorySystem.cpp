@@ -278,7 +278,8 @@ bool UCigInventorySystem::SpawnCrate(FCigPendingOrder& Order)
 
 	FCigPlacementRequest Request;
 	Request.StableId = PlacementId;
-	Request.Category = ECigPlacementCategory::StockCrate;
+	Request.Category = ECigPlacementCategory::Storage;
+	Request.Lifetime = ECigPlacementLifetime::Transient;
 	Request.Footprint = UCigPlacementSystem::StockCrateFootprint();
 	Request.Context = ECigPlacementContext::Delivery;
 	const FCigPlacementResult Candidate = GM->Placement->FindFirstValidPlacement(

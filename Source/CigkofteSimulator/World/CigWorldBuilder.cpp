@@ -268,7 +268,8 @@ void UCigWorldBuilder::RegisterStationPlacement(ECigStation Type, const FVector&
 	const FString Token(StationPlacementToken(Type));
 	FCigPlacementRequest Request;
 	Request.StableId = FName(*FString::Printf(TEXT("fixture.station.%s"), *Token));
-	Request.Category = ECigPlacementCategory::FixedFixture;
+	Request.Category = ECigPlacementCategory::Station;
+	Request.Lifetime = ECigPlacementLifetime::Installed;
 	Request.CandidateTransform = FTransform(FRotator::ZeroRotator, FVector(Loc.X, Loc.Y, 0.f));
 	Request.Footprint.Size = StationPlacementSize(Type);
 	Request.Footprint.RotationPolicy = ECigPlacementRotationPolicy::FixedYaw;
@@ -299,7 +300,8 @@ void UCigWorldBuilder::RegisterStationPlacement(ECigStation Type, const FVector&
 	}
 }
 
-void UCigWorldBuilder::RegisterFixedFixture(FName StableId, const FVector& Loc, const FVector2D& Size, float Yaw)
+void UCigWorldBuilder::RegisterFixturePlacement(FName StableId, ECigPlacementCategory Category,
+	const FVector& Loc, const FVector2D& Size, float Yaw)
 {
 	if (!GM || !GM->Placement)
 	{
@@ -307,7 +309,8 @@ void UCigWorldBuilder::RegisterFixedFixture(FName StableId, const FVector& Loc, 
 	}
 	FCigPlacementRequest Request;
 	Request.StableId = StableId;
-	Request.Category = ECigPlacementCategory::FixedFixture;
+	Request.Category = Category;
+	Request.Lifetime = ECigPlacementLifetime::Installed;
 	Request.CandidateTransform = FTransform(FRotator(0.f, Yaw, 0.f), FVector(Loc.X, Loc.Y, 0.f));
 	Request.Footprint.Size = Size;
 	Request.Context = ECigPlacementContext::WorldRegistration;
@@ -742,8 +745,8 @@ void UCigWorldBuilder::BuildSeatingArea()
 
 		// One footprint covers the table and both chairs. Imported meshes may be
 		// absent, but the authored fallback footprint does not disappear with them.
-		RegisterFixedFixture(FName(*FString::Printf(TEXT("fixture.seating.table.%d"), TableIndex++)),
-			FVector(X, Y, 0.f), FVector2D(160.f, 280.f));
+		RegisterFixturePlacement(FName(*FString::Printf(TEXT("fixture.seating.table.%d"), TableIndex++)),
+			ECigPlacementCategory::Seating, FVector(X, Y, 0.f), FVector2D(160.f, 280.f));
 	};
 
 	// Layout along the right wall (Y+ side) and near the entrance
@@ -756,8 +759,8 @@ void UCigWorldBuilder::BuildSeatingArea()
 	const FVector SofaLocation(-600.f, 1050.f, 0.f);
 	constexpr float SofaYaw = 90.f;
 	SpawnProp(CigMesh::Furniture(TEXT("loungeSofa")), SofaLocation, 90.f, SofaYaw, FLinearColor(0.4f, 0.3f, 0.5f));
-	RegisterFixedFixture(FName(*FString::Printf(TEXT("fixture.seating.%s"), TEXT("sofa"))),
-		SofaLocation, FVector2D(90.f, 180.f), SofaYaw);
+	RegisterFixturePlacement(FName(*FString::Printf(TEXT("fixture.seating.%s"), TEXT("sofa"))),
+		ECigPlacementCategory::Decoration, SofaLocation, FVector2D(90.f, 180.f), SofaYaw);
 }
 
 int32 UCigWorldBuilder::ReserveSeat()

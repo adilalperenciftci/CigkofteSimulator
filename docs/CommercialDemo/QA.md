@@ -292,3 +292,47 @@ gamepad, focus readability, signage in motion, ambience, customer animation,
 lighting, price-policy queue balance, visible save/load and a full played day.
 Rectangular protected zones do not prove Unreal AI navigation; that remains
 Stage 3.4.
+
+## 2026-08-01 — Stage 3.2 functional placement categories
+
+This validates deterministic classification policy and its real-shop wiring. It
+is not a human build-mode, layout-usability or navigation playtest.
+
+| Check | Result |
+|---|---|
+| Static source rules | clean — **129** automation tests, **24** systems, 890 bilingual keys |
+| Placement automation | **30 passed, 0 failed** |
+| Full automation | **129 passed, 0 failed** |
+| `ValidateAll.ps1` | static, 49/49 self-test-state assertions, 7/7 cook-policy assertions, 7/7 path-safety assertions, Editor build, 129 tests and 14/14 runtime balance files passed; package stage was separately executed below |
+| Development package | **661,127,153 bytes**, 64 files, zero PDB; eight smoke checks and mandatory self-test passed; runtime EXE SHA-256 `3BFCDAABE7500F15AC27994D35FFA4C980742C4ACD134C121345CD5A09ACE9D1` |
+| Shipping package | **451,315,085 bytes**, 43 files, zero PDB; process, cook coverage and mandatory self-test passed; runtime EXE SHA-256 `48A02409CB956E85F27DEF7BF2D7FAD0C8CAFADC3D07F11CBE958F476BBB10F8` |
+
+Both packages were built from runtime commit `956073e` in the D: Stage 3.2
+worktree with `-nodebuginfo`, `-NoUBA` and one build action. Their cook checks
+found 19 repository-owned Audio and 64 LowPoly assets. All 31 optional licensed
+asset paths were absent and explicitly used the public primitive fallback; no
+Marketplace/Fab content was copied or committed. Neither smoke run used
+`-SkipSelfTest` or legacy compatibility.
+
+The pure policy tests reject unknown and undefined category, lifetime and
+context values; invalid Installed/Transient context combinations; transient
+non-storage deliveries; and ignore-ID misuse. Move tests prove that category
+and lifetime are immutable and that rejection does not mutate the record.
+Category/lifetime count queries are covered independently.
+
+The real-shop integration pins the exact pre-delivery classification: 22
+`Station`, four `Seating`, one `Decoration`, zero `Storage`, 27 `Installed` and
+zero `Transient` records. The sofa remains a decoration rather than claiming a
+seat. A physical delivery then adds exactly one `Storage` + `Transient` record,
+and unloading removes it. No actor pointer became an identity and save version
+12 did not change because no placement metadata is persisted in this slice.
+
+Two initial Editor build attempts are not counted as passes. The first caught
+that UE 5.8's `TArray` does not provide `CountByPredicate`; the count helpers now
+use explicit loops. The next caught a missing forward declaration for the new
+category enum in `CigWorldBuilder.h`. After those compile fixes, the clean Editor
+build and every validation result listed above passed.
+
+Still out of scope: player-facing category UI, category-specific layout effects,
+AI/path validation, player-authored placement persistence and shop identity.
+Stage 3.3 layout consequences is next; full navigation proof remains Stage 3.4.

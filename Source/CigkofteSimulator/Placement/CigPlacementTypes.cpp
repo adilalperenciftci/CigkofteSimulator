@@ -12,6 +12,51 @@ namespace
 		return A.ToString() < B.ToString();
 	}
 
+	bool IsKnownCategory(ECigPlacementCategory Category)
+	{
+		switch (Category)
+		{
+		case ECigPlacementCategory::Station:
+		case ECigPlacementCategory::Seating:
+		case ECigPlacementCategory::Storage:
+		case ECigPlacementCategory::Decoration:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	bool IsKnownLifetime(ECigPlacementLifetime Lifetime)
+	{
+		return Lifetime == ECigPlacementLifetime::Installed
+			|| Lifetime == ECigPlacementLifetime::Transient;
+	}
+
+	bool IsKnownContext(ECigPlacementContext Context)
+	{
+		switch (Context)
+		{
+		case ECigPlacementContext::BuildMode:
+		case ECigPlacementContext::Delivery:
+		case ECigPlacementContext::MoveExisting:
+		case ECigPlacementContext::WorldRegistration:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	bool IsClassificationAllowed(const FCigPlacementRequest& Request)
+	{
+		if (Request.Lifetime == ECigPlacementLifetime::Transient)
+		{
+			return Request.Category == ECigPlacementCategory::Storage
+				&& Request.Context == ECigPlacementContext::Delivery;
+		}
+		return Request.Lifetime == ECigPlacementLifetime::Installed
+			&& Request.Context != ECigPlacementContext::Delivery;
+	}
+
 	bool IsProtectedFailure(ECigPlacementFailure Failure)
 	{
 		switch (Failure)
@@ -105,13 +150,27 @@ bool FCigPlacementAuthority::RemoveProtectedZone(FName StableId)
 
 FCigPlacementResult FCigPlacementAuthority::Normalize(const FCigPlacementRequest& Request) const
 {
-	if (Request.StableId.IsNone() || (!Request.IgnoreStableId.IsNone() && Request.IgnoreStableId != Request.StableId))
+	if (Request.StableId.IsNone())
 	{
 		return Rejected(ECigPlacementFailure::InvalidStableId);
 	}
-	if (Request.Category == ECigPlacementCategory::Unknown)
+	if (!IsKnownCategory(Request.Category))
 	{
 		return Rejected(ECigPlacementFailure::UnknownCategory);
+	}
+	if (!IsKnownLifetime(Request.Lifetime))
+	{
+		return Rejected(ECigPlacementFailure::UnknownLifetime);
+	}
+	if (!IsKnownContext(Request.Context))
+	{
+		return Rejected(ECigPlacementFailure::UnknownContext);
+	}
+	const bool bMove = Request.Context == ECigPlacementContext::MoveExisting;
+	if ((bMove && Request.IgnoreStableId != Request.StableId)
+		|| (!bMove && !Request.IgnoreStableId.IsNone()))
+	{
+		return Rejected(ECigPlacementFailure::InvalidIgnoreStableId);
 	}
 	if (!Request.Footprint.IsValid())
 	{
@@ -215,6 +274,32 @@ FCigPlacementResult FCigPlacementAuthority::Validate(const FCigPlacementRequest&
 		return Result;
 	}
 
+	const FCigPlacementRecord* ExistingSelf = Find(Request.StableId);
+	if (Request.Context == ECigPlacementContext::MoveExisting)
+	{
+		if (!ExistingSelf)
+		{
+			Result.Failure = ECigPlacementFailure::MissingRecord;
+			return Result;
+		}
+		if (ExistingSelf->Category != Request.Category)
+		{
+			Result.Failure = ECigPlacementFailure::CategoryMismatch;
+			return Result;
+		}
+		if (ExistingSelf->Lifetime != Request.Lifetime)
+		{
+			Result.Failure = ECigPlacementFailure::LifetimeMismatch;
+			return Result;
+		}
+	}
+
+	if (!IsClassificationAllowed(Request))
+	{
+		Result.Failure = ECigPlacementFailure::InvalidClassification;
+		return Result;
+	}
+
 	const FCigPlacementRect Candidate = EffectiveRect(Result.NormalizedTransform, Request.Footprint);
 	if (!IsInsideBounds(Candidate))
 	{
@@ -222,16 +307,10 @@ FCigPlacementResult FCigPlacementAuthority::Validate(const FCigPlacementRequest&
 		return Result;
 	}
 
-	const FCigPlacementRecord* ExistingSelf = Find(Request.StableId);
-	if (ExistingSelf && Request.IgnoreStableId != Request.StableId)
+	if (ExistingSelf && Request.Context != ECigPlacementContext::MoveExisting)
 	{
 		Result.Failure = ECigPlacementFailure::DuplicateStableId;
 		Result.ConflictingStableId = Request.StableId;
-		return Result;
-	}
-	if (Request.Context == ECigPlacementContext::MoveExisting && !ExistingSelf)
-	{
-		Result.Failure = ECigPlacementFailure::MissingRecord;
 		return Result;
 	}
 
@@ -294,6 +373,7 @@ FCigPlacementResult FCigPlacementAuthority::TryRegister(const FCigPlacementReque
 	FCigPlacementRecord NewRecord;
 	NewRecord.StableId = Request.StableId;
 	NewRecord.Category = Request.Category;
+	NewRecord.Lifetime = Request.Lifetime;
 	NewRecord.Transform = Result.NormalizedTransform;
 	NewRecord.Footprint = Request.Footprint;
 
@@ -327,6 +407,26 @@ const FCigPlacementRecord* FCigPlacementAuthority::Find(FName StableId) const
 		}
 	}
 	return nullptr;
+}
+
+int32 FCigPlacementAuthority::CountByCategory(ECigPlacementCategory Category) const
+{
+	int32 Count = 0;
+	for (const FCigPlacementRecord& Record : Records)
+	{
+		Count += Record.Category == Category ? 1 : 0;
+	}
+	return Count;
+}
+
+int32 FCigPlacementAuthority::CountByLifetime(ECigPlacementLifetime Lifetime) const
+{
+	int32 Count = 0;
+	for (const FCigPlacementRecord& Record : Records)
+	{
+		Count += Record.Lifetime == Lifetime ? 1 : 0;
+	}
+	return Count;
 }
 
 FCigPlacementResult FCigPlacementAuthority::FindFirstValid(const FCigPlacementRequest& BaseRequest,

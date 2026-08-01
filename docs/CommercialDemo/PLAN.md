@@ -161,8 +161,14 @@ Depends on Stage 1 for the preparation loop it wraps around.
 Depends on Stage 2 storage actors existing as placeable objects.
 
 - 3.1 single placement authority — **done** on
-  `feat/stage3-placement-authority`; 3.2 categories is the next dependency,
-  followed by 3.3 layout consequences,
+  `feat/stage3-placement-authority` and merged through PR #7.
+- 3.2 functional placement categories — **done** on
+  `feat/stage3-placement-categories`. Records now separate semantic function
+  (`Station`, `Seating`, `Storage`, `Decoration`) from runtime lifetime
+  (`Installed`, `Transient`), validate context compatibility and keep both
+  dimensions immutable while moving an existing stable ID. No persisted layout
+  data was added, so save version 12 remains current.
+- 3.3 layout consequences is the next dependency, followed by
   3.4 path validation, 3.5 persistence by stable ID, 3.6 shop identity
 
 ## Stage 4 — customer life and readability
