@@ -227,3 +227,57 @@ Still manual: held-control kneading and chopping feel, wrap controls, gamepad
 input, focus readability, signage while moving, ambience balance, customer
 animation quality, lighting, price-policy queue balance, visible save/load and a
 full played day. The packaged self-test does not substitute for those checks.
+
+## 2026-08-01 — Stage 3.1 placement authority
+
+This is deterministic geometry, integration and packaged machine verification;
+it is not a human build-mode or navigation playtest.
+
+| Check | Result |
+|---|---|
+| Static source rules | clean — **121** automation tests, **24** systems, 889 bilingual keys |
+| Placement automation | **22 passed, 0 failed** |
+| Full automation | **121 passed, 0 failed** |
+| `ValidateAll.ps1` | static, harness, paths, build, tests and 14/14 runtime data all passed |
+| Cook policy fixture | **7/7** assertions passed without Unreal |
+| Development package | **714,143,424 bytes**, 73 files, zero PDB; eight smoke checks and mandatory self-test passed |
+| Shipping package | **504,254,016 bytes**, 49 files, zero PDB; process, cook coverage and mandatory self-test passed |
+
+The real-shop integration registered all 22 stations plus five authored seating
+fixtures, selected the first valid declared delivery spot, spawned a physical
+crate with a lifecycle-stable ID, and released its placement record after
+unloading. Pure tests cover bounds, overlap, edge contact, quarter-turn geometry,
+protected entrance/queue/service/station routes, duplicate and move identities,
+deterministic failure precedence, all delivery alternatives occupied, rollback,
+remove/reuse and missing-mesh fallback.
+
+The packages were built from detached commit `33e8251` in a clean D: validation
+worktree containing only public repository assets. Both containers held 19
+repository-owned Audio and 64 LowPoly assets. Thirty absent licensed/Fab cook
+paths used the documented primitive fallback; no Marketplace files were copied
+or committed.
+
+That public-checkout run found a real harness defect: the smoke test treated
+every absent optional asset directory and every expected optional-mesh warning
+as a package failure. It now keeps Audio and LowPoly mandatory, requires any
+optional pack that actually exists in the source checkout, and explicitly skips
+an absent licensed pack. The 7-case fixture covers mandatory roots, present,
+empty and absent optional roots, sibling-prefix isolation and paths outside
+`/Game`. The same already-built Development and Shipping packages then passed
+the corrected smoke gate.
+
+Two unsuccessful packaging attempts are not counted as validation. The first
+`PackageDemo.ps1` run hit `LNK1140` while the large changed source set was
+adaptive non-unity; after the source commit, C: fell to 0.26 GB and the next link
+hit `LNK1180`. Moving generated validation work to D: fixed disk pressure. A
+parallel UBA attempt was stopped after its low-memory guard repeatedly killed
+PCH compilation; the successful Development and Shipping UAT runs used
+`-MaxParallelActions=1`, `-nodebuginfo` and D: output, followed by the repository
+smoke script. These are host resource failures, not game-test passes.
+
+Still manual: shop-layout usability, full pawn navigation through future custom
+layouts, crate readability while moving, held-control preparation feel,
+gamepad, focus readability, signage in motion, ambience, customer animation,
+lighting, price-policy queue balance, visible save/load and a full played day.
+Rectangular protected zones do not prove Unreal AI navigation; that remains
+Stage 3.4.

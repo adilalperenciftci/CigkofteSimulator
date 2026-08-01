@@ -160,7 +160,9 @@ Depends on Stage 1 for the preparation loop it wraps around.
 
 Depends on Stage 2 storage actors existing as placeable objects.
 
-- 3.1 single placement authority, 3.2 categories, 3.3 layout consequences,
+- 3.1 single placement authority — **done** on
+  `feat/stage3-placement-authority`; 3.2 categories is the next dependency,
+  followed by 3.3 layout consequences,
   3.4 path validation, 3.5 persistence by stable ID, 3.6 shop identity
 
 ## Stage 4 — customer life and readability

@@ -85,6 +85,44 @@ function Test-CigPathWithinDirectory {
     return $fullPath.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)
 }
 
+function Test-CigCookDirectoryMustProduce {
+    <#
+    .SYNOPSIS
+    Decides whether an always-cook entry must produce packaged assets.
+
+    .DESCRIPTION
+    Audio and LowPoly are repository-owned and always mandatory. Other entries
+    name optional licensed packs: they become mandatory when the current source
+    checkout actually contains uassets, but an absent pack must remain a valid
+    primitive-fallback build. This keeps the smoke test strict without making a
+    public checkout depend on Marketplace files that cannot be committed.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$GamePath,
+        [Parameter(Mandatory)][string]$RepositoryRoot,
+        [string[]]$MandatoryPaths = @('/Game/Audio', '/Game/LowPoly')
+    )
+
+    if (-not $GamePath.StartsWith('/Game/', [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Always-cook path is outside /Game: $GamePath"
+    }
+    $segments = @($GamePath.Substring('/Game/'.Length).Split('/') |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($segments.Count -eq 0 -or $segments -contains '.' -or $segments -contains '..') {
+        throw "Always-cook path is not a concrete game directory: $GamePath"
+    }
+    if ($MandatoryPaths -icontains $GamePath) {
+        return $true
+    }
+
+    $source = Join-Path (Join-Path $RepositoryRoot 'Content') ($segments -join [IO.Path]::DirectorySeparatorChar)
+    if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+        return $false
+    }
+    return $null -ne (Get-ChildItem -LiteralPath $source -Filter '*.uasset' -File -Recurse -ErrorAction Stop |
+        Select-Object -First 1)
+}
+
 # ------------------------------------------------------------ release self-test
 
 $script:CigSelfTestHeader = 'CIGRELEASESELFTEST v1'
