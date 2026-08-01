@@ -7,7 +7,7 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 | Branch | `feat/stage3-placement-authority` |
 | Base | `0373da2` (PR #6 merge on master) |
 | Latest commit | see `git log -1` on the branch |
-| Open PR | none yet; PR #6 merged as `0373da2` |
+| Stage 3.1 PR | **#7**, `feat/stage3-placement-authority` -> `master` |
 | Save version | **12** |
 
 This table has gone stale twice, both times by naming a branch that had already
@@ -101,11 +101,13 @@ of what a reviewer has to read.
 
 ## Current task
 
-**Stage 3.1 placement authority delivery.** PR #6 is merged and Stage 2 is
-complete. The shared placement geometry, stable runtime records, authored shop
-protections and physical-crate integration are implemented and locally
-validated. Categories, layout consequences and persistence remain separate
-follow-up slices; Stage 3 as a whole is not complete.
+**Stage 3.1 placement authority delivery through PR #7.** PR #6 is merged and
+Stage 2 is complete. The shared placement geometry, stable runtime records,
+authored shop protections and physical-crate integration are implemented and
+locally validated. Categories, layout consequences and persistence remain
+separate follow-up slices; Stage 3 as a whole is not complete. Read PR #7's
+live state from GitHub rather than inferring whether it is open or merged from
+this checkpoint.
 
 ## Stage 2.1 and 2.2, finished
 
@@ -215,10 +217,10 @@ fixed; `Resolve-CigPath` is the shared helper.
 
 ## Next exact task
 
-**Open and deliver the focused Stage 3.1 PR.** Push
-`feat/stage3-placement-authority`, wait for CI, inspect comments and review
-threads, then merge with a merge commit only when every gate is green. Stage 3.2
-categories starts from the resulting `origin/master`.
+**Read PR #7's live state.** If it is open, wait for CI, inspect comments and
+review threads, then merge with a merge commit only when every gate is green. If
+it is merged, fetch and verify `origin/master`, then start Stage 3.2 categories
+from that exact remote commit rather than continuing on this branch.
 
 Standing items that are not tasks in that chain:
 
