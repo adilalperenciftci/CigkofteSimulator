@@ -12,14 +12,26 @@
 enum class ECigPlacementCategory : uint8
 {
 	Unknown = 0,
-	FixedFixture,
-	StockCrate,
-	ShopObject
+	Station,
+	Seating,
+	Storage,
+	Decoration
+};
+
+// Category describes function; lifetime describes how a placement enters and
+// leaves the authority. Keeping these axes separate prevents a delivery crate
+// from becoming a special-purpose furniture category.
+enum class ECigPlacementLifetime : uint8
+{
+	Unknown = 0,
+	Installed,
+	Transient
 };
 
 enum class ECigPlacementContext : uint8
 {
-	BuildMode = 0,
+	Unknown = 0,
+	BuildMode,
 	Delivery,
 	MoveExisting,
 	WorldRegistration
@@ -38,6 +50,12 @@ enum class ECigPlacementFailure : uint8
 	None = 0,
 	InvalidStableId,
 	UnknownCategory,
+	UnknownLifetime,
+	UnknownContext,
+	InvalidIgnoreStableId,
+	InvalidClassification,
+	CategoryMismatch,
+	LifetimeMismatch,
 	InvalidFootprint,
 	UnsupportedRotation,
 	InvalidFloor,
@@ -79,9 +97,10 @@ struct FCigPlacementRequest
 {
 	FName StableId;
 	ECigPlacementCategory Category = ECigPlacementCategory::Unknown;
+	ECigPlacementLifetime Lifetime = ECigPlacementLifetime::Unknown;
 	FTransform CandidateTransform = FTransform::Identity;
 	FCigPlacementFootprint Footprint;
-	ECigPlacementContext Context = ECigPlacementContext::BuildMode;
+	ECigPlacementContext Context = ECigPlacementContext::Unknown;
 
 	// Moving an existing object ignores exactly its own old record. It is a
 	// stable ID, never an actor pointer, and cannot name some other record.
@@ -102,6 +121,7 @@ struct FCigPlacementRecord
 {
 	FName StableId;
 	ECigPlacementCategory Category = ECigPlacementCategory::Unknown;
+	ECigPlacementLifetime Lifetime = ECigPlacementLifetime::Unknown;
 	FTransform Transform = FTransform::Identity;
 	FCigPlacementFootprint Footprint;
 };
@@ -149,6 +169,8 @@ public:
 		const TArray<FTransform>& OrderedCandidates) const;
 
 	int32 RecordCount() const { return Records.Num(); }
+	int32 CountByCategory(ECigPlacementCategory Category) const;
+	int32 CountByLifetime(ECigPlacementLifetime Lifetime) const;
 	int32 ProtectedZoneCount() const { return ProtectedZones.Num(); }
 	const TArray<FCigPlacementRecord>& GetRecords() const { return Records; }
 

@@ -65,6 +65,15 @@ FString UCigPlacementSystem::FailureText(ECigPlacementFailure Failure)
 	case ECigPlacementFailure::InvalidFloor: Key = TEXT("msg.placement.floor"); break;
 	case ECigPlacementFailure::DuplicateStableId: Key = TEXT("msg.placement.duplicate"); break;
 	case ECigPlacementFailure::NoDeliverySpotAvailable: Key = TEXT("msg.placement.deliveryfull"); break;
+	case ECigPlacementFailure::UnknownCategory:
+	case ECigPlacementFailure::UnknownLifetime:
+	case ECigPlacementFailure::UnknownContext:
+	case ECigPlacementFailure::InvalidIgnoreStableId:
+	case ECigPlacementFailure::InvalidClassification:
+	case ECigPlacementFailure::CategoryMismatch:
+	case ECigPlacementFailure::LifetimeMismatch:
+		Key = TEXT("msg.placement.classification");
+		break;
 	default: break;
 	}
 	return CigText::Get(Key);

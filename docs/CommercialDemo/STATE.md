@@ -4,10 +4,11 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 
 | | |
 |---|---|
-| Branch | `feat/stage3-placement-authority` |
-| Base | `0373da2` (PR #6 merge on master) |
+| Branch | `feat/stage3-placement-categories` |
+| Base | `c06650e` (PR #7 merge on master) |
 | Latest commit | see `git log -1` on the branch |
-| Stage 3.1 PR | **#7**, `feat/stage3-placement-authority` -> `master` |
+| Stage 3.1 PR | **#7**, merged as `c06650e` |
+| Current slice | **Stage 3.2 functional placement categories** |
 | Save version | **12** |
 
 This table has gone stale twice, both times by naming a branch that had already
@@ -101,13 +102,16 @@ of what a reviewer has to read.
 
 ## Current task
 
-**Stage 3.1 placement authority delivery through PR #7.** PR #6 is merged and
-Stage 2 is complete. The shared placement geometry, stable runtime records,
-authored shop protections and physical-crate integration are implemented and
-locally validated. Categories, layout consequences and persistence remain
-separate follow-up slices; Stage 3 as a whole is not complete. Read PR #7's
-live state from GitHub rather than inferring whether it is open or merged from
-this checkpoint.
+**Stage 3.2 functional placement categories.** PR #7 is merged as `c06650e` and
+this branch starts from that exact merge. The placement authority now separates
+semantic function (`Station`, `Seating`, `Storage`, `Decoration`) from lifetime
+(`Installed`, `Transient`). Unknown enum ordinals, invalid context combinations
+and ignore-ID misuse are rejected before geometry; moving a stable record cannot
+silently change its classification. The code-built shop registers 22 stations,
+four seating groups and the non-seat sofa decoration; delivery crates are
+transient storage. This is runtime-only metadata, so save version 12 did not
+change. Layout consequences, navigation and persistence remain later slices;
+Stage 3 as a whole is not complete.
 
 ## Stage 2.1 and 2.2, finished
 
@@ -217,10 +221,12 @@ fixed; `Resolve-CigPath` is the shared helper.
 
 ## Next exact task
 
-**Read PR #7's live state.** If it is open, wait for CI, inspect comments and
-review threads, then merge with a merge commit only when every gate is green. If
-it is merged, fetch and verify `origin/master`, then start Stage 3.2 categories
-from that exact remote commit rather than continuing on this branch.
+**Finish Stage 3.2 delivery.** Run the full validation and exact-head Development
+and Shipping packages, record the machine-readable self-test evidence, then open
+a focused pull request. Wait for CI, inspect comments and review threads, and
+merge with a merge commit only when every gate is green. After the merge, start
+Stage 3.3 layout consequences from the new `origin/master`; do not add them to
+this branch.
 
 Standing items that are not tasks in that chain:
 

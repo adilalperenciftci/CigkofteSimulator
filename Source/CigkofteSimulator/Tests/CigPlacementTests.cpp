@@ -29,9 +29,11 @@ namespace
 	{
 		FCigPlacementRequest Result;
 		Result.StableId = FName(StableId);
-		Result.Category = ECigPlacementCategory::ShopObject;
+		Result.Category = ECigPlacementCategory::Decoration;
+		Result.Lifetime = ECigPlacementLifetime::Installed;
 		Result.CandidateTransform = FTransform(FRotator(0.f, Yaw, 0.f), Location);
 		Result.Footprint.Size = Size;
+		Result.Context = ECigPlacementContext::BuildMode;
 		return Result;
 	}
 
@@ -43,6 +45,201 @@ namespace
 		Result.Failure = Failure;
 		return Result;
 	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementKnownCategoriesTest,
+	"Cigkofte.Placement.Classification.KnownCategoriesAccepted",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementKnownCategoriesTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	const ECigPlacementCategory Categories[] = {
+		ECigPlacementCategory::Station,
+		ECigPlacementCategory::Seating,
+		ECigPlacementCategory::Storage,
+		ECigPlacementCategory::Decoration
+	};
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Categories); ++Index)
+	{
+		FCigPlacementRequest R = Request(*FString::Printf(TEXT("category.%d"), Index), FVector::ZeroVector);
+		R.Category = Categories[Index];
+		TestTrue(*FString::Printf(TEXT("Kategori %d kurulabilir olmalı"), Index), A.Validate(R).bAccepted);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementUnknownCategoryTest,
+	"Cigkofte.Placement.Classification.UnknownCategoryRejected",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementUnknownCategoryTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	FCigPlacementRequest R = Request(TEXT("category.unknown"), FVector::ZeroVector);
+	R.Category = ECigPlacementCategory::Unknown;
+	TestEqual(TEXT("Unknown kategori reddedilmeli"), A.Validate(R).Failure,
+		ECigPlacementFailure::UnknownCategory);
+	R.Category = static_cast<ECigPlacementCategory>(255);
+	TestEqual(TEXT("Tanımsız kategori ordinali reddedilmeli"), A.Validate(R).Failure,
+		ECigPlacementFailure::UnknownCategory);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementUnknownLifetimeTest,
+	"Cigkofte.Placement.Classification.UnknownLifetimeRejected",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementUnknownLifetimeTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	FCigPlacementRequest R = Request(TEXT("lifetime.unknown"), FVector::ZeroVector);
+	R.Lifetime = ECigPlacementLifetime::Unknown;
+	TestEqual(TEXT("Unknown lifetime reddedilmeli"), A.Validate(R).Failure,
+		ECigPlacementFailure::UnknownLifetime);
+	R.Lifetime = static_cast<ECigPlacementLifetime>(255);
+	TestEqual(TEXT("Tanımsız lifetime ordinali reddedilmeli"), A.Validate(R).Failure,
+		ECigPlacementFailure::UnknownLifetime);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementUnknownContextTest,
+	"Cigkofte.Placement.Classification.UnknownContextRejected",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementUnknownContextTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	FCigPlacementRequest R = Request(TEXT("context.unknown"), FVector::ZeroVector);
+	R.Context = ECigPlacementContext::Unknown;
+	TestEqual(TEXT("Unknown bağlam reddedilmeli"), A.Validate(R).Failure,
+		ECigPlacementFailure::UnknownContext);
+	R.Context = static_cast<ECigPlacementContext>(255);
+	TestEqual(TEXT("Tanımsız bağlam ordinali reddedilmeli"), A.Validate(R).Failure,
+		ECigPlacementFailure::UnknownContext);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementClassificationMatrixTest,
+	"Cigkofte.Placement.Classification.ContextMatrixIsEnforced",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementClassificationMatrixTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+
+	FCigPlacementRequest InstalledDelivery = Request(TEXT("installed.delivery"), FVector::ZeroVector);
+	InstalledDelivery.Category = ECigPlacementCategory::Storage;
+	InstalledDelivery.Context = ECigPlacementContext::Delivery;
+	TestEqual(TEXT("Installed kayıt delivery bağlamına girememeli"), A.Validate(InstalledDelivery).Failure,
+		ECigPlacementFailure::InvalidClassification);
+
+	FCigPlacementRequest TransientBuild = Request(TEXT("transient.build"), FVector::ZeroVector);
+	TransientBuild.Category = ECigPlacementCategory::Storage;
+	TransientBuild.Lifetime = ECigPlacementLifetime::Transient;
+	TestEqual(TEXT("Transient depolama build mode ile kurulamaz"), A.Validate(TransientBuild).Failure,
+		ECigPlacementFailure::InvalidClassification);
+
+	FCigPlacementRequest TransientDecoration = Request(TEXT("transient.decoration"), FVector::ZeroVector);
+	TransientDecoration.Lifetime = ECigPlacementLifetime::Transient;
+	TransientDecoration.Context = ECigPlacementContext::Delivery;
+	TestEqual(TEXT("Transient dekorasyon delivery ile kurulamaz"), A.Validate(TransientDecoration).Failure,
+		ECigPlacementFailure::InvalidClassification);
+
+	FCigPlacementRequest Crate = Request(TEXT("transient.storage"), FVector::ZeroVector);
+	Crate.Category = ECigPlacementCategory::Storage;
+	Crate.Lifetime = ECigPlacementLifetime::Transient;
+	Crate.Context = ECigPlacementContext::Delivery;
+	TestTrue(TEXT("Transient storage delivery ile kabul edilmeli"), A.Validate(Crate).bAccepted);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementMoveClassificationTest,
+	"Cigkofte.Placement.Classification.MovePreservesClassification",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementMoveClassificationTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	const FCigPlacementRequest Original = Request(TEXT("object.immutable"), FVector::ZeroVector);
+	TestTrue(TEXT("Başlangıç kaydı kabul edilmeli"), A.TryRegister(Original).bAccepted);
+
+	FCigPlacementRequest CategoryChange = Request(TEXT("object.immutable"), FVector(200.f, 0.f, 0.f));
+	CategoryChange.Category = ECigPlacementCategory::Seating;
+	CategoryChange.Context = ECigPlacementContext::MoveExisting;
+	CategoryChange.IgnoreStableId = CategoryChange.StableId;
+	TestEqual(TEXT("Taşırken kategori değişmemeli"), A.TryRegister(CategoryChange).Failure,
+		ECigPlacementFailure::CategoryMismatch);
+
+	FCigPlacementRequest LifetimeChange = Request(TEXT("object.immutable"), FVector(200.f, 0.f, 0.f));
+	LifetimeChange.Lifetime = ECigPlacementLifetime::Transient;
+	LifetimeChange.Context = ECigPlacementContext::MoveExisting;
+	LifetimeChange.IgnoreStableId = LifetimeChange.StableId;
+	TestEqual(TEXT("Taşırken lifetime değişmemeli"), A.TryRegister(LifetimeChange).Failure,
+		ECigPlacementFailure::LifetimeMismatch);
+
+	const FCigPlacementRecord* Kept = A.Find(Original.StableId);
+	TestNotNull(TEXT("Reddedilen değişiklik kaydı silmemeli"), Kept);
+	if (Kept)
+	{
+		TestEqual(TEXT("Kategori aynı kalmalı"), Kept->Category, ECigPlacementCategory::Decoration);
+		TestEqual(TEXT("Lifetime aynı kalmalı"), Kept->Lifetime, ECigPlacementLifetime::Installed);
+		TestTrue(TEXT("Konum aynı kalmalı"), Kept->Transform.GetLocation().IsNearlyZero());
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementIgnoreContextTest,
+	"Cigkofte.Placement.Classification.IgnoreIdOnlyAllowedForMove",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementIgnoreContextTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	FCigPlacementRequest Build = Request(TEXT("object.ignore"), FVector::ZeroVector);
+	Build.IgnoreStableId = Build.StableId;
+	TestEqual(TEXT("Build mode kendi kimliğini yok sayamamalı"), A.Validate(Build).Failure,
+		ECigPlacementFailure::InvalidIgnoreStableId);
+
+	FCigPlacementRequest Move = Request(TEXT("object.ignore"), FVector::ZeroVector);
+	Move.Context = ECigPlacementContext::MoveExisting;
+	TestEqual(TEXT("Move kendi kimliğini açıkça belirtmeli"), A.Validate(Move).Failure,
+		ECigPlacementFailure::InvalidIgnoreStableId);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementClassificationCountTest,
+	"Cigkofte.Placement.Classification.CategoryAndLifetimeCounts",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementClassificationCountTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	const ECigPlacementCategory Categories[] = {
+		ECigPlacementCategory::Station,
+		ECigPlacementCategory::Seating,
+		ECigPlacementCategory::Storage,
+		ECigPlacementCategory::Decoration
+	};
+	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Categories); ++Index)
+	{
+		FCigPlacementRequest R = Request(*FString::Printf(TEXT("installed.%d"), Index),
+			FVector(-300.f + Index * 200.f, 0.f, 0.f));
+		R.Category = Categories[Index];
+		TestTrue(TEXT("Installed sınıf kaydolmalı"), A.TryRegister(R).bAccepted);
+	}
+	FCigPlacementRequest Crate = Request(TEXT("transient.crate"), FVector(500.f, 0.f, 0.f));
+	Crate.Category = ECigPlacementCategory::Storage;
+	Crate.Lifetime = ECigPlacementLifetime::Transient;
+	Crate.Context = ECigPlacementContext::Delivery;
+	TestTrue(TEXT("Transient kasa kaydolmalı"), A.TryRegister(Crate).bAccepted);
+	TestEqual(TEXT("Station sayısı"), A.CountByCategory(ECigPlacementCategory::Station), 1);
+	TestEqual(TEXT("Seating sayısı"), A.CountByCategory(ECigPlacementCategory::Seating), 1);
+	TestEqual(TEXT("Storage sayısı"), A.CountByCategory(ECigPlacementCategory::Storage), 2);
+	TestEqual(TEXT("Decoration sayısı"), A.CountByCategory(ECigPlacementCategory::Decoration), 1);
+	TestEqual(TEXT("Installed sayısı"), A.CountByLifetime(ECigPlacementLifetime::Installed), 4);
+	TestEqual(TEXT("Transient sayısı"), A.CountByLifetime(ECigPlacementLifetime::Transient), 1);
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementValidFreeTest,
@@ -214,7 +411,9 @@ bool FCigPlacementCrateAlternativeTest::RunTest(const FString&)
 	Blocker.Context = ECigPlacementContext::WorldRegistration;
 	A.TryRegister(Blocker);
 	FCigPlacementRequest Crate = Request(TEXT("crate.delivery.1"), FVector::ZeroVector, FVector2D(60.f, 45.f));
-	Crate.Category = ECigPlacementCategory::StockCrate;
+	Crate.Category = ECigPlacementCategory::Storage;
+	Crate.Lifetime = ECigPlacementLifetime::Transient;
+	Crate.Context = ECigPlacementContext::Delivery;
 	const FCigPlacementResult Result = A.FindFirstValid(Crate, Spots);
 	TestTrue(TEXT("Bir alternatif bulunmalı"), Result.bAccepted);
 	TestTrue(TEXT("İlk doluysa ikinci seçilmeli"), Result.NormalizedTransform.GetLocation().Equals(Spots[1].GetLocation()));
@@ -237,7 +436,9 @@ bool FCigPlacementAllCrateSpotsOccupiedTest::RunTest(const FString&)
 		A.TryRegister(Blocker);
 	}
 	FCigPlacementRequest Crate = Request(TEXT("crate.delivery.full"), FVector::ZeroVector, FVector2D(60.f, 45.f));
-	Crate.Category = ECigPlacementCategory::StockCrate;
+	Crate.Category = ECigPlacementCategory::Storage;
+	Crate.Lifetime = ECigPlacementLifetime::Transient;
+	Crate.Context = ECigPlacementContext::Delivery;
 	const FCigPlacementResult Result = A.FindFirstValid(Crate, Spots);
 	TestFalse(TEXT("Dolu sıra kabul edilmemeli"), Result.bAccepted);
 	TestEqual(TEXT("Açık teslimat hatası dönmeli"), Result.Failure, ECigPlacementFailure::NoDeliverySpotAvailable);
@@ -390,10 +591,26 @@ bool FCigPlacementShopIntegrationTest::RunTest(const FString&)
 	TestNotNull(TEXT("Sofa fixture kaydı olmalı"), Sofa);
 	if (Sofa)
 	{
+		TestEqual(TEXT("Sofa koltuk kapasitesi değil dekorasyon olmalı"), Sofa->Category,
+			ECigPlacementCategory::Decoration);
+		TestEqual(TEXT("Sofa installed lifetime taşımalı"), Sofa->Lifetime,
+			ECigPlacementLifetime::Installed);
 		TestTrue(TEXT("Sofa yerleşim izi görselin 90 derece yönünü korumalı"),
 			FMath::IsNearlyEqual(FMath::Abs(FMath::UnwindDegrees(Sofa->Transform.Rotator().Yaw)), 90.f, 0.01f));
 	}
-	TestTrue(TEXT("22 istasyon ve 5 oturma fixture'ı kaydolmalı"), Shop.GM->Placement->PlacementCount() >= 27);
+	TestEqual(TEXT("22 istasyon kaydolmalı"),
+		Shop.GM->Placement->PlacementCountByCategory(ECigPlacementCategory::Station), 22);
+	TestEqual(TEXT("4 masa grubu seating olarak kaydolmalı"),
+		Shop.GM->Placement->PlacementCountByCategory(ECigPlacementCategory::Seating), 4);
+	TestEqual(TEXT("Sofa tek dekorasyon kaydı olmalı"),
+		Shop.GM->Placement->PlacementCountByCategory(ECigPlacementCategory::Decoration), 1);
+	TestEqual(TEXT("Teslimattan önce storage kaydı olmamalı"),
+		Shop.GM->Placement->PlacementCountByCategory(ECigPlacementCategory::Storage), 0);
+	TestEqual(TEXT("Dünya kurulumunda 27 installed kayıt olmalı"),
+		Shop.GM->Placement->PlacementCountByLifetime(ECigPlacementLifetime::Installed), 27);
+	TestEqual(TEXT("Dünya kurulumunda transient kayıt olmamalı"),
+		Shop.GM->Placement->PlacementCountByLifetime(ECigPlacementLifetime::Transient), 0);
+	TestEqual(TEXT("Dünya kayıt toplamı kesin olmalı"), Shop.GM->Placement->PlacementCount(), 27);
 
 	FCigPendingOrder Order;
 	Order.Item = (int32)ECigIngredient::Isot;
@@ -403,7 +620,8 @@ bool FCigPlacementShopIntegrationTest::RunTest(const FString&)
 	Order.PlacementSerial = 77;
 	FCigPlacementRequest Probe;
 	Probe.StableId = TEXT("crate.delivery.00000077");
-	Probe.Category = ECigPlacementCategory::StockCrate;
+	Probe.Category = ECigPlacementCategory::Storage;
+	Probe.Lifetime = ECigPlacementLifetime::Transient;
 	Probe.Footprint = UCigPlacementSystem::StockCrateFootprint();
 	Probe.Context = ECigPlacementContext::Delivery;
 	const FCigPlacementResult Expected = Shop.GM->Placement->FindFirstValidPlacement(
@@ -426,10 +644,22 @@ bool FCigPlacementShopIntegrationTest::RunTest(const FString&)
 	TestEqual(TEXT("Kasa stabil kimliği sipariş yaşam döngüsünden gelmeli"), Crate->PlacementId, Probe.StableId);
 	TestTrue(TEXT("İlk geçerli declared nokta kullanılmalı"),
 		Crate->GetActorLocation().Equals(Expected.NormalizedTransform.GetLocation()));
-	TestNotNull(TEXT("Kasa otoritede kayıtlı olmalı"), Shop.GM->Placement->FindPlacement(Crate->PlacementId));
+	const FCigPlacementRecord* CrateRecord = Shop.GM->Placement->FindPlacement(Crate->PlacementId);
+	TestNotNull(TEXT("Kasa otoritede kayıtlı olmalı"), CrateRecord);
+	if (CrateRecord)
+	{
+		TestEqual(TEXT("Kasa storage olmalı"), CrateRecord->Category, ECigPlacementCategory::Storage);
+		TestEqual(TEXT("Kasa transient olmalı"), CrateRecord->Lifetime, ECigPlacementLifetime::Transient);
+	}
+	TestEqual(TEXT("Teslimat bir storage kaydı eklemeli"),
+		Shop.GM->Placement->PlacementCountByCategory(ECigPlacementCategory::Storage), 1);
+	TestEqual(TEXT("Teslimat bir transient kayıt eklemeli"),
+		Shop.GM->Placement->PlacementCountByLifetime(ECigPlacementLifetime::Transient), 1);
 
 	Shop.GM->Inventory->UnloadCrate(Crate);
 	TestNull(TEXT("Boşaltılan kasanın izi kalkmalı"), Shop.GM->Placement->FindPlacement(Probe.StableId));
+	TestEqual(TEXT("Boşaltma transient kaydı kaldırmalı"),
+		Shop.GM->Placement->PlacementCountByLifetime(ECigPlacementLifetime::Transient), 0);
 	return true;
 }
 

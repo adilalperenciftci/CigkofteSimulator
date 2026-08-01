@@ -25,6 +25,8 @@ public:
 	bool AddProtectedZone(const FCigProtectedZone& Zone);
 
 	int32 PlacementCount() const { return Authority.RecordCount(); }
+	int32 PlacementCountByCategory(ECigPlacementCategory Category) const { return Authority.CountByCategory(Category); }
+	int32 PlacementCountByLifetime(ECigPlacementLifetime Lifetime) const { return Authority.CountByLifetime(Lifetime); }
 	int32 ProtectedZoneCount() const { return Authority.ProtectedZoneCount(); }
 	const TArray<FCigPlacementRecord>& PlacementRecords() const { return Authority.GetRecords(); }
 

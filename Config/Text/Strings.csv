@@ -751,6 +751,7 @@ msg.placement.rotation,Bu açı desteklenmiyor; 90 derecelik dönüş kullan.,Th
 msg.placement.floor,Nesne dükkân zemininde durmalı.,The object must stand on the shop floor.
 msg.placement.duplicate,Bu nesne kimliği zaten kayıtlı.,That object identity is already registered.
 msg.placement.deliveryfull,Teslimat alanı dolu; kasa için yer aç.,The delivery area is full; clear a spot for the crate.
+msg.placement.classification,Bu nesne bu yerleştirme işlemi için uygun değil.,This object is not valid for this placement operation.
 tablet.licence,0) Ruhsat ve vergi levhası,0) Licence and tax plate
 tablet.licence.valid,"{0} gün geçerli  ·  yenile {1} TL","valid {0} more days  ·  renew {1} TL"
 tablet.licence.expired,"SÜRESİ DOLDU  ·  yenile {0} TL","EXPIRED  ·  renew {0} TL"
