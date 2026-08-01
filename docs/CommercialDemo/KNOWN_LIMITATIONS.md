@@ -70,13 +70,17 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 99 automation tests cover pure formulas, tables, data integrity and one
+- The 121 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
   animation, audio mixing and UI layout are all outside the harness.
 - The count above is checked rather than copied: `Tools/check_sources.py` derives
   it from the test macros and fails when a document disagrees.
+- Placement tests prove deterministic rectangular occupancy, protected zones and
+  declared crate alternatives. They do **not** prove Unreal navigation paths or
+  that an AI pawn can traverse every future player-authored layout; full path
+  validation is Stage 3.4.
 
 ## Platform
 

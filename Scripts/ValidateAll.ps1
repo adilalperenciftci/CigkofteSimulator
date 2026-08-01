@@ -50,6 +50,10 @@ Invoke-CigStage 'harness' {
     Write-CigStep 'Surum oz-testi durum makinesi'
     & (Join-Path $PSScriptRoot 'Test-SelfTestState.ps1') | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "Test-SelfTestState.ps1 exit $LASTEXITCODE" }
+
+    Write-CigStep 'Paket cook kapsami politikasi'
+    & (Join-Path $PSScriptRoot 'Test-SmokeCookPolicy.ps1') | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "Test-SmokeCookPolicy.ps1 exit $LASTEXITCODE" }
 }
 
 Invoke-CigStage 'paths' {

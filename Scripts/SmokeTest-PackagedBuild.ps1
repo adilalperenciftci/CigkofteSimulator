@@ -132,8 +132,10 @@ $csvCount = (Get-ChildItem (Join-Path $RepoRoot 'Config\Balance\*.csv')).Count
 # on first use, so a headless run that never triggers a sound cannot fail the
 # audio check. It passed for exactly that reason against a build that had not
 # cooked a single /Game asset. This check is positive: it asks the container what
-# is in it, and a directory that produced nothing is a directory whose assets the
-# player will never see.
+# is in it. Repository-owned directories must always produce assets. Optional
+# licensed packs only become mandatory when their uassets exist in this source
+# checkout; otherwise the public repository's primitive fallback is the intended
+# result, not a failed package.
 Write-CigStep 'Cook denetimi: her DirectoriesToAlwaysCook girdisi varlik uretti mi'
 
 $unrealPak = Join-Path $engine 'Engine\Binaries\Win64\UnrealPak.exe'
@@ -159,9 +161,13 @@ else {
         # is "materials" on disk and in the ini is listed as "Materials". Matching
         # exactly reported an empty directory for assets that had in fact cooked.
         $n = ([regex]::Matches($listing, [regex]::Escape($rel) + '/[^\s"]+\.uasset', 'IgnoreCase')).Count
-        if ($n -eq 0) {
+        $mustProduce = Test-CigCookDirectoryMustProduce -GamePath $d -RepositoryRoot $RepoRoot
+        if ($n -eq 0 -and $mustProduce) {
             $emptyDirs += $d
             Write-Host ("  {0,6}  {1}" -f 0, $d) -ForegroundColor Red
+        }
+        elseif ($n -eq 0) {
+            Write-Host ("  {0,6}  {1}  (opsiyonel paket kaynakta yok)" -f 0, $d) -ForegroundColor Yellow
         }
         else {
             Write-Host ("  {0,6}  {1}" -f $n, $d)
@@ -289,6 +295,8 @@ $selfTestState = $selfTest.State
 $selfTestDetail = $selfTest.Detail
 
 # Each check names the symptom the player would see, not the internal fault.
+$requiredMeshWarnings = @($lines | Where-Object { $_ -match 'Mesh bulunamadi: /Game/LowPoly/' })
+
 $checks = @(
     @{ Name = 'surec ayakta';    Ok = (-not $exitedEarly)
        Fail = "oyun $TimeoutSeconds sn dolmadan kapandi (cikis kodu $earlyExitCode) - baslangicta cokuyor" }
@@ -300,8 +308,8 @@ if ($haveLog) { $checks += @(
        Fail = "denge CSV'leri yuklenmedi - oyun C++ varsayilanlariyla calisir" }
     @{ Name = 'ses varliklari';  Ok = -not (@($lines) -match 'Ses bulunamadı: /Game/Audio/')
        Fail = 'ses varliklari cook edilmemis - oyun tamamen sessiz' }
-    @{ Name = 'mesh varliklari'; Ok = -not (@($lines) -match 'Mesh bulunamadi')
-       Fail = 'mesh varliklari cook edilmemis - dukkan ilkel kutulardan gorunur' }
+    @{ Name = 'mesh varliklari'; Ok = ($requiredMeshWarnings.Count -eq 0)
+       Fail = 'repository-owned LowPoly mesh varliklari cook edilmemis' }
     @{ Name = 'olumcul hata';    Ok = -not (@($lines) -match 'LogCig: Error|Fatal error|Assertion failed|Unhandled Exception')
        Fail = 'baslangicta hata var' }
 ) }

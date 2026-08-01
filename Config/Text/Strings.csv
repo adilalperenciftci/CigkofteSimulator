@@ -739,6 +739,18 @@ msg.inventory.cratearrived,"Teslimat geldi: {0} {1} — kapının yanında","Del
 msg.inventory.crateunloaded,"{0} {1} kilere kaldırıldı","{0} {1} put away"
 msg.inventory.cratenoroom,"{0} için yer yok — kasa bekliyor","No room for {0} — the crate waits"
 msg.inventory.crateovernight,"Dışarıda kalan {0} birim gece kilere kaldırıldı","{0} units left out were put away overnight"
+msg.placement.invalid,Yerleştirme geçersiz.,Placement is invalid.
+msg.placement.outside,Nesne dükkân sınırlarının dışında kalıyor.,The object would be outside the shop bounds.
+msg.placement.overlap,Burada başka bir nesne var.,Another object already occupies this space.
+msg.placement.entrance,Giriş boş kalmalı.,The entrance must remain clear.
+msg.placement.queue,Müşteri kuyruğu kapatılamaz.,The customer queue must remain clear.
+msg.placement.service,Servis yolu kapatılamaz.,The service route must remain clear.
+msg.placement.station,İstasyonun çalışma alanı boş kalmalı.,The station work area must remain clear.
+msg.placement.route,Yürüme koridoru kapatılamaz.,The walking corridor must remain clear.
+msg.placement.rotation,Bu açı desteklenmiyor; 90 derecelik dönüş kullan.,That angle is unsupported; use a 90-degree turn.
+msg.placement.floor,Nesne dükkân zemininde durmalı.,The object must stand on the shop floor.
+msg.placement.duplicate,Bu nesne kimliği zaten kayıtlı.,That object identity is already registered.
+msg.placement.deliveryfull,Teslimat alanı dolu; kasa için yer aç.,The delivery area is full; clear a spot for the crate.
 tablet.licence,0) Ruhsat ve vergi levhası,0) Licence and tax plate
 tablet.licence.valid,"{0} gün geçerli  ·  yenile {1} TL","valid {0} more days  ·  renew {1} TL"
 tablet.licence.expired,"SÜRESİ DOLDU  ·  yenile {0} TL","EXPIRED  ·  renew {0} TL"

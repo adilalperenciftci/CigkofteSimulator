@@ -107,7 +107,7 @@ devretmeye kadar. Tabletin Başarımlar sekmesinde toplam istatistiklerinle birl
 
 ## Sistemler
 
-23 bağımsız sistem, oyunu bir "tıkla ve sat" döngüsünden çıkarıp işletmeye çeviriyor:
+24 bağımsız sistem, oyunu bir "tıkla ve sat" döngüsünden çıkarıp işletmeye çeviriyor:
 
 | Sistem | Ne yapıyor |
 | --- | --- |
@@ -115,6 +115,7 @@ devretmeye kadar. Tabletin Başarımlar sekmesinde toplam istatistiklerinle birl
 | **Sipariş & Tarif** | Acılık, porsiyon, garnitür maskesi, ayran, paket/tabak. Yeni tarifler seviye ile açılır. |
 | **Ekonomi** | Fiyatlandırma, kira, tedarikçiler, stok maliyetleri, günlük kâr-zarar. |
 | **Stok** | 14 kalem malzeme, tedarikçiden sipariş, kıtlık ve zam olayları. |
+| **Yerleştirme** | Zemin ayak izleri, korunan rotalar ve sıralı teslimat kasası alternatifleri tek deterministik otoritededir. |
 | **Hijyen** | Tezgâh kirlenir, eldiven değişir, el yıkanır, bulaşık birikir. Titiz müşteri fark eder. |
 | **İtibar & Yorumlar** | Müşteriler puan verir, yorum yazar; ortalama puan müşteri akışını belirler. |
 | **Rakipler** | Mahalledeki diğer büfeler kampanya yapar, müşteri çalar. |
@@ -207,14 +208,14 @@ mesh yolları yukarıdaki klasör adlarına göre çözülür (`World/CigMeshLib
 
 ## Mimari
 
-`ACigkofteGameMode` bir koordinatör; oynanışın tamamı `UCigSystem` (UObject) türevi 23 sisteme
+`ACigkofteGameMode` bir koordinatör; oynanışın tamamı `UCigSystem` (UObject) türevi 24 sisteme
 bölünmüş ve `Source/CigkofteSimulator/` altında klasörlenmiştir:
 
 ```
 Core/        ortak tipler, log, upgrade tanımları
 Game/        GameMode + gün döngüsü + sistem taban sınıfı
 World/       runtime dünya kurucu, istasyonlar, mesh kütüphanesi
-Cooking/  Orders/  Customers/  Economy/  Inventory/
+Cooking/  Orders/  Customers/  Economy/  Inventory/  Placement/
 Progression/  Quests/  Events/  Delivery/  Hygiene/  Staff/  Cat/
 Player/  Vehicles/  UI/  Save/  Audio/  Debug/
 ```

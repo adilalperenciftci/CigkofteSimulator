@@ -19,6 +19,7 @@
 #include "Economy/CigInspectionSystem.h"
 #include "Economy/CigSocialSystem.h"
 #include "World/CigWorldBuilder.h"
+#include "Placement/CigPlacementTypes.h"
 #include "Core/CigRandomSubsystem.h"
 #include "Core/CigBalance.h"
 #include "Core/CigLog.h"
@@ -30,7 +31,6 @@
 
 namespace
 {
-	const FVector GQueueFront(-850.f, 0.f, 0.f);
 	const FVector GCustomerSpawn(-1750.f, 1200.f, 0.f);
 	const FVector GCustomerExit(-1750.f, -1200.f, 0.f);
 
@@ -56,7 +56,8 @@ ACigkofteCustomer* UCigCustomerSystem::FrontCustomer() const
 
 FVector UCigCustomerSystem::QueueSlot(int32 Index) const
 {
-	return GQueueFront - FVector(160.f * Index, 0.f, 0.f);
+	return CigPlacementLayout::QueueFront()
+		- FVector(CigPlacementLayout::QueueSpacing() * Index, 0.f, 0.f);
 }
 
 ACigkofteCustomer* UCigCustomerSystem::AcquireCustomer(const FVector& SpawnPos)

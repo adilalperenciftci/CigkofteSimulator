@@ -6,6 +6,7 @@
 #include "CigkofteGameMode.generated.h"
 
 class UCigEventBus;
+class UCigPlacementSystem;
 class UCigWorldBuilder;
 class UCigDaySystem;
 class UCigCookingSystem;
@@ -131,6 +132,9 @@ public:
 	// The event bus is built first so the others can subscribe to it during
 	// InitSystem (see Game/CigEventBus.h).
 	UPROPERTY() TObjectPtr<UCigEventBus> Bus;
+	// Authoritative floor occupancy and protected routes. Built before the world
+	// builder and inventory because both register through it.
+	UPROPERTY() TObjectPtr<UCigPlacementSystem> Placement;
 	UPROPERTY() TObjectPtr<UCigWorldBuilder> WorldBuilder;
 	UPROPERTY() TObjectPtr<UCigDaySystem> Days;
 	UPROPERTY() TObjectPtr<UCigCookingSystem> Cooking;

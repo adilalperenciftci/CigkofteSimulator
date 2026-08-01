@@ -49,6 +49,10 @@ public:
 	// supplier's quality already does.
 	float Quality = 1.f;
 
+	// Stable runtime identity owned by the placement authority. The actor pointer
+	// is deliberately not the identity and is never persisted.
+	FName PlacementId;
+
 private:
 	// A plain root the body hangs off, rather than making the body the root.
 	//

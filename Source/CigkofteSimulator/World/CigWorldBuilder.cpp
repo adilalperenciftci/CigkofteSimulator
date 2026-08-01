@@ -2,6 +2,7 @@
 #include "World/CigkofteStation.h"
 #include "World/CigFloatText.h"
 #include "Game/CigkofteGameMode.h"
+#include "Placement/CigPlacementSystem.h"
 #include "Events/CigEventSystem.h"
 #include "Customers/CigkofteCustomer.h"
 #include "Vehicles/CigCar.h"
@@ -28,6 +29,69 @@
 #include "Kismet/GameplayStatics.h"
 
 #include "Core/CigSpawnUtils.h"
+
+namespace
+{
+	const TCHAR* StationPlacementToken(ECigStation Type)
+	{
+		switch (Type)
+		{
+		case ECigStation::Bulgur: return TEXT("bulgur");
+		case ECigStation::Isot: return TEXT("isot");
+		case ECigStation::Salca: return TEXT("salca");
+		case ECigStation::Su: return TEXT("su");
+		case ECigStation::Baharat: return TEXT("baharat");
+		case ECigStation::Yogurma: return TEXT("yogurma");
+		case ECigStation::Servis: return TEXT("servis");
+		case ECigStation::Lavabo: return TEXT("lavabo");
+		case ECigStation::Cop: return TEXT("cop");
+		case ECigStation::Eldiven: return TEXT("eldiven");
+		case ECigStation::IsotPlus: return TEXT("isotplus");
+		case ECigStation::Reklam: return TEXT("reklam");
+		case ECigStation::Dograma: return TEXT("dograma");
+		case ECigStation::Lavas: return TEXT("lavas");
+		case ECigStation::Paketleme: return TEXT("paketleme");
+		case ECigStation::Buzdolabi: return TEXT("buzdolabi");
+		case ECigStation::Temizlik: return TEXT("temizlik");
+		case ECigStation::Bulasik: return TEXT("bulasik");
+		case ECigStation::Cay: return TEXT("cay");
+		case ECigStation::MamaKabi: return TEXT("mama");
+		case ECigStation::Tarif: return TEXT("tarif");
+		case ECigStation::YanUrun: return TEXT("yanurun");
+		default: return TEXT("unknown");
+		}
+	}
+
+	FVector2D StationPlacementSize(ECigStation Type)
+	{
+		switch (Type)
+		{
+		case ECigStation::Servis: return FVector2D(100.f, 400.f);
+		case ECigStation::Bulgur:
+		case ECigStation::Isot:
+		case ECigStation::Salca:
+		case ECigStation::Su:
+		case ECigStation::Baharat:
+		case ECigStation::Yogurma:
+		case ECigStation::Dograma: return FVector2D(210.f, 90.f);
+		case ECigStation::Lavas:
+		case ECigStation::Paketleme: return FVector2D(90.f, 120.f);
+		case ECigStation::Buzdolabi: return FVector2D(90.f, 90.f);
+		case ECigStation::Lavabo: return FVector2D(80.f, 80.f);
+		case ECigStation::Cop: return FVector2D(55.f, 55.f);
+		case ECigStation::Eldiven:
+		case ECigStation::IsotPlus:
+		case ECigStation::Reklam: return FVector2D(80.f, 80.f);
+		case ECigStation::Temizlik: return FVector2D(70.f, 70.f);
+		case ECigStation::Bulasik: return FVector2D(80.f, 90.f);
+		case ECigStation::Cay: return FVector2D(60.f, 60.f);
+		case ECigStation::MamaKabi: return FVector2D(35.f, 35.f);
+		case ECigStation::Tarif: return FVector2D(15.f, 120.f);
+		case ECigStation::YanUrun: return FVector2D(90.f, 160.f);
+		default: return FVector2D(90.f, 90.f);
+		}
+	}
+}
 
 void UCigWorldBuilder::OnInit()
 {
@@ -189,8 +253,70 @@ ACigkofteStation* UCigWorldBuilder::SpawnStation(ECigStation Type, const FVector
 	{
 		S->Setup(Type, Color, Label, LabelYaw);
 		Stations.Add(Type, S);
+		RegisterStationPlacement(Type, Loc, LabelYaw);
 	}
 	return S;
+}
+
+void UCigWorldBuilder::RegisterStationPlacement(ECigStation Type, const FVector& Loc, float LabelYaw)
+{
+	if (!GM || !GM->Placement)
+	{
+		return;
+	}
+
+	const FString Token(StationPlacementToken(Type));
+	FCigPlacementRequest Request;
+	Request.StableId = FName(*FString::Printf(TEXT("fixture.station.%s"), *Token));
+	Request.Category = ECigPlacementCategory::FixedFixture;
+	Request.CandidateTransform = FTransform(FRotator::ZeroRotator, FVector(Loc.X, Loc.Y, 0.f));
+	Request.Footprint.Size = StationPlacementSize(Type);
+	Request.Footprint.RotationPolicy = ECigPlacementRotationPolicy::FixedYaw;
+	Request.Context = ECigPlacementContext::WorldRegistration;
+
+	const FCigPlacementResult Result = GM->Placement->RegisterPlacement(Request);
+	if (!Result.bAccepted)
+	{
+		UE_LOG(LogCig, Error, TEXT("Istasyon yerlesim kaydi reddedildi: %s (%d)"),
+			*Request.StableId.ToString(), (int32)Result.Failure);
+		return;
+	}
+
+	// The interaction side is protected separately from the occupied footprint.
+	// LabelYaw already describes which side the station reads from, and all
+	// current stations face either +X or -X.
+	const float Radians = FMath::DegreesToRadians(LabelYaw);
+	const FVector2D Facing(FMath::Cos(Radians), FMath::Sin(Radians));
+	FCigProtectedZone Access;
+	Access.StableId = FName(*FString::Printf(TEXT("zone.station.%s.access"), *Token));
+	Access.Center = FVector2D(Loc.X, Loc.Y) + Facing * 120.f;
+	const FVector2D FixtureSize = StationPlacementSize(Type);
+	Access.HalfExtent = FVector2D(70.f, FMath::Max(60.f, FixtureSize.Y * 0.5f));
+	Access.Failure = ECigPlacementFailure::BlocksStationAccess;
+	if (!GM->Placement->AddProtectedZone(Access))
+	{
+		UE_LOG(LogCig, Error, TEXT("Istasyon erisim bolgesi kaydedilemedi: %s"), *Access.StableId.ToString());
+	}
+}
+
+void UCigWorldBuilder::RegisterFixedFixture(FName StableId, const FVector& Loc, const FVector2D& Size, float Yaw)
+{
+	if (!GM || !GM->Placement)
+	{
+		return;
+	}
+	FCigPlacementRequest Request;
+	Request.StableId = StableId;
+	Request.Category = ECigPlacementCategory::FixedFixture;
+	Request.CandidateTransform = FTransform(FRotator(0.f, Yaw, 0.f), FVector(Loc.X, Loc.Y, 0.f));
+	Request.Footprint.Size = Size;
+	Request.Context = ECigPlacementContext::WorldRegistration;
+	const FCigPlacementResult Result = GM->Placement->RegisterPlacement(Request);
+	if (!Result.bAccepted)
+	{
+		UE_LOG(LogCig, Error, TEXT("Sabit demirbas yerlesim kaydi reddedildi: %s (%d)"),
+			*StableId.ToString(), (int32)Result.Failure);
+	}
 }
 
 UStaticMesh* UCigWorldBuilder::PreferDukkan(const TCHAR* DukkanName, UStaticMesh* KenneyFallback) const
@@ -581,7 +707,8 @@ void UCigWorldBuilder::BuildSeatingArea()
 {
 	// Seating area: the front-side part of the shop. Two chairs per table, one
 	// Seat record per chair. The customer system claims them via ReserveSeat.
-	auto BuildTable = [this](float X, float Y)
+	int32 TableIndex = 0;
+	auto BuildTable = [this, &TableIndex](float X, float Y)
 	{
 		// Table (restaurant pack > Kenney round > Kenney flat)
 		UStaticMesh* TableMesh = CigMesh::Furniture(TEXT("tableRound"));
@@ -612,6 +739,11 @@ void UCigWorldBuilder::BuildSeatingArea()
 			Seat.Yaw = Slot.Yaw; // facing the table
 			Seats.Add(Seat);
 		}
+
+		// One footprint covers the table and both chairs. Imported meshes may be
+		// absent, but the authored fallback footprint does not disappear with them.
+		RegisterFixedFixture(FName(*FString::Printf(TEXT("fixture.seating.table.%d"), TableIndex++)),
+			FVector(X, Y, 0.f), FVector2D(160.f, 280.f));
 	};
 
 	// Layout along the right wall (Y+ side) and near the entrance
@@ -621,7 +753,11 @@ void UCigWorldBuilder::BuildSeatingArea()
 	BuildTable(-500.f, -650.f);
 
 	// A small sofa corner (atmosphere)
-	SpawnProp(CigMesh::Furniture(TEXT("loungeSofa")), FVector(-650.f, 1050.f, 0.f), 90.f, 90.f, FLinearColor(0.4f, 0.3f, 0.5f));
+	const FVector SofaLocation(-600.f, 1050.f, 0.f);
+	constexpr float SofaYaw = 90.f;
+	SpawnProp(CigMesh::Furniture(TEXT("loungeSofa")), SofaLocation, 90.f, SofaYaw, FLinearColor(0.4f, 0.3f, 0.5f));
+	RegisterFixedFixture(FName(*FString::Printf(TEXT("fixture.seating.%s"), TEXT("sofa"))),
+		SofaLocation, FVector2D(90.f, 180.f), SofaYaw);
 }
 
 int32 UCigWorldBuilder::ReserveSeat()

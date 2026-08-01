@@ -14,12 +14,14 @@
 #include "Core/CigBalance.h"
 #include "Inventory/CigStorage.h"
 #include "Inventory/CigStockCrate.h"
+#include "Placement/CigPlacementSystem.h"
 #include "Core/CigSpawnUtils.h"
 #include "Player/CigkoftePlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
 
 void UCigInventorySystem::OnInit()
 {
+	NextCratePlacementSerial = 1;
 	// Starting amounts from Config/Balance/Stock.csv (or the defaults without it).
 	for (int32 i = 0; i < CigStockCount; ++i)
 	{
@@ -153,6 +155,7 @@ void UCigInventorySystem::OrderStock(int32 Item)
 	}
 	O.Supplier = Eco->CurrentSupplier;
 	O.Quality = Eco->SupplierQuality() * Eco->IngredientTierQualityMult();
+	O.PlacementSerial = NextCratePlacementSerial++;
 	O.TimeLeft = Eco->SupplierDeliverTime();
 	if (GM->Events)
 	{
@@ -183,8 +186,22 @@ void UCigInventorySystem::UpdateSystem(float DeltaSeconds)
 			// pantry. Stock used to teleport - the timer ran out and the count
 			// went up wherever the player happened to be standing - which made
 			// the supplier tab a vending machine with a delay on it.
-			SpawnCrate(PendingOrders[i]);
-			PendingOrders.RemoveAt(i);
+			if (SpawnCrate(PendingOrders[i]))
+			{
+				PendingOrders.RemoveAt(i);
+			}
+			else
+			{
+				// Keep the paid delivery pending until a declared floor spot becomes
+				// free. Do not retry every frame, and do not spam the message feed.
+				PendingOrders[i].TimeLeft = 1.f;
+				if (!PendingOrders[i].bArrivalBlockedNotified && GM)
+				{
+					GM->AddMessage(UCigPlacementSystem::FailureText(
+						ECigPlacementFailure::NoDeliverySpotAvailable), FLinearColor(1.f, 0.6f, 0.2f));
+					PendingOrders[i].bArrivalBlockedNotified = true;
+				}
+			}
 		}
 	}
 
@@ -230,6 +247,10 @@ void UCigInventorySystem::OnDayEnd(int32 Day)
 				Add(C->Item, C->Amount, C->Quality);
 				Kalan += C->Amount;
 			}
+			if (GM && GM->Placement && !C->PlacementId.IsNone())
+			{
+				GM->Placement->RemovePlacement(C->PlacementId);
+			}
 			C->Destroy();
 		}
 	}
@@ -241,45 +262,55 @@ void UCigInventorySystem::OnDayEnd(int32 Day)
 	}
 }
 
-void UCigInventorySystem::SpawnCrate(const FCigPendingOrder& Order)
+bool UCigInventorySystem::SpawnCrate(FCigPendingOrder& Order)
 {
 	UWorld* World = GetWorld();
-	if (!World || !GM)
+	if (!World || !GM || !GM->Placement)
 	{
-		return;
+		return false;
 	}
 
-	// Just inside the doorway, two to a side, with the middle left clear.
-	//
-	// The first version put them along the wall at y=-620, which is 44 degrees off
-	// the axis a player standing at the counter is looking down - so a delivery
-	// arrived outside the field of view of the room it arrived in, and the
-	// screenshot of the shop front did not contain it. A crate nobody can see is
-	// not in the way, which was the entire point of having one.
-	//
-	// Wrapped rather than clamped, so a fifth crate starts the row again instead
-	// of piling up on the fourth.
-	static const FVector Spots[] = {
-		FVector(-560.f, -330.f, 0.f),
-		FVector(-560.f,  330.f, 0.f),
-		FVector(-560.f, -180.f, 0.f),
-		FVector(-560.f,  180.f, 0.f),
-	};
-	const FVector Where = Spots[Crates.Num() % UE_ARRAY_COUNT(Spots)];
+	if (Order.PlacementSerial == 0)
+	{
+		Order.PlacementSerial = NextCratePlacementSerial++;
+	}
+	const FName PlacementId(*FString::Printf(TEXT("crate.delivery.%08u"), Order.PlacementSerial));
 
-	ACigStockCrate* Crate = World->SpawnActor<ACigStockCrate>(Where, FRotator::ZeroRotator, CigAlwaysSpawnParams());
+	FCigPlacementRequest Request;
+	Request.StableId = PlacementId;
+	Request.Category = ECigPlacementCategory::StockCrate;
+	Request.Footprint = UCigPlacementSystem::StockCrateFootprint();
+	Request.Context = ECigPlacementContext::Delivery;
+	const FCigPlacementResult Candidate = GM->Placement->FindFirstValidPlacement(
+		Request, CigPlacementLayout::DeliverySpots());
+	if (!Candidate.bAccepted)
+	{
+		return false;
+	}
+
+	Request.CandidateTransform = Candidate.NormalizedTransform;
+	const FCigPlacementResult Registered = GM->Placement->RegisterPlacement(Request);
+	if (!Registered.bAccepted)
+	{
+		return false;
+	}
+
+	ACigStockCrate* Crate = World->SpawnActor<ACigStockCrate>(
+		Registered.NormalizedTransform.GetLocation(), Registered.NormalizedTransform.Rotator(), CigAlwaysSpawnParams());
 	if (!Crate)
 	{
-		// Without a crate the delivery would simply vanish, which is worse than
-		// teleporting it: the player paid for it.
-		Add(Order.Item, Order.Amount, Order.Quality);
-		return;
+		// Roll back the reservation. The paid order stays pending and may try the
+		// same deterministic alternatives later; it never teleports into stock.
+		GM->Placement->RemovePlacement(PlacementId);
+		return false;
 	}
 
+	Crate->PlacementId = PlacementId;
 	Crate->Setup(Order.Item, Order.Amount, Order.Quality);
 	Crates.Add(Crate);
 	GM->AddMessage(CigText::Format(TEXT("msg.inventory.cratearrived"), Order.Amount, *CigStockName(Order.Item)),
 		FLinearColor(0.4f, 1.f, 0.4f));
+	return true;
 }
 
 int32 UCigInventorySystem::UnloadCrate(ACigStockCrate* Crate)
@@ -323,6 +354,10 @@ int32 UCigInventorySystem::UnloadCrate(ACigStockCrate* Crate)
 	// the rest.
 	if (Crate->Amount <= 0)
 	{
+		if (GM && GM->Placement && !Crate->PlacementId.IsNone())
+		{
+			GM->Placement->RemovePlacement(Crate->PlacementId);
+		}
 		Crates.Remove(Crate);
 		Crate->Destroy();
 	}

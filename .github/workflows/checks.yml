@@ -33,6 +33,12 @@ jobs:
         shell: pwsh
         run: ./Scripts/Test-SelfTestState.ps1
 
+      - name: Packaged cook policy
+        # A public checkout has repository-owned fallbacks but none of the
+        # licensed optional packs. Exercise that distinction without Unreal.
+        shell: pwsh
+        run: ./Scripts/Test-SmokeCookPolicy.ps1
+
       - name: Script path safety
         shell: pwsh
         run: ./Scripts/Test-CigPathHelpers.ps1

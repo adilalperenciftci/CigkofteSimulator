@@ -4,10 +4,10 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 
 | | |
 |---|---|
-| Branch | `feat/commercial-demo-completion` |
-| Base | `0a07f2b` (master) |
+| Branch | `feat/stage3-placement-authority` |
+| Base | `0373da2` (PR #6 merge on master) |
 | Latest commit | see `git log -1` on the branch |
-| Open PR | **#6**, `feat/commercial-demo-completion` → `master` |
+| Stage 3.1 PR | **#7**, `feat/stage3-placement-authority` -> `master` |
 | Save version | **12** |
 
 This table has gone stale twice, both times by naming a branch that had already
@@ -101,11 +101,13 @@ of what a reviewer has to read.
 
 ## Current task
 
-**PR #6 release validation and delivery.** Stage 1 is complete, and Stage 2.1
-and 2.2 with it. The current branch is hardening the mandatory packaged
-self-test, release paths, Shipping cheat isolation and label hysteresis before
-the PR is merged. Stage 3.1 starts only from the updated `master` after that
-merge.
+**Stage 3.1 placement authority delivery through PR #7.** PR #6 is merged and
+Stage 2 is complete. The shared placement geometry, stable runtime records,
+authored shop protections and physical-crate integration are implemented and
+locally validated. Categories, layout consequences and persistence remain
+separate follow-up slices; Stage 3 as a whole is not complete. Read PR #7's
+live state from GitHub rather than inferring whether it is open or merged from
+this checkpoint.
 
 ## Stage 2.1 and 2.2, finished
 
@@ -215,11 +217,10 @@ fixed; `Resolve-CigPath` is the shared helper.
 
 ## Next exact task
 
-**Stage 3.1 — a single placement authority.** Stage 2 is complete, so the next
-dependency in `PLAN.md` is the one Stage 3 rests on: one authority that owns where
-an object may stand, before categories, layout consequences or persistence are
-built on top of it. The crates from 2.2 are the first placeable objects it has to
-account for.
+**Read PR #7's live state.** If it is open, wait for CI, inspect comments and
+review threads, then merge with a merge commit only when every gate is green. If
+it is merged, fetch and verify `origin/master`, then start Stage 3.2 categories
+from that exact remote commit rather than continuing on this branch.
 
 Standing items that are not tasks in that chain:
 

@@ -121,7 +121,7 @@ the tablet's Achievements tab with your lifetime statistics.
 
 ## Systems
 
-23 independent systems are what make this a business rather than a
+24 independent systems are what make this a business rather than a
 click-and-sell loop:
 
 | System | What it does |
@@ -130,6 +130,7 @@ click-and-sell loop:
 | **Orders and recipes** | Heat, portion, topping mask, ayran, bag or plate. New recipes unlock with level. |
 | **Economy** | Pricing, rent, suppliers, stock costs, the daily profit and loss. |
 | **Stock** | 14 ingredients, supplier orders, shortages and price-hike events. |
+| **Placement** | One deterministic authority owns floor footprints, protected routes and declared delivery-crate alternatives. |
 | **Hygiene** | Counters get dirty, gloves get changed, hands get washed, dishes pile up. A fastidious customer notices. |
 | **Reputation and reviews** | Customers score you and write reviews; the average drives footfall. |
 | **Rivals** | The other shops in the neighbourhood run promotions and take customers. |
@@ -224,7 +225,7 @@ paths resolve against exactly those names (`World/CigMeshLibrary.cpp`).
 
 ## Architecture
 
-`ACigkofteGameMode` is a coordinator; the gameplay is split across 23 systems
+`ACigkofteGameMode` is a coordinator; the gameplay is split across 24 systems
 deriving from `UCigSystem` (a `UObject`), foldered under
 `Source/CigkofteSimulator/`:
 
@@ -232,7 +233,7 @@ deriving from `UCigSystem` (a `UObject`), foldered under
 Core/        shared types, logging, upgrade definitions
 Game/        GameMode + day loop + the system base class
 World/       runtime world builder, stations, mesh library
-Cooking/  Orders/  Customers/  Economy/  Inventory/
+Cooking/  Orders/  Customers/  Economy/  Inventory/  Placement/
 Progression/  Quests/  Events/  Delivery/  Hygiene/  Staff/  Cat/
 Player/  Vehicles/  UI/  Save/  Audio/  Debug/
 ```
