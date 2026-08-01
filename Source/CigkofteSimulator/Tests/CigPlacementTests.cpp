@@ -386,6 +386,13 @@ bool FCigPlacementShopIntegrationTest::RunTest(const FString&)
 	Shop.GM->WorldBuilder->BuildWorld();
 	TestNotNull(TEXT("Servis fixture kaydı olmalı"), Shop.GM->Placement->FindPlacement(TEXT("fixture.station.servis")));
 	TestNotNull(TEXT("Fallback boyutlu masa kaydı olmalı"), Shop.GM->Placement->FindPlacement(TEXT("fixture.seating.table.0")));
+	const FCigPlacementRecord* Sofa = Shop.GM->Placement->FindPlacement(TEXT("fixture.seating.sofa"));
+	TestNotNull(TEXT("Sofa fixture kaydı olmalı"), Sofa);
+	if (Sofa)
+	{
+		TestTrue(TEXT("Sofa yerleşim izi görselin 90 derece yönünü korumalı"),
+			FMath::IsNearlyEqual(FMath::Abs(FMath::UnwindDegrees(Sofa->Transform.Rotator().Yaw)), 90.f, 0.01f));
+	}
 	TestTrue(TEXT("22 istasyon ve 5 oturma fixture'ı kaydolmalı"), Shop.GM->Placement->PlacementCount() >= 27);
 
 	FCigPendingOrder Order;

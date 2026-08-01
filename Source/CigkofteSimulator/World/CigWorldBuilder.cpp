@@ -753,9 +753,11 @@ void UCigWorldBuilder::BuildSeatingArea()
 	BuildTable(-500.f, -650.f);
 
 	// A small sofa corner (atmosphere)
-	SpawnProp(CigMesh::Furniture(TEXT("loungeSofa")), FVector(-650.f, 1050.f, 0.f), 90.f, 90.f, FLinearColor(0.4f, 0.3f, 0.5f));
+	const FVector SofaLocation(-600.f, 1050.f, 0.f);
+	constexpr float SofaYaw = 90.f;
+	SpawnProp(CigMesh::Furniture(TEXT("loungeSofa")), SofaLocation, 90.f, SofaYaw, FLinearColor(0.4f, 0.3f, 0.5f));
 	RegisterFixedFixture(FName(*FString::Printf(TEXT("fixture.seating.%s"), TEXT("sofa"))),
-		FVector(-650.f, 1050.f, 0.f), FVector2D(90.f, 180.f));
+		SofaLocation, FVector2D(90.f, 180.f), SofaYaw);
 }
 
 int32 UCigWorldBuilder::ReserveSeat()
