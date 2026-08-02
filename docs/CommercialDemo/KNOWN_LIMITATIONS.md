@@ -31,6 +31,10 @@ not fixed yet belong in `PLAN.md`, not here.
 - **No branch since that session has had a human playthrough.** Stage 2, the
   localization pass and the performance work were verified by automation,
   packaged smoke tests and deterministic screenshots.
+- **Stage 3.3 has no human build-mode/layout-usability playtest.** Automation
+  proves the authored shop's consequence counts and stable-ID lifecycle, but no
+  person has judged placement feel, fixture reachability, crate readability or
+  whether the shop layout is comfortable with keyboard or gamepad.
 - **Nobody has listened to the ambience beds.** Format, loop-seam arithmetic, the
   looping flag and path resolution are all verified; whether the night bed reads
   as night, and whether the layer sits right against the Kenney one-shots, is not.
@@ -70,17 +74,19 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 129 automation tests cover pure formulas, tables, data integrity and one
+- The 139 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
   animation, audio mixing and UI layout are all outside the harness.
 - The count above is checked rather than copied: `Tools/check_sources.py` derives
   it from the test macros and fails when a document disagrees.
-- Placement tests prove deterministic rectangular occupancy, protected zones and
-  declared crate alternatives. They do **not** prove Unreal navigation paths or
-  that an AI pawn can traverse every future player-authored layout; full path
-  validation is Stage 3.4.
+- Placement tests prove deterministic rectangular occupancy, category-specific
+  use/approach rectangles, functional capacity, atomic move/remove and declared
+  crate alternatives. They do **not** prove Unreal navigation paths or that an
+  AI pawn can traverse every future player-authored layout; full path validation
+  is Stage 3.4. Placement save/load persistence is Stage 3.5 and shop identity is
+  Stage 3.6; neither is implemented here.
 
 ## Platform
 

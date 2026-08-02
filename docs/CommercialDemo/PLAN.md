@@ -168,8 +168,14 @@ Depends on Stage 2 storage actors existing as placeable objects.
   (`Installed`, `Transient`), validate context compatibility and keep both
   dimensions immutable while moving an existing stable ID. No persisted layout
   data was added, so save version 12 remains current.
-- 3.3 layout consequences is the next dependency, followed by
-  3.4 path validation, 3.5 persistence by stable ID, 3.6 shop identity
+- 3.3 layout consequences — **done.** The placement authority now derives and
+  atomically stores category-specific physical/use geometry and functional
+  capacity by stable ID. Register, move and remove update the embedded
+  consequence without Tick/world scans; station, seating and transient crate
+  gameplay query that authority. This is rectangular layout policy only, not a
+  navmesh or persistence claim; save version 12 is unchanged.
+- 3.4 real path/navigation validation is next, followed by 3.5 persistence by
+  stable ID and 3.6 shop identity.
 
 ## Stage 4 — customer life and readability
 
