@@ -62,6 +62,26 @@ namespace
 		}
 	}
 
+	// Registration and every availability query must name the same record, and
+	// FindStation now answers the per-frame focus trace. Interning each identity
+	// once keeps that path free of the string formatting the lookup would
+	// otherwise repeat every frame the player looks at a fixture.
+	FName StationPlacementId(ECigStation Type)
+	{
+		static const TArray<FName> Ids = []
+		{
+			TArray<FName> Result;
+			Result.Reserve((int32)ECigStation::YanUrun + 1);
+			for (int32 Index = 0; Index <= (int32)ECigStation::YanUrun; ++Index)
+			{
+				Result.Add(FName(*FString::Printf(TEXT("fixture.station.%s"),
+					StationPlacementToken((ECigStation)Index))));
+			}
+			return Result;
+		}();
+		return Ids.IsValidIndex((int32)Type) ? Ids[(int32)Type] : NAME_None;
+	}
+
 	FVector2D StationPlacementSize(ECigStation Type)
 	{
 		switch (Type)
@@ -265,9 +285,8 @@ void UCigWorldBuilder::RegisterStationPlacement(ECigStation Type, const FVector&
 		return;
 	}
 
-	const FString Token(StationPlacementToken(Type));
 	FCigPlacementRequest Request;
-	Request.StableId = FName(*FString::Printf(TEXT("fixture.station.%s"), *Token));
+	Request.StableId = StationPlacementId(Type);
 	Request.Category = ECigPlacementCategory::Station;
 	Request.Lifetime = ECigPlacementLifetime::Installed;
 	Request.CandidateTransform = FTransform(FRotator::ZeroRotator, FVector(Loc.X, Loc.Y, 0.f));
@@ -347,7 +366,7 @@ ACigkofteStation* UCigWorldBuilder::FindStation(ECigStation Type) const
 	{
 		return nullptr;
 	}
-	const FName PlacementId(*FString::Printf(TEXT("fixture.station.%s"), StationPlacementToken(Type)));
+	const FName PlacementId = StationPlacementId(Type);
 	FCigPlacementConsequence Consequence;
 	if (!GM->Placement->TryGetPlacementConsequence(PlacementId, Consequence)
 		|| Consequence.Category != ECigPlacementCategory::Station
