@@ -124,11 +124,24 @@ tool-name references were replaced with the method they describe; its version
 claims — ComfyUI 0.28.0, FFmpeg 8.1.2, Blender 4.5.10 LTS — were checked against
 the installed runtimes rather than copied.
 
-`Plugins/Sentry` is ignored rather than vendored. `CRASH_PRIVACY.md` already
-says an endpoint is enabled only after explicit consent, a privacy policy, a
-stated retention period and a configured DSN. None of those exist, nothing
-references the plugin and the `.uproject` does not enable it, so committing 831
+`Plugins/Sentry` is ignored rather than vendored. `CRASH_PRIVACY.md` says an
+endpoint is enabled only after explicit consent, a privacy policy, a stated
+retention period and a configured DSN. None of those exist, so committing 831
 files of it would have been deciding that by accident.
+
+**Correction.** The first version of this section called the plugin inert
+because the `.uproject` does not mention it. That was wrong, and the canonical
+editor build proved it: a plugin dropped into `Plugins/` is enabled by default
+whether or not the `.uproject` names it, and `Sentry.uplugin` has no
+`"EnabledByDefault": false`. `UnrealEditor-Sentry.dll` and
+`UnrealEditor-SentryEditor.dll` are built and loaded here.
+
+So ignoring it has a consequence worth stating: this machine builds an editor
+that a fresh clone does not. Nothing ships — no Game target links it and no
+package contains it — but the two editors are not the same editor. Whoever picks
+the Sentry question up should decide between vendoring it properly, with the
+privacy work `CRASH_PRIVACY.md` requires, and moving it out of `Plugins/` so
+that the local editor matches everyone else's.
 
 ### `CigkofteSim-wt`
 

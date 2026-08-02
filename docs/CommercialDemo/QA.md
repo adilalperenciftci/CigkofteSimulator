@@ -417,3 +417,50 @@ readability, and a full played day. Rectangular use rectangles are floor policy
 and prove nothing about Unreal AI navigation; that remains Stage 3.4. Placement
 persistence is Stage 3.5 and shop identity is Stage 3.6, and neither is
 implemented here.
+
+## 2026-08-02 — the validation run that reported a green suite it had not built
+
+The first `ValidateAll.ps1` run in the canonical checkout, after consolidation,
+produced this summary:
+
+```
+static   PASS
+harness  PASS
+paths    PASS
+build    FAIL - build exit 6
+tests    PASS
+data     PASS
+```
+
+`tests PASS` was true and meaningless. The build had failed on `LNK1104`,
+unable to write `UnrealEditor-CigkofteSimulator.dll` because the editor open on
+that same project had it loaded. The automation suite then ran against the
+module already on disk — dated five days earlier, from before Stages 3.2 and 3.3
+were merged — and 93 of 93 tests in that binary passed. The count is the only
+visible symptom: this branch has 139.
+
+`data PASS` followed the same stale binary. Its staleness guard only checks that
+the log postdates the run, which it did.
+
+The script now skips the test stage when the build stage did not pass, the same
+way the data stage already skipped when the tests did not run. The overall exit
+code was already 1, so nothing was silently shipped; what was wrong is that a
+reader of the summary would have recorded a passing suite.
+
+This is the third time this project has recorded a check that answered from
+stale output — the packaged archive that predated its own fix by 23 minutes, the
+runtime data log that could be answered by any earlier editor session, and now
+this. The pattern is the same each time: the artefact exists, so the check finds
+one, and nothing in it says which run produced it.
+
+Two things this run also settled:
+
+- **Building the canonical project needs its editor closed.** `-NoHotReloadFromIDE`
+  gets past the Live Coding mutex, which is what blocked packaging from an
+  unrelated checkout, but it cannot make Windows release a DLL a running editor
+  has loaded. Different problem, different fix.
+- **`Plugins/Sentry` is not inert.** A plugin in `Plugins/` is enabled by default
+  whether or not the `.uproject` names it, and this one has no
+  `"EnabledByDefault": false`. It compiles into the editor. Nothing ships — no
+  Game target links it — but the local editor is not the editor a fresh clone
+  builds. Recorded in `docs/Integration/WORKTREE_INVENTORY.md`.

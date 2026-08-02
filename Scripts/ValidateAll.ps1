@@ -67,9 +67,20 @@ Invoke-CigStage 'build' {
     if ($LASTEXITCODE -ne 0) { throw "build exit $LASTEXITCODE" }
 }
 
-Invoke-CigStage 'tests' {
-    & (Join-Path $PSScriptRoot 'RunAutomationTests.ps1') -EngineRoot $EngineRoot
-    if ($LASTEXITCODE -ne 0) { throw "tests exit $LASTEXITCODE" }
+# The automation suite loads whatever editor module is on disk. After a failed
+# build that is the previous one, so the run reports a green suite for code that
+# is not the code under test - and reports it with the wrong test count, which is
+# the only visible sign anything is wrong. Seen for real: a build that failed on
+# a linker lock was followed by 93 passing tests against a five-day-old DLL, from
+# before two merged stages existed.
+if ($results['build'] -eq 'PASS') {
+    Invoke-CigStage 'tests' {
+        & (Join-Path $PSScriptRoot 'RunAutomationTests.ps1') -EngineRoot $EngineRoot
+        if ($LASTEXITCODE -ne 0) { throw "tests exit $LASTEXITCODE" }
+    }
+}
+else {
+    $results['tests'] = 'SKIPPED (build did not produce a binary)'
 }
 
 if ($results['tests'] -eq 'PASS') {
