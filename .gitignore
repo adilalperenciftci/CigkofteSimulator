@@ -21,7 +21,10 @@ Thumbs.db
 
 # Local tooling scratch
 *.bak
-Logs/*.log
+# Every script that writes here writes generated output, and nothing under Logs/
+# has ever been tracked. The old rule only caught .log at the top level, which
+# left process stdout/stderr files and capture sessions showing up as untracked.
+Logs/
 
 # Asset üretim çalışma çıktıları; lisans kayıtları ve klasör iskeleti takip edilir.
 AssetWork/Blender/*
@@ -59,10 +62,15 @@ AssetWork/Audio/Subtitles/*
 !AssetWork/Audio/Subtitles/.gitkeep
 AssetWork/Audio/Licenses/*
 !AssetWork/Audio/Licenses/.gitkeep
-Logs/Insights/
-Logs/Packaging/
-Logs/Crashes/
 Releases/
+
+# Crash-reporting SDK, kept local rather than vendored.
+#
+# CRASH_PRIVACY.md already says an endpoint is enabled only after explicit
+# consent, a privacy policy, a stated retention period and a configured DSN.
+# None of those exist, nothing references the plugin and the .uproject does not
+# enable it, so committing 800-odd files of it would be deciding by accident.
+Plugins/Sentry/
 
 # Heavy third-party asset packs (from the EG_OYUN_CIGKOFTE_1 project).
 # They run to hundreds of MB and include individual uassets over GitHub's
