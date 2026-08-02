@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import re
 import sys
 from pathlib import Path
@@ -746,6 +747,58 @@ def check_config_secrets() -> None:
     print(f"  config: {len(GIZLI_CONFIG_ALANLARI)} gizli alan kuralı tutuyor")
 
 
+def check_asset_manager_types() -> None:
+    """Bildirilmiş her Primary Asset Type'ın sınıfı bu projede yüklenebilmeli.
+
+    Asset manager, bildirilen bir tipin taban sınıfını bulamazsa omuz silkmiyor,
+    ensure atıyor; cook sırasında bu bir hata ve cook düşüyor. Proje bir kez tam
+    olarak buna düştü: GameFeatureData tipi eklenmişti, GameFeatures eklentisi
+    ise oyunda etkin değil.
+
+    Editör, Game Feature eklentilerini çeken bir eklenti açıkken bu girdiyi
+    eklemeyi teklif eden bir diyalog gösteriyor ve kabul etmek cook'u kırıyor.
+    Editörde sınıf yüklendiği için hata o makinede görünmüyor; commit'lenmiş
+    eklenti listesiyle paketleyen herkeste görünüyor. Diyalog tekrar tekrar
+    çıkacağı için kural burada, tek seferlik bir yorumda değil.
+    """
+    ini = ROOT / "Config" / "DefaultGame.ini"
+    if not ini.is_file():
+        fail("Config/DefaultGame.ini yok.")
+        return
+
+    uproject = ROOT / "CigkofteSimulator.uproject"
+    proje = json.loads(uproject.read_text(encoding="utf-8-sig")) if uproject.is_file() else {}
+    oyunda_etkin = set()
+    for eklenti in proje.get("Plugins", []):
+        if not eklenti.get("Enabled", False):
+            continue
+        # Editor'e kısıtlanmış eklenti paketlenen oyunda yok; sınıfı da yok.
+        izin = eklenti.get("TargetAllowList")
+        if izin and "Game" not in izin:
+            continue
+        oyunda_etkin.add(eklenti.get("Name", ""))
+
+    sayi = 0
+    for no, satir in enumerate(ini.read_text(encoding="utf-8-sig").splitlines(), 1):
+        s = satir.strip()
+        if s.startswith(";") or "PrimaryAssetTypesToScan" not in s:
+            continue
+        sayi += 1
+        # AssetBaseClass="/Script/Modul.Sinif" — tırnak isteğe bağlı.
+        m = re.search(r'BaseClass="?/Script/(?P<modul>[A-Za-z0-9_]+)\.', s)
+        if not m:
+            continue
+        modul = m.group("modul")
+        if modul in ("Engine", "CoreUObject", "CigkofteSimulator"):
+            continue
+        if modul not in oyunda_etkin:
+            fail(f"Config/DefaultGame.ini:{no}: /Script/{modul} paketlenen oyunda yok, "
+                 f"ama bir Primary Asset Type onu taban sınıf olarak bildiriyor. "
+                 f"Asset manager sınıfı yükleyemeyince cook düşer.")
+
+    print(f"  asset manager: {sayi} bildirilen tipin sınıfı oyunda yüklenebilir")
+
+
 def check_no_loctext() -> None:
     """LOCTEXT/NSLOCTEXT kullanımı yasak.
 
@@ -957,6 +1010,7 @@ def main() -> int:
     check_cooked_assets()
     check_repo_files()
     check_config_secrets()
+    check_asset_manager_types()
     check_no_loctext()
     check_no_runtime_api()
     check_shipping_debug_guards()
