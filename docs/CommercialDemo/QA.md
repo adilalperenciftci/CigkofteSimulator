@@ -464,3 +464,24 @@ Two things this run also settled:
   `"EnabledByDefault": false`. It compiles into the editor. Nothing ships — no
   Game target links it — but the local editor is not the editor a fresh clone
   builds. Recorded in `docs/Integration/WORKTREE_INVENTORY.md`.
+
+### The same run, with the editor closed
+
+| Check | Result |
+|---|---|
+| Static source rules | clean — 139 automation tests, 24 systems, 893 bilingual keys |
+| Harness assertions | 49/49, 7/7, 7/7 |
+| Editor build | **PASS** |
+| Full automation | **139 passed, 0 failed** |
+| Runtime data load | 14/14 balance files, 0 warnings |
+
+This is the first time the suite has run against the canonical checkout with the
+editor plugins enabled, and the first time it has run there at all since the
+consolidation. The cook audit differs from the D: runs in the way it should:
+canonical holds the licensed packs, so all 35 asset directories answered 33
+rules with nothing skipped, where the public D: checkout had 8 packs absent and
+fell back.
+
+The count is the point. The same command against the same source reported 93 an
+hour earlier because the build had failed and left the previous module in place.
+139 is what the suite says when the binary is the one the run produced.
