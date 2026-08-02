@@ -4,7 +4,9 @@ Every checkout of this repository on this machine, what is unique to it, and
 what has to happen to it. Read-only forensics: nothing here was deleted, reset
 or stashed to produce it.
 
-Recorded 2026-08-02, against `origin/master` at `6e71e8b` (PR #9 merge).
+Recorded 2026-08-02, against `origin/master` at `6e71e8b` (PR #9 merge), and
+updated the same day at `bd306a0` (PR #11 merge) with the consolidation record at
+the end.
 
 ## The checkouts
 
@@ -142,16 +144,43 @@ No worktree may be removed yet.
 
 "Safe to remove" is a finding, not an instruction. Nothing is deleted here.
 
-## Next dependency
+## The stash
 
-Consolidation into the canonical checkout, in this order:
+`git stash list` has one entry, and the first version of this document missed it.
 
-1. Bring canonical onto `master` at `6e71e8b`.
-2. Apply the `ModelContextProtocol` + `AllToolsets` plugin entries to the tracked
-   `.uproject` by hand, preserving tabs and the trailing newline, and discard the
-   reindentation.
-3. Review the untracked scripts and docs for secrets and provenance, then commit
-   what survives.
-4. Decide `Plugins/Sentry`: track, ignore or remove — and do not enable it in the
-   `.uproject` until `THIRD_PARTY_NOTICES.md` and `CREDITS.md` say so.
-5. Only then declare canonical authoritative and stop working in the D: trees.
+`stash@{0}` is `WIP on feat/commercial-demo-overhaul: 4af66e0`. Its base commit
+is an ancestor of master. Its content is a **third** hand-made variant of the
+same `.uproject` plugin change: `ModelContextProtocol` and `AllToolsets` enabled
+with no target allow-list, and the trailing newline dropped.
+
+Nothing in it is unique and the version now on master is strictly better. It is
+left in place rather than dropped — it costs nothing and this document is a
+better record of it than its absence would be.
+
+## Consolidation record
+
+Done:
+
+1. Canonical is on `master`. The switch needed no editor shutdown: the diff from
+   its previous head to master touches no `Content/` path, only text files that a
+   running editor does not lock.
+2. The `.uproject` plugin entries are merged as PR #11 and the whole-file
+   reindentation was dropped. Three checkouts had made this change three
+   different ways and only the canonical one constrained `ModelContextProtocol`
+   to Editor targets; the other two would have compiled an MCP server into the
+   packaged game. Verified in both directions — see the PR.
+3. The untracked canonical scripts and docs were scanned for credentials. Clean:
+   the only matches for the secret pattern are two lines of policy prose telling
+   the reader *not* to write tokens into project files.
+
+Still to do, in order:
+
+1. Commit the untracked tooling — six `Scripts/*.ps1`, three `docs/*.md`,
+   `Start-Blender-Asset-Mode.ps1` (which belongs under `Scripts/`) and the
+   `AssetWork/` directory contract. They are secret-free but their content has
+   not been reviewed for correctness.
+2. Decide `Plugins/Sentry`: track, ignore or remove. It is MIT and
+   redistributable, but it is 831 files, no `THIRD_PARTY_NOTICES.md` entry exists
+   for it, and nothing references it. Do not enable it in the `.uproject` before
+   that entry and a `CREDITS.md` line exist.
+3. Declare canonical authoritative and stop working in the D: trees.
