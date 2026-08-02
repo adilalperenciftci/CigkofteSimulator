@@ -66,10 +66,15 @@ Releases/
 
 # Crash-reporting SDK, kept local rather than vendored.
 #
-# CRASH_PRIVACY.md already says an endpoint is enabled only after explicit
-# consent, a privacy policy, a stated retention period and a configured DSN.
-# None of those exist, nothing references the plugin and the .uproject does not
-# enable it, so committing 800-odd files of it would be deciding by accident.
+# CRASH_PRIVACY.md says an endpoint is enabled only after explicit consent, a
+# privacy policy, a stated retention period and a configured DSN. None of those
+# exist, so committing 800-odd files of it would be deciding that by accident.
+#
+# It is not inert, which is worth knowing before anyone relies on this rule: a
+# plugin dropped into Plugins/ is enabled by default whether or not the
+# .uproject mentions it, and this one has no "EnabledByDefault": false. It
+# compiles into the editor here and nowhere else, so this machine and a fresh
+# clone do not build the same editor. See docs/Integration/WORKTREE_INVENTORY.md.
 Plugins/Sentry/
 
 # Heavy third-party asset packs (from the EG_OYUN_CIGKOFTE_1 project).
