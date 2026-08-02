@@ -4,10 +4,13 @@
 // renderer, collision scene or actor scan is needed to answer floor geometry.
 
 #include "Misc/AutomationTest.h"
+#include "Game/CigEventBus.h"
+#include "Game/CigDaySystem.h"
 #include "Placement/CigPlacementTypes.h"
 #include "Placement/CigPlacementSystem.h"
 #include "Tests/CigTestShop.h"
 #include "World/CigWorldBuilder.h"
+#include "World/CigkofteStation.h"
 #include "Inventory/CigInventorySystem.h"
 #include "Inventory/CigStockCrate.h"
 
@@ -37,6 +40,22 @@ namespace
 		return Result;
 	}
 
+	void DefineFunctionalConsequence(FCigPlacementRequest& Request,
+		ECigPlacementCategory Category, int32 FunctionalCapacity = 1,
+		const FVector2D& UseSize = FVector2D(120.f, 80.f),
+		const FVector2D& UseOffset = FVector2D(100.f, 0.f), float UseYaw = 0.f)
+	{
+		Request.Category = Category;
+		if (Category == ECigPlacementCategory::Decoration)
+		{
+			return;
+		}
+		Request.UseSpec.Size = UseSize;
+		Request.UseSpec.CenterOffset = UseOffset;
+		Request.UseSpec.YawOffsetDegrees = UseYaw;
+		Request.UseSpec.FunctionalCapacity = FunctionalCapacity;
+	}
+
 	FCigProtectedZone Zone(const TCHAR* StableId, ECigPlacementFailure Failure)
 	{
 		FCigProtectedZone Result;
@@ -63,7 +82,8 @@ bool FCigPlacementKnownCategoriesTest::RunTest(const FString&)
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Categories); ++Index)
 	{
 		FCigPlacementRequest R = Request(*FString::Printf(TEXT("category.%d"), Index), FVector::ZeroVector);
-		R.Category = Categories[Index];
+		DefineFunctionalConsequence(R, Categories[Index],
+			Categories[Index] == ECigPlacementCategory::Seating ? 2 : 1);
 		TestTrue(*FString::Printf(TEXT("Kategori %d kurulabilir olmalı"), Index), A.Validate(R).bAccepted);
 	}
 	return true;
@@ -147,7 +167,7 @@ bool FCigPlacementClassificationMatrixTest::RunTest(const FString&)
 		ECigPlacementFailure::InvalidClassification);
 
 	FCigPlacementRequest Crate = Request(TEXT("transient.storage"), FVector::ZeroVector);
-	Crate.Category = ECigPlacementCategory::Storage;
+	DefineFunctionalConsequence(Crate, ECigPlacementCategory::Storage);
 	Crate.Lifetime = ECigPlacementLifetime::Transient;
 	Crate.Context = ECigPlacementContext::Delivery;
 	TestTrue(TEXT("Transient storage delivery ile kabul edilmeli"), A.Validate(Crate).bAccepted);
@@ -205,6 +225,23 @@ bool FCigPlacementIgnoreContextTest::RunTest(const FString&)
 	Move.Context = ECigPlacementContext::MoveExisting;
 	TestEqual(TEXT("Move kendi kimliğini açıkça belirtmeli"), A.Validate(Move).Failure,
 		ECigPlacementFailure::InvalidIgnoreStableId);
+
+	Build.IgnoreStableId = NAME_None;
+	const FCigPlacementRequest Other = Request(TEXT("object.other"), FVector(300.f, 0.f, 0.f));
+	TestTrue(TEXT("Ignore sahipliği testi ilk kaydı eklemeli"), A.TryRegister(Build).bAccepted);
+	TestTrue(TEXT("Ignore sahipliği testi ikinci kaydı eklemeli"), A.TryRegister(Other).bAccepted);
+	Move.CandidateTransform.SetLocation(FVector(100.f, 0.f, 0.f));
+	Move.IgnoreStableId = Other.StableId;
+	TestEqual(TEXT("Move başka stable ID'yi yok sayamamalı"), A.TryRegister(Move).Failure,
+		ECigPlacementFailure::InvalidIgnoreStableId);
+	TestEqual(TEXT("Geçersiz ignore iki record'u da korumalı"), A.RecordCount(), 2);
+	TestEqual(TEXT("Geçersiz ignore iki consequence'ı da korumalı"), A.ConsequenceCount(), 2);
+	const FCigPlacementRecord* KeptSelf = A.Find(Build.StableId);
+	const FCigPlacementRecord* KeptOther = A.Find(Other.StableId);
+	TestTrue(TEXT("Geçersiz ignore ilk transformu değiştirmemeli"),
+		KeptSelf && KeptSelf->Transform.GetLocation().IsNearlyZero());
+	TestTrue(TEXT("Geçersiz ignore başka kaydı değiştirmemeli"),
+		KeptOther && KeptOther->Transform.GetLocation().Equals(FVector(300.f, 0.f, 0.f)));
 	return true;
 }
 
@@ -225,11 +262,13 @@ bool FCigPlacementClassificationCountTest::RunTest(const FString&)
 	{
 		FCigPlacementRequest R = Request(*FString::Printf(TEXT("installed.%d"), Index),
 			FVector(-300.f + Index * 200.f, 0.f, 0.f));
-		R.Category = Categories[Index];
+		DefineFunctionalConsequence(R, Categories[Index],
+			Categories[Index] == ECigPlacementCategory::Seating ? 2 : 1,
+			FVector2D(80.f, 80.f), FVector2D::ZeroVector);
 		TestTrue(TEXT("Installed sınıf kaydolmalı"), A.TryRegister(R).bAccepted);
 	}
 	FCigPlacementRequest Crate = Request(TEXT("transient.crate"), FVector(500.f, 0.f, 0.f));
-	Crate.Category = ECigPlacementCategory::Storage;
+	DefineFunctionalConsequence(Crate, ECigPlacementCategory::Storage);
 	Crate.Lifetime = ECigPlacementLifetime::Transient;
 	Crate.Context = ECigPlacementContext::Delivery;
 	TestTrue(TEXT("Transient kasa kaydolmalı"), A.TryRegister(Crate).bAccepted);
@@ -411,7 +450,7 @@ bool FCigPlacementCrateAlternativeTest::RunTest(const FString&)
 	Blocker.Context = ECigPlacementContext::WorldRegistration;
 	A.TryRegister(Blocker);
 	FCigPlacementRequest Crate = Request(TEXT("crate.delivery.1"), FVector::ZeroVector, FVector2D(60.f, 45.f));
-	Crate.Category = ECigPlacementCategory::Storage;
+	DefineFunctionalConsequence(Crate, ECigPlacementCategory::Storage);
 	Crate.Lifetime = ECigPlacementLifetime::Transient;
 	Crate.Context = ECigPlacementContext::Delivery;
 	const FCigPlacementResult Result = A.FindFirstValid(Crate, Spots);
@@ -436,7 +475,7 @@ bool FCigPlacementAllCrateSpotsOccupiedTest::RunTest(const FString&)
 		A.TryRegister(Blocker);
 	}
 	FCigPlacementRequest Crate = Request(TEXT("crate.delivery.full"), FVector::ZeroVector, FVector2D(60.f, 45.f));
-	Crate.Category = ECigPlacementCategory::Storage;
+	DefineFunctionalConsequence(Crate, ECigPlacementCategory::Storage);
 	Crate.Lifetime = ECigPlacementLifetime::Transient;
 	Crate.Context = ECigPlacementContext::Delivery;
 	const FCigPlacementResult Result = A.FindFirstValid(Crate, Spots);
@@ -570,6 +609,406 @@ bool FCigPlacementInvalidFloorTest::RunTest(const FString&)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementConsequencePolicyTest,
+	"Cigkofte.Placement.Consequences.Policy.CategorySemantics",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementConsequencePolicyTest::RunTest(const FString&)
+{
+	FCigPlacementConsequence Consequence;
+	FCigPlacementRequest Station = Request(TEXT("policy.station"), FVector::ZeroVector);
+	DefineFunctionalConsequence(Station, ECigPlacementCategory::Station);
+	TestEqual(TEXT("Station policy geçerli olmalı"),
+		FCigPlacementConsequencePolicy::Derive(Station, Station.CandidateTransform, Consequence),
+		ECigPlacementFailure::None);
+	TestEqual(TEXT("Station bir çalışma birimi üretmeli"), Consequence.FunctionalCapacity, 1);
+	TestTrue(TEXT("Station kullanım alanı üretmeli"), Consequence.bHasUseArea);
+	TestTrue(TEXT("Installed station kalıcı layout parçası olmalı"), Consequence.bInstalledLayout);
+
+	FCigPlacementRequest Seating = Request(TEXT("policy.seating"), FVector::ZeroVector);
+	DefineFunctionalConsequence(Seating, ECigPlacementCategory::Seating, 2);
+	TestEqual(TEXT("Seating policy geçerli olmalı"),
+		FCigPlacementConsequencePolicy::Derive(Seating, Seating.CandidateTransform, Consequence),
+		ECigPlacementFailure::None);
+	TestEqual(TEXT("Masa grubu iki koltuk üretmeli"), Consequence.FunctionalCapacity, 2);
+
+	FCigPlacementRequest Storage = Request(TEXT("policy.storage"), FVector::ZeroVector);
+	DefineFunctionalConsequence(Storage, ECigPlacementCategory::Storage);
+	Storage.Lifetime = ECigPlacementLifetime::Transient;
+	TestEqual(TEXT("Transient storage policy geçerli olmalı"),
+		FCigPlacementConsequencePolicy::Derive(Storage, Storage.CandidateTransform, Consequence),
+		ECigPlacementFailure::None);
+	TestEqual(TEXT("Storage bir unload birimi üretmeli"), Consequence.FunctionalCapacity, 1);
+	TestFalse(TEXT("Transient storage kalıcı layout iddia etmemeli"), Consequence.bInstalledLayout);
+
+	const FCigPlacementRequest Decoration = Request(TEXT("policy.decoration"), FVector::ZeroVector);
+	TestEqual(TEXT("Decoration policy geçerli olmalı"),
+		FCigPlacementConsequencePolicy::Derive(Decoration, Decoration.CandidateTransform, Consequence),
+		ECigPlacementFailure::None);
+	TestEqual(TEXT("Decoration kapasite üretmemeli"), Consequence.FunctionalCapacity, 0);
+	TestFalse(TEXT("Decoration kullanım alanı üretmemeli"), Consequence.bHasUseArea);
+
+	FCigPlacementRequest Unknown = Decoration;
+	Unknown.Category = static_cast<ECigPlacementCategory>(255);
+	TestEqual(TEXT("Tanımsız kategori policy tarafından reddedilmeli"),
+		FCigPlacementConsequencePolicy::Derive(Unknown, Unknown.CandidateTransform, Consequence),
+		ECigPlacementFailure::UnknownCategory);
+	Unknown.Category = ECigPlacementCategory::Decoration;
+	Unknown.Lifetime = static_cast<ECigPlacementLifetime>(255);
+	TestEqual(TEXT("Tanımsız lifetime policy tarafından reddedilmeli"),
+		FCigPlacementConsequencePolicy::Derive(Unknown, Unknown.CandidateTransform, Consequence),
+		ECigPlacementFailure::UnknownLifetime);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementConsequenceGeometryTest,
+	"Cigkofte.Placement.Consequences.Policy.RotationAndNormalization",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementConsequenceGeometryTest::RunTest(const FString&)
+{
+	FCigPlacementConsequence AtZero;
+	FCigPlacementRequest R = Request(TEXT("geometry.zero"), FVector::ZeroVector, FVector2D(200.f, 80.f));
+	DefineFunctionalConsequence(R, ECigPlacementCategory::Station, 1,
+		FVector2D(120.f, 40.f), FVector2D(100.f, 0.f));
+	TestEqual(TEXT("0 derece consequence türemeli"),
+		FCigPlacementConsequencePolicy::Derive(R, R.CandidateTransform, AtZero), ECigPlacementFailure::None);
+	TestTrue(TEXT("0 derece fiziksel non-square half extent"),
+		AtZero.PhysicalRect.HalfExtent.Equals(FVector2D(100.f, 40.f), 0.01f));
+	TestTrue(TEXT("0 derece kullanım merkezi"), AtZero.UseRect.Center.Equals(FVector2D(100.f, 0.f), 0.01f));
+	TestTrue(TEXT("0 derece kullanım half extent"),
+		AtZero.UseRect.HalfExtent.Equals(FVector2D(60.f, 20.f), 0.01f));
+
+	FCigPlacementConsequence AtNinety;
+	R.StableId = TEXT("geometry.ninety");
+	R.CandidateTransform = FTransform(FRotator(0.f, 90.f, 0.f), FVector::ZeroVector,
+		FVector(2.f, 3.f, 4.f));
+	TestEqual(TEXT("90 derece consequence türemeli"),
+		FCigPlacementConsequencePolicy::Derive(R, R.CandidateTransform, AtNinety), ECigPlacementFailure::None);
+	TestTrue(TEXT("90 derece fiziksel non-square half extent"),
+		AtNinety.PhysicalRect.HalfExtent.Equals(FVector2D(40.f, 100.f), 0.01f));
+	TestTrue(TEXT("90 derece kullanım merkezi"), AtNinety.UseRect.Center.Equals(FVector2D(0.f, 100.f), 0.01f));
+	TestTrue(TEXT("90 derece kullanım half extent"),
+		AtNinety.UseRect.HalfExtent.Equals(FVector2D(20.f, 60.f), 0.01f));
+
+	FCigPlacementAuthority A = Authority();
+	const FCigPlacementResult Registered = A.TryRegister(R);
+	TestTrue(TEXT("Ölçekli request normalize edilip kaydolmalı"), Registered.bAccepted);
+	TestTrue(TEXT("Placement ölçeği authoritative geometri için bire normalize edilmeli"),
+		Registered.NormalizedTransform.GetScale3D().Equals(FVector::OneVector));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementConsequenceDeterminismTest,
+	"Cigkofte.Placement.Consequences.Policy.Deterministic",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementConsequenceDeterminismTest::RunTest(const FString&)
+{
+	FCigPlacementRequest R = Request(TEXT("policy.repeat"), FVector(120.f, -70.f, 0.f), FVector2D(90.f, 210.f), 90.f);
+	DefineFunctionalConsequence(R, ECigPlacementCategory::Seating, 2,
+		FVector2D(200.f, 300.f), FVector2D(-40.f, 15.f), 90.f);
+	FCigPlacementConsequence First;
+	FCigPlacementConsequence Second;
+	TestEqual(TEXT("İlk türetim geçerli olmalı"),
+		FCigPlacementConsequencePolicy::Derive(R, R.CandidateTransform, First), ECigPlacementFailure::None);
+	TestEqual(TEXT("İkinci türetim geçerli olmalı"),
+		FCigPlacementConsequencePolicy::Derive(R, R.CandidateTransform, Second), ECigPlacementFailure::None);
+	TestTrue(TEXT("Fiziksel rect deterministik olmalı"),
+		First.PhysicalRect.Center.Equals(Second.PhysicalRect.Center, 0.001f)
+		&& First.PhysicalRect.HalfExtent.Equals(Second.PhysicalRect.HalfExtent, 0.001f));
+	TestTrue(TEXT("Kullanım rect deterministik olmalı"),
+		First.UseRect.Center.Equals(Second.UseRect.Center, 0.001f)
+		&& First.UseRect.HalfExtent.Equals(Second.UseRect.HalfExtent, 0.001f));
+	TestTrue(TEXT("Placement ve use yaw birleşimi local frame merkezini kesin döndürmeli"),
+		First.UseRect.Center.Equals(FVector2D(160.f, -85.f), 0.001f));
+	TestTrue(TEXT("Placement ve use yaw birleşimi non-square eksenleri kesin döndürmeli"),
+		First.UseRect.HalfExtent.Equals(FVector2D(100.f, 150.f), 0.001f));
+	TestEqual(TEXT("Kapasite deterministik olmalı"), First.FunctionalCapacity, Second.FunctionalCapacity);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementInvalidConsequenceTest,
+	"Cigkofte.Placement.Consequences.Validation.InvalidDefinitionAndPriority",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementInvalidConsequenceTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	FCigPlacementRequest Missing = Request(TEXT("invalid.station"), FVector::ZeroVector);
+	Missing.Category = ECigPlacementCategory::Station;
+	TestEqual(TEXT("Station kullanım alanı olmadan reddedilmeli"), A.Validate(Missing).Failure,
+		ECigPlacementFailure::InvalidConsequence);
+
+	FCigPlacementRequest Decor = Request(TEXT("invalid.decoration"), FVector::ZeroVector);
+	Decor.UseSpec.Size = FVector2D(100.f, 100.f);
+	Decor.UseSpec.FunctionalCapacity = 1;
+	TestEqual(TEXT("Decoration fonksiyonel kapasite iddia edememeli"), A.Validate(Decor).Failure,
+		ECigPlacementFailure::InvalidConsequence);
+
+	FCigPlacementRequest Seating = Request(TEXT("invalid.seating"), FVector::ZeroVector);
+	DefineFunctionalConsequence(Seating, ECigPlacementCategory::Seating, 0);
+	TestEqual(TEXT("Seating sıfır kapasiteyle reddedilmeli"), A.Validate(Seating).Failure,
+		ECigPlacementFailure::InvalidConsequence);
+
+	Missing.Category = static_cast<ECigPlacementCategory>(255);
+	TestEqual(TEXT("Unknown category consequence hatasından önce gelmeli"), A.Validate(Missing).Failure,
+		ECigPlacementFailure::UnknownCategory);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementConsequenceRouteTest,
+	"Cigkofte.Placement.Consequences.Validation.BoundsRoutesAndEdgeTouch",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementConsequenceRouteTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority(300.f);
+	FCigPlacementRequest Outside = Request(TEXT("use.outside"), FVector(150.f, 0.f, 0.f), FVector2D(40.f, 40.f));
+	DefineFunctionalConsequence(Outside, ECigPlacementCategory::Station, 1,
+		FVector2D(100.f, 80.f), FVector2D(150.f, 0.f));
+	TestEqual(TEXT("Kullanım alanı shop bounds dışına taşamamalı"), A.Validate(Outside).Failure,
+		ECigPlacementFailure::FunctionalAreaOutsideShop);
+
+	FCigProtectedZone Queue = Zone(TEXT("zone.use.queue"), ECigPlacementFailure::BlocksQueue);
+	Queue.Center = FVector2D(200.f, 0.f);
+	Queue.HalfExtent = FVector2D(50.f, 50.f);
+	TestTrue(TEXT("Queue zone eklenmeli"), A.AddProtectedZone(Queue));
+
+	FCigPlacementRequest Blocks = Request(TEXT("use.blocks"), FVector::ZeroVector, FVector2D(40.f, 40.f));
+	DefineFunctionalConsequence(Blocks, ECigPlacementCategory::Station, 1,
+		FVector2D(100.f, 80.f), FVector2D(120.f, 0.f));
+	TestEqual(TEXT("Sadece consequence ile queue kesmek de reddedilmeli"), A.Validate(Blocks).Failure,
+		ECigPlacementFailure::BlocksQueue);
+	FCigPlacementRequest AuthoredBootstrap = Blocks;
+	AuthoredBootstrap.StableId = TEXT("use.authored-bootstrap");
+	AuthoredBootstrap.Context = ECigPlacementContext::WorldRegistration;
+	TestTrue(TEXT("Authored world bootstrap protected route'u yeniden doğrulamamalı"),
+		A.Validate(AuthoredBootstrap).bAccepted);
+
+	Blocks.StableId = TEXT("use.edge");
+	Blocks.UseSpec.CenterOffset = FVector2D(100.f, 0.f);
+	TestTrue(TEXT("Kullanım alanının protected zone kenarına değmesi kabul edilmeli"),
+		A.Validate(Blocks).bAccepted);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementFunctionalClearanceTest,
+	"Cigkofte.Placement.Consequences.Validation.FunctionalClearance",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementFunctionalClearanceTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	FCigPlacementRequest Station = Request(TEXT("station.clearance"), FVector::ZeroVector, FVector2D(40.f, 40.f));
+	DefineFunctionalConsequence(Station, ECigPlacementCategory::Station, 1,
+		FVector2D(100.f, 80.f), FVector2D(100.f, 0.f));
+	TestTrue(TEXT("Station kaydolmalı"), A.TryRegister(Station).bAccepted);
+	TestEqual(TEXT("Fiziksel nesne station çalışma alanını kapatamamalı"),
+		A.Validate(Request(TEXT("decor.blocks.station"), FVector(100.f, 0.f, 0.f), FVector2D(40.f, 40.f))).Failure,
+		ECigPlacementFailure::BlocksStationAccess);
+	TestTrue(TEXT("Station çalışma alanına exact edge touch kabul edilmeli"),
+		A.Validate(Request(TEXT("decor.edge.station"), FVector(170.f, 0.f, 0.f), FVector2D(40.f, 40.f))).bAccepted);
+
+	FCigPlacementAuthority B = Authority();
+	FCigPlacementRequest Seating = Request(TEXT("seating.clearance"), FVector::ZeroVector, FVector2D(40.f, 40.f));
+	DefineFunctionalConsequence(Seating, ECigPlacementCategory::Seating, 2,
+		FVector2D(100.f, 80.f), FVector2D(100.f, 0.f));
+	TestTrue(TEXT("Seating kaydolmalı"), B.TryRegister(Seating).bAccepted);
+	TestEqual(TEXT("Seating kullanım alanı generic clearance ile korunmalı"),
+		B.Validate(Request(TEXT("decor.blocks.seating"), FVector(100.f, 0.f, 0.f), FVector2D(40.f, 40.f))).Failure,
+		ECigPlacementFailure::BlocksFunctionalClearance);
+
+	FCigPlacementAuthority C = Authority();
+	FCigPlacementRequest Left = Request(TEXT("shared.left"), FVector::ZeroVector, FVector2D(40.f, 40.f));
+	DefineFunctionalConsequence(Left, ECigPlacementCategory::Station, 1,
+		FVector2D(160.f, 80.f), FVector2D(100.f, 0.f));
+	FCigPlacementRequest Right = Request(TEXT("shared.right"), FVector(300.f, 0.f, 0.f), FVector2D(40.f, 40.f));
+	DefineFunctionalConsequence(Right, ECigPlacementCategory::Station, 1,
+		FVector2D(160.f, 80.f), FVector2D(-100.f, 0.f));
+	TestTrue(TEXT("Paylaşılan aisle için ilk station kaydolmalı"), C.TryRegister(Left).bAccepted);
+	TestTrue(TEXT("Use/use overlap fiziksel işgal olmadığından paylaşılabilmeli"), C.Validate(Right).bAccepted);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementConsequenceQueriesTest,
+	"Cigkofte.Placement.Consequences.Authority.RegisterAndQueries",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementConsequenceQueriesTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	FCigPlacementRequest Station = Request(TEXT("query.station"), FVector(-500.f, 0.f, 0.f), FVector2D(40.f, 40.f));
+	DefineFunctionalConsequence(Station, ECigPlacementCategory::Station, 1,
+		FVector2D(80.f, 80.f), FVector2D::ZeroVector);
+	FCigPlacementRequest Seating = Request(TEXT("query.seating"), FVector::ZeroVector, FVector2D(40.f, 40.f));
+	DefineFunctionalConsequence(Seating, ECigPlacementCategory::Seating, 2,
+		FVector2D(80.f, 80.f), FVector2D::ZeroVector);
+	const FCigPlacementRequest Decoration = Request(TEXT("query.decoration"), FVector(500.f, 0.f, 0.f), FVector2D(40.f, 40.f));
+	TestTrue(TEXT("Station kaydolmalı"), A.TryRegister(Station).bAccepted);
+	TestTrue(TEXT("Seating kaydolmalı"), A.TryRegister(Seating).bAccepted);
+	TestTrue(TEXT("Decoration kaydolmalı"), A.TryRegister(Decoration).bAccepted);
+	TestEqual(TEXT("Record ve consequence sayısı bire bir olmalı"), A.ConsequenceCount(), A.RecordCount());
+	TestEqual(TEXT("Station kapasite toplamı"),
+		A.CountFunctionalCapacity(ECigPlacementCategory::Station), 1);
+	TestEqual(TEXT("Seating kapasite toplamı"),
+		A.CountFunctionalCapacity(ECigPlacementCategory::Seating), 2);
+	TestEqual(TEXT("Decoration kapasite toplamı"),
+		A.CountFunctionalCapacity(ECigPlacementCategory::Decoration), 0);
+	TestEqual(TEXT("Üç installed layout consequence olmalı"), A.CountInstalledLayoutConsequences(), 3);
+	const FCigPlacementRecord* Record = A.Find(Station.StableId);
+	FCigPlacementConsequence Found;
+	const bool bFound = A.TryGetConsequence(Station.StableId, Found);
+	TestTrue(TEXT("Station consequence bulunmalı"), bFound);
+	if (Record && bFound)
+	{
+		TestEqual(TEXT("Record/consequence stable ID invariantı"), Record->StableId, Found.StableId);
+		TestEqual(TEXT("Record/consequence kategori invariantı"), Record->Category, Found.Category);
+		TestEqual(TEXT("Record/consequence lifetime invariantı"), Record->Lifetime, Found.Lifetime);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementConsequenceMoveTest,
+	"Cigkofte.Placement.Consequences.Authority.AtomicMoveAndRollback",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementConsequenceMoveTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	FCigPlacementRequest Original = Request(TEXT("move.station"), FVector(-300.f, 0.f, 0.f), FVector2D(40.f, 40.f));
+	DefineFunctionalConsequence(Original, ECigPlacementCategory::Station, 1,
+		FVector2D(80.f, 80.f), FVector2D(80.f, 0.f));
+	const FCigPlacementResult Added = A.TryRegister(Original);
+	TestTrue(TEXT("İlk register state değiştirmeli"), Added.bAccepted && Added.bStateChanged);
+
+	FCigPlacementRequest Move = Original;
+	// The new physical footprint lies inside the old use area. A valid move must
+	// ignore exactly its own old consequence while validating the candidate.
+	Move.CandidateTransform.SetLocation(FVector(-220.f, 0.f, 0.f));
+	Move.Context = ECigPlacementContext::MoveExisting;
+	Move.IgnoreStableId = Move.StableId;
+	const FCigPlacementResult Moved = A.TryRegister(Move);
+	TestTrue(TEXT("Geçerli move state'i bir kez değiştirmeli"), Moved.bAccepted && Moved.bStateChanged);
+	TestEqual(TEXT("Move duplicate consequence üretmemeli"), A.ConsequenceCount(), 1);
+	FCigPlacementConsequence AfterMove;
+	const bool bFoundAfterMove = A.TryGetConsequence(Move.StableId, AfterMove);
+	TestTrue(TEXT("Move sonrası consequence bulunmalı"), bFoundAfterMove);
+	if (bFoundAfterMove)
+	{
+		TestTrue(TEXT("Move kullanım alanını yeni transformla güncellemeli"),
+			AfterMove.UseRect.Center.Equals(FVector2D(-140.f, 0.f), 0.01f));
+	}
+
+	const FCigPlacementResult NoOp = A.TryRegister(Move);
+	TestTrue(TEXT("Aynı normalized move kabul edilmeli"), NoOp.bAccepted);
+	TestFalse(TEXT("Aynı normalized move state change sayılmamalı"), NoOp.bStateChanged);
+
+	FCigPlacementRequest ChangedSpec = Move;
+	ChangedSpec.UseSpec.Size.X += 10.f;
+	TestEqual(TEXT("Move consequence tanımını değiştirememeli"), A.TryRegister(ChangedSpec).Failure,
+		ECigPlacementFailure::ConsequenceMismatch);
+
+	const FCigPlacementRequest Blocker = Request(TEXT("move.blocker"),
+		FVector(80.f, 0.f, 0.f), FVector2D(40.f, 40.f));
+	TestTrue(TEXT("Rollback testi blocker kaydı eklemeli"), A.TryRegister(Blocker).bAccepted);
+	FCigPlacementRequest Conflicting = Move;
+	Conflicting.CandidateTransform.SetLocation(FVector::ZeroVector);
+	TestEqual(TEXT("Başka stable ID yeni çalışma alanını kapatınca move reddedilmeli"),
+		A.TryRegister(Conflicting).Failure, ECigPlacementFailure::BlocksStationAccess);
+	FCigPlacementConsequence KeptConsequence;
+	TestTrue(TEXT("Functional conflict eski consequence'ı korumalı"),
+		A.TryGetConsequence(Move.StableId, KeptConsequence));
+	TestTrue(TEXT("Functional conflict eski use rect'i değiştirmemeli"),
+		KeptConsequence.UseRect.Center.Equals(FVector2D(-140.f, 0.f), 0.01f));
+
+	FCigPlacementRequest Outside = Move;
+	Outside.CandidateTransform.SetLocation(FVector(950.f, 0.f, 0.f));
+	TestEqual(TEXT("Geçersiz move tamamen reddedilmeli"), A.TryRegister(Outside).Failure,
+		ECigPlacementFailure::FunctionalAreaOutsideShop);
+	const FCigPlacementRecord* Kept = A.Find(Move.StableId);
+	TestNotNull(TEXT("Başarısız move eski kaydı korumalı"), Kept);
+	if (Kept)
+	{
+		TestTrue(TEXT("Başarısız move eski transformu korumalı"),
+			Kept->Transform.GetLocation().Equals(FVector(-220.f, 0.f, 0.f)));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementConsequenceRemoveTest,
+	"Cigkofte.Placement.Consequences.Authority.RemoveAndReuse",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementConsequenceRemoveTest::RunTest(const FString&)
+{
+	FCigPlacementAuthority A = Authority();
+	FCigPlacementRequest Station = Request(TEXT("reuse.station"), FVector(-300.f, 0.f, 0.f), FVector2D(40.f, 40.f));
+	DefineFunctionalConsequence(Station, ECigPlacementCategory::Station, 1,
+		FVector2D(80.f, 80.f), FVector2D::ZeroVector);
+	const FCigPlacementRequest Other = Request(TEXT("reuse.other"), FVector(300.f, 0.f, 0.f), FVector2D(40.f, 40.f));
+	TestTrue(TEXT("Station kaydolmalı"), A.TryRegister(Station).bAccepted);
+	TestTrue(TEXT("Diğer kayıt kaydolmalı"), A.TryRegister(Other).bAccepted);
+	TestTrue(TEXT("Remove record ve consequence'ı birlikte kaldırmalı"), A.Remove(Station.StableId));
+	TestNull(TEXT("Record kaldırılmalı"), A.Find(Station.StableId));
+	FCigPlacementConsequence RemovedConsequence;
+	TestFalse(TEXT("Consequence kaldırılmalı"),
+		A.TryGetConsequence(Station.StableId, RemovedConsequence));
+	TestNotNull(TEXT("Başka kayıt etkilenmemeli"), A.Find(Other.StableId));
+	TestFalse(TEXT("Olmayan kaydı kaldırmak state değiştirmemeli"), A.Remove(Station.StableId));
+	TestTrue(TEXT("Remove sonrası stable ID tekrar kullanılabilmeli"), A.TryRegister(Station).bAccepted);
+	TestEqual(TEXT("Reuse duplicate consequence üretmemeli"), A.ConsequenceCount(), 2);
+	A.ResetRecords();
+	TestEqual(TEXT("Reset record ve index'i birlikte boşaltmalı"), A.RecordCount(), 0);
+	TestNull(TEXT("Reset ilk ID index'ini kaldırmalı"), A.Find(Station.StableId));
+	TestNull(TEXT("Reset ikinci ID index'ini kaldırmalı"), A.Find(Other.StableId));
+	TestFalse(TEXT("Reset consequence sorgusunu da boşaltmalı"),
+		A.TryGetConsequence(Station.StableId, RemovedConsequence));
+	TestTrue(TEXT("Reset sonrası stable ID yeniden kaydolabilmeli"), A.TryRegister(Station).bAccepted);
+	TestTrue(TEXT("Reset sonrası consequence index'i yeniden kurulmalı"),
+		A.TryGetConsequence(Station.StableId, RemovedConsequence));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementConsequenceEventTest,
+	"Cigkofte.Placement.Consequences.Integration.EventOnlyOnStateChange",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigPlacementConsequenceEventTest::RunTest(const FString&)
+{
+	FCigTestShop Shop;
+	if (!Shop.Build(*this)) { return false; }
+	if (!Shop.GM->Placement || !Shop.GM->Bus)
+	{
+		AddError(TEXT("Placement event testi için sistemler yok."));
+		return false;
+	}
+
+	TArray<FCigPlacementChange> Changes;
+	const FDelegateHandle Handle = Shop.GM->Bus->PlacementChanged.AddLambda(
+		[&Changes](const FCigPlacementChange& Change) { Changes.Add(Change); });
+	FCigPlacementRequest R = Request(TEXT("event.decoration"), FVector(500.f, 1000.f, 0.f), FVector2D(40.f, 40.f));
+	TestTrue(TEXT("Event register kabul edilmeli"), Shop.GM->Placement->RegisterPlacement(R).bAccepted);
+	R.Context = ECigPlacementContext::MoveExisting;
+	R.IgnoreStableId = R.StableId;
+	R.CandidateTransform.SetLocation(FVector(600.f, 1000.f, 0.f));
+	TestTrue(TEXT("Event move kabul edilmeli"), Shop.GM->Placement->RegisterPlacement(R).bAccepted);
+	TestTrue(TEXT("No-op move kabul edilmeli"), Shop.GM->Placement->RegisterPlacement(R).bAccepted);
+	TestTrue(TEXT("Event remove başarılı olmalı"), Shop.GM->Placement->RemovePlacement(R.StableId));
+	TestFalse(TEXT("İkinci remove başarısız olmalı"), Shop.GM->Placement->RemovePlacement(R.StableId));
+	Shop.GM->Bus->PlacementChanged.Remove(Handle);
+
+	TestEqual(TEXT("Yalnız üç gerçek state change yayınlanmalı"), Changes.Num(), 3);
+	if (Changes.Num() == 3)
+	{
+		TestEqual(TEXT("İlk event Added"), Changes[0].Mutation, ECigPlacementMutation::Added);
+		TestEqual(TEXT("İkinci event Moved"), Changes[1].Mutation, ECigPlacementMutation::Moved);
+		TestEqual(TEXT("Üçüncü event Removed"), Changes[2].Mutation, ECigPlacementMutation::Removed);
+		TestEqual(TEXT("Event stable ID taşımalı"), Changes[2].StableId, R.StableId);
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigPlacementShopIntegrationTest,
 	"Cigkofte.Placement.Integration.RealShopRegistersFixturesAndCrate",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -598,6 +1037,42 @@ bool FCigPlacementShopIntegrationTest::RunTest(const FString&)
 		TestTrue(TEXT("Sofa yerleşim izi görselin 90 derece yönünü korumalı"),
 			FMath::IsNearlyEqual(FMath::Abs(FMath::UnwindDegrees(Sofa->Transform.Rotator().Yaw)), 90.f, 0.01f));
 	}
+	FCigPlacementConsequence SofaConsequence;
+	const bool bHasSofaConsequence = Shop.GM->Placement->TryGetPlacementConsequence(
+		TEXT("fixture.seating.sofa"), SofaConsequence);
+	TestTrue(TEXT("Sofa consequence kaydı olmalı"), bHasSofaConsequence);
+	if (bHasSofaConsequence)
+	{
+		TestEqual(TEXT("Sofa seating kapasitesi üretmemeli"), SofaConsequence.FunctionalCapacity, 0);
+		TestFalse(TEXT("Sofa kullanım alanı üretmemeli"), SofaConsequence.bHasUseArea);
+	}
+	FCigPlacementConsequence TableConsequence;
+	const bool bHasTableConsequence = Shop.GM->Placement->TryGetPlacementConsequence(
+		TEXT("fixture.seating.table.0"), TableConsequence);
+	TestTrue(TEXT("Masa consequence kaydı olmalı"), bHasTableConsequence);
+	if (bHasTableConsequence)
+	{
+		TestEqual(TEXT("Her masa iki usable seat üretmeli"), TableConsequence.FunctionalCapacity, 2);
+	}
+	FCigPlacementConsequence ServiceConsequence;
+	const bool bHasServiceConsequence = Shop.GM->Placement->TryGetPlacementConsequence(
+		TEXT("fixture.station.servis"), ServiceConsequence);
+	TestTrue(TEXT("Servis station consequence kaydı olmalı"), bHasServiceConsequence);
+	if (bHasServiceConsequence)
+	{
+		TestEqual(TEXT("Servis bir station birimi üretmeli"), ServiceConsequence.FunctionalCapacity, 1);
+		TestTrue(TEXT("Servis çalışma tarafı olmalı"), ServiceConsequence.bHasUseArea);
+	}
+	FCigPlacementConsequence BowlConsequence;
+	FCigPlacementConsequence SideProductConsequence;
+	const bool bHasBowlConsequence = Shop.GM->Placement->TryGetPlacementConsequence(
+		TEXT("fixture.station.mama"), BowlConsequence);
+	const bool bHasSideProductConsequence = Shop.GM->Placement->TryGetPlacementConsequence(
+		TEXT("fixture.station.yanurun"), SideProductConsequence);
+	TestTrue(TEXT("Mama kabının kullanım tarafı yanındaki masadan uzağa bakmalı"),
+		bHasBowlConsequence && BowlConsequence.UseRect.Center.X > -200.f);
+	TestTrue(TEXT("Yan ürün kullanım tarafı yanındaki masadan uzağa bakmalı"),
+		bHasSideProductConsequence && SideProductConsequence.UseRect.Center.X > -350.f);
 	TestEqual(TEXT("22 istasyon kaydolmalı"),
 		Shop.GM->Placement->PlacementCountByCategory(ECigPlacementCategory::Station), 22);
 	TestEqual(TEXT("4 masa grubu seating olarak kaydolmalı"),
@@ -611,6 +1086,36 @@ bool FCigPlacementShopIntegrationTest::RunTest(const FString&)
 	TestEqual(TEXT("Dünya kurulumunda transient kayıt olmamalı"),
 		Shop.GM->Placement->PlacementCountByLifetime(ECigPlacementLifetime::Transient), 0);
 	TestEqual(TEXT("Dünya kayıt toplamı kesin olmalı"), Shop.GM->Placement->PlacementCount(), 27);
+	TestEqual(TEXT("Her record tam bir consequence taşımalı"),
+		Shop.GM->Placement->PlacementConsequenceCount(), 27);
+	TestEqual(TEXT("27 consequence installed layout parçası olmalı"),
+		Shop.GM->Placement->InstalledLayoutConsequenceCount(), 27);
+	TestEqual(TEXT("22 usable station birimi olmalı"),
+		Shop.GM->Placement->FunctionalCapacityByCategory(ECigPlacementCategory::Station), 22);
+	TestEqual(TEXT("4 masa toplam 8 usable seat üretmeli"),
+		Shop.GM->Placement->FunctionalCapacityByCategory(ECigPlacementCategory::Seating), 8);
+	TestEqual(TEXT("Decoration usable kapasite üretmemeli"),
+		Shop.GM->Placement->FunctionalCapacityByCategory(ECigPlacementCategory::Decoration), 0);
+	TestEqual(TEXT("Teslimat öncesi usable storage olmamalı"),
+		Shop.GM->Placement->FunctionalCapacityByCategory(ECigPlacementCategory::Storage), 0);
+	ACigkofteStation* ServiceStation = Shop.GM->WorldBuilder->FindStation(ECigStation::Servis);
+	TestNotNull(TEXT("Station gameplay query consequence ile kullanılabilir olmalı"), ServiceStation);
+	TestTrue(TEXT("Gerçek etkileşim kapısı consequence bulunan station'ı kabul etmeli"),
+		Shop.GM->IsStationInteractionAvailable(ServiceStation));
+
+	TArray<int32> ReservedSeats;
+	for (int32 Index = 0; Index < 8; ++Index)
+	{
+		const int32 Seat = Shop.GM->WorldBuilder->ReserveSeat();
+		TestTrue(TEXT("Sekiz authored seat consequence kapasitesi içinde reserve edilmeli"), Seat >= 0);
+		ReservedSeats.Add(Seat);
+	}
+	TestEqual(TEXT("Dokuzuncu seat consequence kapasitesi dışında kalmalı"),
+		Shop.GM->WorldBuilder->ReserveSeat(), -1);
+	for (int32 Seat : ReservedSeats)
+	{
+		Shop.GM->WorldBuilder->ReleaseSeat(Seat);
+	}
 
 	FCigPendingOrder Order;
 	Order.Item = (int32)ECigIngredient::Isot;
@@ -623,6 +1128,7 @@ bool FCigPlacementShopIntegrationTest::RunTest(const FString&)
 	Probe.Category = ECigPlacementCategory::Storage;
 	Probe.Lifetime = ECigPlacementLifetime::Transient;
 	Probe.Footprint = UCigPlacementSystem::StockCrateFootprint();
+	Probe.UseSpec = UCigPlacementSystem::StockCrateUseSpec();
 	Probe.Context = ECigPlacementContext::Delivery;
 	const FCigPlacementResult Expected = Shop.GM->Placement->FindFirstValidPlacement(
 		Probe, CigPlacementLayout::DeliverySpots());
@@ -655,11 +1161,70 @@ bool FCigPlacementShopIntegrationTest::RunTest(const FString&)
 		Shop.GM->Placement->PlacementCountByCategory(ECigPlacementCategory::Storage), 1);
 	TestEqual(TEXT("Teslimat bir transient kayıt eklemeli"),
 		Shop.GM->Placement->PlacementCountByLifetime(ECigPlacementLifetime::Transient), 1);
+	TestEqual(TEXT("Teslimat bir usable storage birimi eklemeli"),
+		Shop.GM->Placement->FunctionalCapacityByCategory(ECigPlacementCategory::Storage), 1);
+	FCigPlacementConsequence CrateConsequence;
+	const bool bHasCrateConsequence = Shop.GM->Placement->TryGetPlacementConsequence(
+		Crate->PlacementId, CrateConsequence);
+	TestTrue(TEXT("Kasa consequence kaydı olmalı"), bHasCrateConsequence);
+	if (bHasCrateConsequence)
+	{
+		TestFalse(TEXT("Transient kasa installed layout değildir"), CrateConsequence.bInstalledLayout);
+		TestTrue(TEXT("Kasanın unload alanı olmalı"), CrateConsequence.bHasUseArea);
+	}
 
 	Shop.GM->Inventory->UnloadCrate(Crate);
 	TestNull(TEXT("Boşaltılan kasanın izi kalkmalı"), Shop.GM->Placement->FindPlacement(Probe.StableId));
+	TestFalse(TEXT("Boşaltılan kasanın consequence'ı kalkmalı"),
+		Shop.GM->Placement->TryGetPlacementConsequence(Probe.StableId, CrateConsequence));
 	TestEqual(TEXT("Boşaltma transient kaydı kaldırmalı"),
 		Shop.GM->Placement->PlacementCountByLifetime(ECigPlacementLifetime::Transient), 0);
+	TestEqual(TEXT("Boşaltma storage kapasitesini sıfırlamalı"),
+		Shop.GM->Placement->FunctionalCapacityByCategory(ECigPlacementCategory::Storage), 0);
+
+	FCigPendingOrder DestroyedOrder = Order;
+	DestroyedOrder.Amount = 1;
+	DestroyedOrder.PlacementSerial = 78;
+	Shop.GM->Inventory->PendingOrders.Add(DestroyedOrder);
+	Shop.GM->Inventory->UpdateSystem(0.1f);
+	ACigStockCrate* DestroyedCrate = Shop.GM->Inventory->Crates.Num()
+		? Shop.GM->Inventory->Crates[0].Get() : nullptr;
+	TestNotNull(TEXT("Lifecycle testi için ikinci kasa doğmalı"), DestroyedCrate);
+	if (DestroyedCrate)
+	{
+		const FName DestroyedPlacementId = DestroyedCrate->PlacementId;
+		DestroyedCrate->Destroy();
+		TestNull(TEXT("Beklenmedik actor destruction transient record bırakmamalı"),
+			Shop.GM->Placement->FindPlacement(DestroyedPlacementId));
+		TestFalse(TEXT("Beklenmedik actor destruction consequence bırakmamalı"),
+			Shop.GM->Placement->TryGetPlacementConsequence(DestroyedPlacementId, CrateConsequence));
+		TestEqual(TEXT("Destroyed kasa weak listeden event ile düşmeli"), Shop.GM->Inventory->Crates.Num(), 0);
+	}
+
+	TestTrue(TEXT("Bir seating record kaldırılabilmeli"),
+		Shop.GM->Placement->RemovePlacement(TEXT("fixture.seating.table.0")));
+	TArray<int32> RemainingSeats;
+	for (;;)
+	{
+		const int32 Seat = Shop.GM->WorldBuilder->ReserveSeat();
+		if (Seat < 0) { break; }
+		RemainingSeats.Add(Seat);
+	}
+	TestEqual(TEXT("Kaldırılan masa iki seat'i de gameplay'den düşürmeli"), RemainingSeats.Num(), 6);
+	for (int32 Seat : RemainingSeats)
+	{
+		Shop.GM->WorldBuilder->ReleaseSeat(Seat);
+	}
+	TestTrue(TEXT("Servis placement kaydı kaldırılabilmeli"),
+		Shop.GM->Placement->RemovePlacement(TEXT("fixture.station.servis")));
+	TestNull(TEXT("Consequence kalkınca station gameplay query kullanılamaz olmalı"),
+		Shop.GM->WorldBuilder->FindStation(ECigStation::Servis));
+	TestFalse(TEXT("Consequence kalkınca traced actor etkileşim kapısından geçmemeli"),
+		Shop.GM->IsStationInteractionAvailable(ServiceStation));
+	Shop.GM->Days->Phase = ECigPhase::Opening;
+	Shop.GM->HandleInteract(ServiceStation);
+	TestEqual(TEXT("Kaldırılmış station actor'ı dükkânı açamamalı"),
+		Shop.GM->Days->Phase, ECigPhase::Opening);
 	return true;
 }
 

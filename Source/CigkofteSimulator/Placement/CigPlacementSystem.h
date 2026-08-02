@@ -22,15 +22,23 @@ public:
 		const TArray<FTransform>& OrderedCandidates) const;
 	bool RemovePlacement(FName StableId);
 	const FCigPlacementRecord* FindPlacement(FName StableId) const;
+	bool TryGetPlacementConsequence(FName StableId, FCigPlacementConsequence& OutConsequence) const;
 	bool AddProtectedZone(const FCigProtectedZone& Zone);
 
 	int32 PlacementCount() const { return Authority.RecordCount(); }
 	int32 PlacementCountByCategory(ECigPlacementCategory Category) const { return Authority.CountByCategory(Category); }
 	int32 PlacementCountByLifetime(ECigPlacementLifetime Lifetime) const { return Authority.CountByLifetime(Lifetime); }
+	int32 PlacementConsequenceCount() const { return Authority.ConsequenceCount(); }
+	int32 FunctionalCapacityByCategory(ECigPlacementCategory Category) const
+	{
+		return Authority.CountFunctionalCapacity(Category);
+	}
+	int32 InstalledLayoutConsequenceCount() const { return Authority.CountInstalledLayoutConsequences(); }
 	int32 ProtectedZoneCount() const { return Authority.ProtectedZoneCount(); }
 	const TArray<FCigPlacementRecord>& PlacementRecords() const { return Authority.GetRecords(); }
 
 	static FCigPlacementFootprint StockCrateFootprint();
+	static FCigPlacementUseSpec StockCrateUseSpec();
 	static FString FailureText(ECigPlacementFailure Failure);
 
 private:

@@ -741,7 +741,9 @@ msg.inventory.cratenoroom,"{0} için yer yok — kasa bekliyor","No room for {0}
 msg.inventory.crateovernight,"Dışarıda kalan {0} birim gece kilere kaldırıldı","{0} units left out were put away overnight"
 msg.placement.invalid,Yerleştirme geçersiz.,Placement is invalid.
 msg.placement.outside,Nesne dükkân sınırlarının dışında kalıyor.,The object would be outside the shop bounds.
+msg.placement.useoutside,Nesnenin kullanım alanı dükkân sınırlarının dışında kalıyor.,The object's use area would be outside the shop bounds.
 msg.placement.overlap,Burada başka bir nesne var.,Another object already occupies this space.
+msg.placement.clearance,Bu alan başka bir nesnenin kullanımı için boş kalmalı.,This area must remain clear for another object's use.
 msg.placement.entrance,Giriş boş kalmalı.,The entrance must remain clear.
 msg.placement.queue,Müşteri kuyruğu kapatılamaz.,The customer queue must remain clear.
 msg.placement.service,Servis yolu kapatılamaz.,The service route must remain clear.
@@ -752,6 +754,7 @@ msg.placement.floor,Nesne dükkân zemininde durmalı.,The object must stand on 
 msg.placement.duplicate,Bu nesne kimliği zaten kayıtlı.,That object identity is already registered.
 msg.placement.deliveryfull,Teslimat alanı dolu; kasa için yer aç.,The delivery area is full; clear a spot for the crate.
 msg.placement.classification,Bu nesne bu yerleştirme işlemi için uygun değil.,This object is not valid for this placement operation.
+msg.placement.consequence,Bu nesnenin kullanım alanı tanımı geçersiz.,This object's use-area definition is invalid.
 tablet.licence,0) Ruhsat ve vergi levhası,0) Licence and tax plate
 tablet.licence.valid,"{0} gün geçerli  ·  yenile {1} TL","valid {0} more days  ·  renew {1} TL"
 tablet.licence.expired,"SÜRESİ DOLDU  ·  yenile {0} TL","EXPIRED  ·  renew {0} TL"

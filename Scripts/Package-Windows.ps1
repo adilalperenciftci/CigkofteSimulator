@@ -52,6 +52,13 @@ $args = @(
     '-unattended', '-nop4', '-utf8output'
 )
 if ($useIoStore) { $args += '-iostore' } else { $args += '-noiostore' }
+# The Live Coding mutex UBT checks is keyed on the engine's editor executable,
+# not on a project, so any editor open anywhere on this install refuses the
+# build - and it refuses it after cook planning, as OtherCompilationError, which
+# reads like a compile failure rather than "close the editor". BuildEditor.ps1
+# has opted out of the IDE hot-reload path since it was written; packaging is the
+# same kind of batch build and had no equivalent.
+$args += '-ubtargs=-NoHotReloadFromIDE'
 if ($Clean) { $args += '-clean' }
 if ($IncludePrereqs) { $args += '-prereqs' }
 if (-not $IncludeSymbols) { $args += '-nodebuginfo' }

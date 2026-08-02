@@ -14,6 +14,7 @@
 #include "Inventory/CigInventorySystem.h"
 #include "Inventory/CigStockCrate.h"
 #include "Inventory/CigStorage.h"
+#include "Placement/CigPlacementSystem.h"
 #include "Core/CigSpawnUtils.h"
 #include "Core/CigkofteTypes.h"
 
@@ -23,11 +24,41 @@ namespace
 {
 	ACigStockCrate* Kasa(FCigTestShop& Shop, int32 Item, int32 Amount, float Quality)
 	{
+		static int32 PlacementSerial = 0;
+		if (!Shop.GM->Placement)
+		{
+			return nullptr;
+		}
+		FCigPlacementRequest Request;
+		Request.StableId = FName(*FString::Printf(TEXT("crate.test.%08d"), ++PlacementSerial));
+		Request.Category = ECigPlacementCategory::Storage;
+		Request.Lifetime = ECigPlacementLifetime::Transient;
+		Request.Footprint = UCigPlacementSystem::StockCrateFootprint();
+		Request.UseSpec = UCigPlacementSystem::StockCrateUseSpec();
+		Request.Context = ECigPlacementContext::Delivery;
+		const FCigPlacementResult Candidate = Shop.GM->Placement->FindFirstValidPlacement(
+			Request, CigPlacementLayout::DeliverySpots());
+		if (!Candidate.bAccepted)
+		{
+			return nullptr;
+		}
+		Request.CandidateTransform = Candidate.NormalizedTransform;
+		const FCigPlacementResult Registered = Shop.GM->Placement->RegisterPlacement(Request);
+		if (!Registered.bAccepted)
+		{
+			return nullptr;
+		}
 		ACigStockCrate* C = Shop.World->SpawnActor<ACigStockCrate>(
-			FVector::ZeroVector, FRotator::ZeroRotator, CigAlwaysSpawnParams());
+			Registered.NormalizedTransform.GetLocation(), Registered.NormalizedTransform.Rotator(),
+			CigAlwaysSpawnParams());
 		if (C)
 		{
+			C->PlacementId = Request.StableId;
 			C->Setup(Item, Amount, Quality);
+		}
+		else
+		{
+			Shop.GM->Placement->RemovePlacement(Request.StableId);
 		}
 		return C;
 	}

@@ -4,11 +4,12 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 
 | | |
 |---|---|
-| Branch | `feat/stage3-placement-categories` |
-| Base | `c06650e` (PR #7 merge on master) |
+| Branch | `feat/stage3-layout-consequences` |
+| Base | `e7372eb` (PR #8 merge on master) |
 | Latest commit | see `git log -1` on the branch |
 | Stage 3.1 PR | **#7**, merged as `c06650e` |
-| Current slice | **Stage 3.2 functional placement categories** |
+| Stage 3.2 PR | **#8**, merged as `e7372eb` |
+| Current slice | **Stage 3.3 layout consequences** |
 | Save version | **12** |
 
 This table has gone stale twice, both times by naming a branch that had already
@@ -102,22 +103,39 @@ of what a reviewer has to read.
 
 ## Current task
 
-**Stage 3.2 functional placement categories.** PR #7 is merged as `c06650e` and
-this branch starts from that exact merge. The placement authority now separates
-semantic function (`Station`, `Seating`, `Storage`, `Decoration`) from lifetime
-(`Installed`, `Transient`). Unknown enum ordinals, invalid context combinations
-and ignore-ID misuse are rejected before geometry; moving a stable record cannot
-silently change its classification. The code-built shop registers 22 stations,
-four seating groups and the non-seat sofa decoration; delivery crates are
-transient storage. This is runtime-only metadata, so save version 12 did not
-change. Layout consequences, navigation and persistence remain later slices;
-Stage 3 as a whole is not complete.
+**Stage 3.3 layout consequences.** PR #8 is merged as `e7372eb` and this branch
+starts from that exact merge. Placement now derives a *consequence* — a physical
+rectangle, a separate category-specific use rectangle and a functional capacity —
+by pure policy, and stores it inside the authoritative record. Embedding it is
+the point: there is no second container that could keep a rectangle alive after
+the record it belongs to moved or was removed. Register, move and remove are
+atomic against that one structure, the stable-ID index is maintained with them,
+and a move whose normalized value is unchanged reports no state change and
+publishes no event.
 
-Local delivery gates are complete at runtime commit `956073e`: static checks,
-the Editor build, 30/30 placement automation, 129/129 full automation and all
-`ValidateAll.ps1` stages passed. Exact-head Development and Shipping packages
-also passed their mandatory release self-tests; `QA.md` records their sizes and
-runtime executable hashes. Package output remains outside the repository.
+Gameplay now reads that authority instead of its own copy of the layout. A
+station is interactable only while its placement still owns a station
+consequence, a seat can be reserved only within its table's authored capacity,
+and a delivery crate's transient storage consequence is what makes it
+unloadable — and is gone when the crate is unloaded or destroyed. This is
+rectangular layout policy: it is not a navmesh claim and nothing about it is
+persisted, so save version 12 did not change.
+
+Local delivery gates are complete at runtime commit `8710588`: static checks,
+49/49 self-test-state, 7/7 cook-policy and 7/7 path-safety assertions, the
+Editor build, 40/40 placement automation, 139/139 full automation and 14/14
+runtime balance files with zero warnings. Exact-head Development and Shipping
+packages passed their mandatory release self-tests; `QA.md` records their sizes
+and runtime executable hashes. Package output remains outside the repository.
+
+Two defects were found by reviewing the slice rather than by running it, and are
+recorded in `QA.md`: the station availability query had put `FindStation` back on
+the per-frame path while making it allocate, and both packaging scripts could not
+run at all while a UE editor was open on any project.
+
+`UCigEventBus::PlacementChanged` is published but has no production subscriber
+yet. It is groundwork for the slices that consume layout changes, and this
+document should not be read as saying anything is listening.
 
 ## Stage 2.1 and 2.2, finished
 

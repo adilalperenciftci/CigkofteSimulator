@@ -336,3 +336,84 @@ build and every validation result listed above passed.
 Still out of scope: player-facing category UI, category-specific layout effects,
 AI/path validation, player-authored placement persistence and shop identity.
 Stage 3.3 layout consequences is next; full navigation proof remains Stage 3.4.
+
+## 2026-08-02 — Stage 3.3 layout consequences
+
+This validates deterministic layout-consequence policy and the gameplay that now
+reads it. It is not a human build-mode, layout-usability or navigation playtest.
+
+| Check | Result |
+|---|---|
+| Static source rules | clean — **139** automation tests, **24** systems, 893 bilingual keys |
+| Release self-test state machine | **49/49** assertions |
+| Packaged cook policy | **7/7** assertions |
+| Script path safety | **7/7** assertions |
+| Placement automation | **40 passed, 0 failed** |
+| Full automation | **139 passed, 0 failed** |
+| Runtime data load | **14/14** balance files, **0** warnings |
+| `ValidateAll.ps1` | static, harness, paths, Editor build, tests and data all PASS; package stage separately executed below |
+| Development package | **714,140,798 bytes**, 70 files, zero PDB; eight smoke checks and mandatory self-test passed; runtime EXE SHA-256 `20BE74A4A0F31A837648F9902655B8E135D2DDAF77135146BF369E0480DB4E46` |
+| Shipping package | **504,257,191 bytes**, 49 files, zero PDB; process, cook coverage and mandatory self-test passed; runtime EXE SHA-256 `D87ED8E1103044C5CF83CBA0B04564C97999B8661AE52708FA87BCAC6CB847E9` |
+
+Both packages were built from runtime commit `8710588` in the D: Stage 3.3
+worktree with `-nodebuginfo`. Their cook checks found 19 repository-owned Audio
+and 64 LowPoly assets; all 31 optional licensed asset paths were absent and used
+the documented public fallback. No Marketplace or Fab content was copied or
+committed. Neither smoke run used `-SkipSelfTest` or legacy compatibility, and
+`Verify-Release.ps1` returned PASS with no forbidden debug or secret artefact in
+either archive.
+
+The hashes above are of the runtime executable under
+`Windows/CigkofteSimulator/Binaries/Win64`, not of the 171 KB bootstrap launcher
+in the archive root. That launcher is byte-identical between Development and
+Shipping, so quoting it would have produced two "different" builds with the same
+hash. `Verify-Release.ps1` resolves the first `CigkofteSimulator.exe` it finds
+and therefore reports the bootstrap; that is adequate for the artefact scan it
+performs and is not adequate as build identity.
+
+Ten of the 40 placement tests are new and cover the consequence itself: pure
+derivation, category-specific geometry, determinism across repeated derivation,
+invalid use-area rejection, protected-route interaction, functional clearance,
+the query surface, and what a move, a remove and an event each do to it. They
+need no `UWorld`.
+
+The real-shop integration pins the exact authored outcome: 22 `Station`, four
+`Seating`, one `Decoration`, zero `Storage`, 27 `Installed`, zero `Transient`,
+27 consequences, 22 usable station units, 8 usable seats from four tables, and
+zero capacity from the sofa. A ninth seat reservation fails because the table's
+authored capacity, not the chair count, is what answers. A delivery then adds
+exactly one transient storage consequence, and unloading or destroying the crate
+removes it.
+
+`UCigEventBus::PlacementChanged` is published on real state changes only, but
+nothing in production subscribes to it yet. It is groundwork for the slices that
+will consume layout changes and should not be read as a wired-up feature.
+
+Two defects were found by reviewing the slice rather than by running it, and
+both are fixed on this branch.
+
+The first: tying station gameplay to its placement consequence put `FindStation`
+on the per-frame focus trace, and `FindStation` had simultaneously become an
+allocating call, building its stable ID with `FString::Printf` on every
+invocation. The dough visual is throttled to four times a second with a comment
+saying it exists to keep `FindStation` off the per-frame path; the focus trace
+then walked straight onto it. The identity is now interned once per station type
+and shared by registration and every availability query, so the two also cannot
+drift apart.
+
+The second: neither packaging script could run at all. Both died with
+`Result: Failed (OtherCompilationError)` and AutomationTool exit 6 — which reads
+as a broken compile — before compiling anything. The real cause is further up the
+UBT log: the Live Coding mutex is named after the engine's editor executable
+rather than after a project, so an editor open on *any* project on this install
+refuses every packaging build. `BuildEditor.ps1` has passed
+`-NoHotReloadFromIDE` since it was written, which is exactly why the editor build
+in the same validation run succeeded while packaging did not. Both packaging
+paths now pass it too. The first failed run is not counted as validation.
+
+Still manual: build-mode and layout usability, whether fixtures are comfortably
+reachable, crate readability while moving, gamepad navigation, focus
+readability, and a full played day. Rectangular use rectangles are floor policy
+and prove nothing about Unreal AI navigation; that remains Stage 3.4. Placement
+persistence is Stage 3.5 and shop identity is Stage 3.6, and neither is
+implemented here.

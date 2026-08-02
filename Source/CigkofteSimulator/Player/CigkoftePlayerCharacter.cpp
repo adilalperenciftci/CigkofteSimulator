@@ -501,7 +501,8 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 		{
 			Mode->HandleInteract(nullptr); // skip the splash / start the day
 		}
-		else if (FocusedStation && FocusedStation->StationType == ECigStation::Yogurma)
+		else if (FocusedStation && FocusedStation->StationType == ECigStation::Yogurma
+			&& Mode->IsStationInteractionAvailable(FocusedStation))
 		{
 			Mode->KneadPress();
 		}
@@ -588,13 +589,17 @@ void ACigkoftePlayerCharacter::UpdateFocus()
 	FHitResult Hit;
 	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
 	{
+		ACigkofteGameMode* Mode = GM();
 		FocusedStation = Cast<ACigkofteStation>(Hit.GetActor());
-		if (FocusedStation)
+		if (FocusedStation && (!Mode || !Mode->IsStationInteractionAvailable(FocusedStation)))
+		{
+			FocusedStation = nullptr;
+		}
+		else if (FocusedStation)
 		{
 			FocusedStation->SetHighlighted(true);
 		}
 
-		ACigkofteGameMode* Mode = GM();
 		if (Mode && Mode->PlayerCar && Hit.GetActor() == Mode->PlayerCar.Get())
 		{
 			bCarFocused = true;

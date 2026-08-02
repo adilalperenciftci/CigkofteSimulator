@@ -171,6 +171,10 @@ public:
 	bool HasExistingSave() const;
 
 	// --- Player actions ---
+	// A traced actor is usable only while its stable placement still owns a
+	// functional station consequence. This keeps focus, direct actions and the
+	// interaction router on the same authority-backed answer.
+	bool IsStationInteractionAvailable(const ACigkofteStation* Station) const;
 	void HandleInteract(ACigkofteStation* Station);
 	void KneadPress();
 	void DrinkTea();

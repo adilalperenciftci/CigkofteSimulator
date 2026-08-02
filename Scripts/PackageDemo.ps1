@@ -53,6 +53,10 @@ $uatArgs = @(
     '-unattended'
     '-nop4'
     '-utf8output'
+    # Same reason as Package-Windows.ps1: the Live Coding mutex is keyed on the
+    # engine's editor executable rather than on a project, so an editor open on
+    # any project blocks this build and reports it as a compilation error.
+    '-ubtargs=-NoHotReloadFromIDE'
 )
 
 & $uat @uatArgs | Tee-Object -Variable output | Out-Host

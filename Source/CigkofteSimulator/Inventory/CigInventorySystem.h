@@ -70,5 +70,7 @@ public:
 
 private:
 	bool SpawnCrate(FCigPendingOrder& Order);
+	UFUNCTION()
+	void OnCrateDestroyed(class AActor* DestroyedActor);
 	uint32 NextCratePlacementSerial = 1;
 };
