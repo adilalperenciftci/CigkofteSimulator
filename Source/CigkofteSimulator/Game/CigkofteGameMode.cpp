@@ -362,6 +362,11 @@ void ACigkofteGameMode::TitleSelect()
 	}
 }
 
+bool ACigkofteGameMode::IsStationInteractionAvailable(const ACigkofteStation* Station) const
+{
+	return Station && WorldBuilder && WorldBuilder->FindStation(Station->StationType) == Station;
+}
+
 void ACigkofteGameMode::HandleInteract(ACigkofteStation* Station)
 {
 	if (!Days)
@@ -379,6 +384,10 @@ void ACigkofteGameMode::HandleInteract(ACigkofteStation* Station)
 		{
 			TitleSelect();
 		}
+		return;
+	}
+	if (Station && !IsStationInteractionAvailable(Station))
+	{
 		return;
 	}
 	// Preparation. Every station works, and the service counter is the door: you

@@ -271,8 +271,21 @@ void UCigWorldBuilder::RegisterStationPlacement(ECigStation Type, const FVector&
 	Request.Category = ECigPlacementCategory::Station;
 	Request.Lifetime = ECigPlacementLifetime::Installed;
 	Request.CandidateTransform = FTransform(FRotator::ZeroRotator, FVector(Loc.X, Loc.Y, 0.f));
-	Request.Footprint.Size = StationPlacementSize(Type);
+	const FVector2D FixtureSize = StationPlacementSize(Type);
+	Request.Footprint.Size = FixtureSize;
 	Request.Footprint.RotationPolicy = ECigPlacementRotationPolicy::FixedYaw;
+	// One metre of authored work-side clearance fits the actual counter rows.
+	// The earlier 140 x 120 protected boxes clipped diagonally adjacent fixtures
+	// even though their physical footprints were distinct.
+	Request.UseSpec.Size = FVector2D(100.f, FMath::Max(100.f, FixtureSize.Y));
+	Request.UseSpec.CenterOffset = FVector2D(100.f, 0.f);
+	// These two fixtures sit immediately beside authored tables on their label
+	// side. Their usable approach is the opposite side; keeping this explicit is
+	// what prevents the layout consequence from contradicting the shipped shop.
+	const bool bApproachOppositeLabel = Type == ECigStation::MamaKabi
+		|| Type == ECigStation::YanUrun;
+	Request.UseSpec.YawOffsetDegrees = LabelYaw + (bApproachOppositeLabel ? 180.f : 0.f);
+	Request.UseSpec.FunctionalCapacity = 1;
 	Request.Context = ECigPlacementContext::WorldRegistration;
 
 	const FCigPlacementResult Result = GM->Placement->RegisterPlacement(Request);
@@ -280,28 +293,12 @@ void UCigWorldBuilder::RegisterStationPlacement(ECigStation Type, const FVector&
 	{
 		UE_LOG(LogCig, Error, TEXT("Istasyon yerlesim kaydi reddedildi: %s (%d)"),
 			*Request.StableId.ToString(), (int32)Result.Failure);
-		return;
-	}
-
-	// The interaction side is protected separately from the occupied footprint.
-	// LabelYaw already describes which side the station reads from, and all
-	// current stations face either +X or -X.
-	const float Radians = FMath::DegreesToRadians(LabelYaw);
-	const FVector2D Facing(FMath::Cos(Radians), FMath::Sin(Radians));
-	FCigProtectedZone Access;
-	Access.StableId = FName(*FString::Printf(TEXT("zone.station.%s.access"), *Token));
-	Access.Center = FVector2D(Loc.X, Loc.Y) + Facing * 120.f;
-	const FVector2D FixtureSize = StationPlacementSize(Type);
-	Access.HalfExtent = FVector2D(70.f, FMath::Max(60.f, FixtureSize.Y * 0.5f));
-	Access.Failure = ECigPlacementFailure::BlocksStationAccess;
-	if (!GM->Placement->AddProtectedZone(Access))
-	{
-		UE_LOG(LogCig, Error, TEXT("Istasyon erisim bolgesi kaydedilemedi: %s"), *Access.StableId.ToString());
 	}
 }
 
 void UCigWorldBuilder::RegisterFixturePlacement(FName StableId, ECigPlacementCategory Category,
-	const FVector& Loc, const FVector2D& Size, float Yaw)
+	const FVector& Loc, const FVector2D& Size, float Yaw, int32 FunctionalCapacity,
+	const FVector2D& UseSize, const FVector2D& UseOffset, float UseYaw)
 {
 	if (!GM || !GM->Placement)
 	{
@@ -313,6 +310,10 @@ void UCigWorldBuilder::RegisterFixturePlacement(FName StableId, ECigPlacementCat
 	Request.Lifetime = ECigPlacementLifetime::Installed;
 	Request.CandidateTransform = FTransform(FRotator(0.f, Yaw, 0.f), FVector(Loc.X, Loc.Y, 0.f));
 	Request.Footprint.Size = Size;
+	Request.UseSpec.Size = UseSize;
+	Request.UseSpec.CenterOffset = UseOffset;
+	Request.UseSpec.YawOffsetDegrees = UseYaw;
+	Request.UseSpec.FunctionalCapacity = FunctionalCapacity;
 	Request.Context = ECigPlacementContext::WorldRegistration;
 	const FCigPlacementResult Result = GM->Placement->RegisterPlacement(Request);
 	if (!Result.bAccepted)
@@ -342,6 +343,18 @@ UStaticMesh* UCigWorldBuilder::PreferPark(const TCHAR* Sub, const TCHAR* ParkNam
 
 ACigkofteStation* UCigWorldBuilder::FindStation(ECigStation Type) const
 {
+	if (!GM || !GM->Placement)
+	{
+		return nullptr;
+	}
+	const FName PlacementId(*FString::Printf(TEXT("fixture.station.%s"), StationPlacementToken(Type)));
+	FCigPlacementConsequence Consequence;
+	if (!GM->Placement->TryGetPlacementConsequence(PlacementId, Consequence)
+		|| Consequence.Category != ECigPlacementCategory::Station
+		|| Consequence.FunctionalCapacity < 1)
+	{
+		return nullptr;
+	}
 	const TWeakObjectPtr<ACigkofteStation>* Found = Stations.Find(Type);
 	return Found ? Found->Get() : nullptr;
 }
@@ -713,6 +726,7 @@ void UCigWorldBuilder::BuildSeatingArea()
 	int32 TableIndex = 0;
 	auto BuildTable = [this, &TableIndex](float X, float Y)
 	{
+		const FName TablePlacementId(*FString::Printf(TEXT("fixture.seating.table.%d"), TableIndex++));
 		// Table (restaurant pack > Kenney round > Kenney flat)
 		UStaticMesh* TableMesh = CigMesh::Furniture(TEXT("tableRound"));
 		if (!TableMesh)
@@ -733,20 +747,23 @@ void UCigWorldBuilder::BuildSeatingArea()
 			{ 0.f, -SeatOffset, 90.f },
 			{ 0.f, SeatOffset, -90.f }
 		};
-		for (const auto& Slot : Slots)
+		for (int32 SlotIndex = 0; SlotIndex < UE_ARRAY_COUNT(Slots); ++SlotIndex)
 		{
+			const auto& Slot = Slots[SlotIndex];
 			const FVector SeatPos(X + Slot.DX, Y + Slot.DY, 0.f);
 			SpawnProp(PreferPark(TEXT("Props"), TEXT("SM_CafeChair01"), CigMesh::Furniture(TEXT("chairCushion"))), SeatPos, 90.f, Slot.Yaw + 180.f, FLinearColor(0.4f, 0.28f, 0.15f), false);
 			FCigSeat Seat;
 			Seat.Pos = FVector(X + Slot.DX, Y + Slot.DY, 0.f);
 			Seat.Yaw = Slot.Yaw; // facing the table
+			Seat.PlacementId = TablePlacementId;
+			Seat.CapacityIndex = SlotIndex;
 			Seats.Add(Seat);
 		}
 
 		// One footprint covers the table and both chairs. Imported meshes may be
 		// absent, but the authored fallback footprint does not disappear with them.
-		RegisterFixturePlacement(FName(*FString::Printf(TEXT("fixture.seating.table.%d"), TableIndex++)),
-			ECigPlacementCategory::Seating, FVector(X, Y, 0.f), FVector2D(160.f, 280.f));
+		RegisterFixturePlacement(TablePlacementId, ECigPlacementCategory::Seating,
+			FVector(X, Y, 0.f), FVector2D(160.f, 280.f), 0.f, 2, FVector2D(160.f, 320.f));
 	};
 
 	// Layout along the right wall (Y+ side) and near the entrance
@@ -767,7 +784,13 @@ int32 UCigWorldBuilder::ReserveSeat()
 {
 	for (int32 i = 0; i < Seats.Num(); ++i)
 	{
-		if (!Seats[i].bOccupied)
+		const FCigSeat& Seat = Seats[i];
+		FCigPlacementConsequence Consequence;
+		const bool bHasConsequence = GM && GM->Placement
+			&& GM->Placement->TryGetPlacementConsequence(Seat.PlacementId, Consequence);
+		if (!Seats[i].bOccupied && bHasConsequence
+			&& Consequence.Category == ECigPlacementCategory::Seating
+			&& Seat.CapacityIndex >= 0 && Seat.CapacityIndex < Consequence.FunctionalCapacity)
 		{
 			Seats[i].bOccupied = true;
 			return i;

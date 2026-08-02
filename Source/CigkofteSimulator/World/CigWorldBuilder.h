@@ -216,6 +216,8 @@ public:
 	{
 		FVector Pos = FVector::ZeroVector;
 		float Yaw = 0.f;
+		FName PlacementId;
+		int32 CapacityIndex = 0;
 		bool bOccupied = false;
 	};
 	TArray<FCigSeat> Seats;
@@ -239,7 +241,9 @@ private:
 	void UpdateStationLabelRange();
 	void RegisterStationPlacement(ECigStation Type, const FVector& Loc, float LabelYaw);
 	void RegisterFixturePlacement(FName StableId, ECigPlacementCategory Category,
-		const FVector& Loc, const FVector2D& Size, float Yaw = 0.f);
+		const FVector& Loc, const FVector2D& Size, float Yaw = 0.f,
+		int32 FunctionalCapacity = 0, const FVector2D& UseSize = FVector2D::ZeroVector,
+		const FVector2D& UseOffset = FVector2D::ZeroVector, float UseYaw = 0.f);
 
 	void BuildKitchen();
 	void BuildFurniture();

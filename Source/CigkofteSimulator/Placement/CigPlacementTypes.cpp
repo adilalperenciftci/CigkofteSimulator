@@ -57,6 +57,36 @@ namespace
 			&& Request.Context != ECigPlacementContext::Delivery;
 	}
 
+	FCigPlacementRect RotatedRect(const FTransform& Transform, const FVector2D& Size,
+		const FVector2D& CenterOffset, float YawOffsetDegrees, float Margin)
+	{
+		const float Yaw = FMath::UnwindDegrees(Transform.Rotator().Yaw + YawOffsetDegrees);
+		const float Radians = FMath::DegreesToRadians(Yaw);
+		const float Cos = FMath::Cos(Radians);
+		const float Sin = FMath::Sin(Radians);
+		const FVector2D RotatedOffset(
+			CenterOffset.X * Cos - CenterOffset.Y * Sin,
+			CenterOffset.X * Sin + CenterOffset.Y * Cos);
+
+		const FVector2D RawHalf = Size * 0.5f;
+		FCigPlacementRect Result;
+		Result.Center = FVector2D(Transform.GetLocation().X, Transform.GetLocation().Y) + RotatedOffset;
+		Result.HalfExtent = FVector2D(
+			FMath::Abs(Cos) * RawHalf.X + FMath::Abs(Sin) * RawHalf.Y,
+			FMath::Abs(Sin) * RawHalf.X + FMath::Abs(Cos) * RawHalf.Y);
+		Result.HalfExtent += FVector2D(Margin, Margin);
+		return Result;
+	}
+
+	bool FootprintsEqual(const FCigPlacementFootprint& A, const FCigPlacementFootprint& B)
+	{
+		return A.Size.Equals(B.Size)
+			&& A.CenterOffset.Equals(B.CenterOffset)
+			&& FMath::IsNearlyEqual(A.ClearanceMargin, B.ClearanceMargin)
+			&& A.RotationPolicy == B.RotationPolicy
+			&& FMath::IsNearlyEqual(A.FixedYawDegrees, B.FixedYawDegrees);
+	}
+
 	bool IsProtectedFailure(ECigPlacementFailure Failure)
 	{
 		switch (Failure)
@@ -89,6 +119,27 @@ bool FCigPlacementFootprint::IsValid() const
 		&& FMath::IsFinite(FixedYawDegrees);
 }
 
+bool FCigPlacementUseSpec::IsEmpty() const
+{
+	return Size.IsNearlyZero() && CenterOffset.IsNearlyZero()
+		&& FMath::IsNearlyZero(YawOffsetDegrees) && FunctionalCapacity == 0;
+}
+
+bool FCigPlacementUseSpec::IsValid() const
+{
+	return IsFinite2D(Size) && IsFinite2D(CenterOffset)
+		&& Size.X > 0.f && Size.Y > 0.f
+		&& FMath::IsFinite(YawOffsetDegrees) && FunctionalCapacity > 0;
+}
+
+bool FCigPlacementUseSpec::Equals(const FCigPlacementUseSpec& Other, float Tolerance) const
+{
+	return Size.Equals(Other.Size, Tolerance)
+		&& CenterOffset.Equals(Other.CenterOffset, Tolerance)
+		&& FMath::IsNearlyEqual(YawOffsetDegrees, Other.YawOffsetDegrees, Tolerance)
+		&& FunctionalCapacity == Other.FunctionalCapacity;
+}
+
 FCigPlacementFootprint FCigPlacementFootprint::FromOptionalMeshSize(
 	const TOptional<FVector2D>& OptionalMeshSize,
 	const FVector2D& FallbackSize,
@@ -114,12 +165,14 @@ void FCigPlacementAuthority::Configure(const FCigPlacementBounds& InBounds, floa
 	RotationSnap = FMath::Max(1.f, InRotationSnap);
 	RotationTolerance = FMath::Max(0.f, InRotationTolerance);
 	Records.Reset();
+	RecordIndices.Reset();
 	ProtectedZones.Reset();
 }
 
 void FCigPlacementAuthority::ResetRecords()
 {
 	Records.Reset();
+	RecordIndices.Reset();
 }
 
 bool FCigPlacementAuthority::AddProtectedZone(const FCigProtectedZone& Zone)
@@ -225,31 +278,24 @@ FCigPlacementResult FCigPlacementAuthority::Normalize(const FCigPlacementRequest
 	Result.NormalizedTransform = Request.CandidateTransform;
 	Result.NormalizedTransform.SetLocation(Snapped);
 	Result.NormalizedTransform.SetRotation(FRotator(0.f, NormalizedYaw, 0.f).Quaternion());
+	// Footprints are explicit centimetre data. Actor scale must not silently
+	// resize authoritative placement or consequence geometry.
+	Result.NormalizedTransform.SetScale3D(FVector::OneVector);
 	return Result;
 }
 
 FCigPlacementRect FCigPlacementAuthority::EffectiveRect(const FTransform& Transform,
 	const FCigPlacementFootprint& Footprint)
 {
-	const float Yaw = FMath::UnwindDegrees(Transform.Rotator().Yaw);
-	const float Radians = FMath::DegreesToRadians(Yaw);
-	const float Cos = FMath::Cos(Radians);
-	const float Sin = FMath::Sin(Radians);
-	const FVector2D RotatedOffset(
-		Footprint.CenterOffset.X * Cos - Footprint.CenterOffset.Y * Sin,
-		Footprint.CenterOffset.X * Sin + Footprint.CenterOffset.Y * Cos);
+	return RotatedRect(Transform, Footprint.Size, Footprint.CenterOffset, 0.f,
+		Footprint.ClearanceMargin);
+}
 
-	const FVector2D RawHalf = Footprint.Size * 0.5f;
-	FCigPlacementRect Result;
-	Result.Center = FVector2D(Transform.GetLocation().X, Transform.GetLocation().Y) + RotatedOffset;
-	// Axis-aligned extent of the rotated rectangle. Production accepts quarter
-	// turns only, while this formula stays exact for those turns and useful in
-	// isolated geometry tests.
-	Result.HalfExtent = FVector2D(
-		FMath::Abs(Cos) * RawHalf.X + FMath::Abs(Sin) * RawHalf.Y,
-		FMath::Abs(Sin) * RawHalf.X + FMath::Abs(Cos) * RawHalf.Y);
-	Result.HalfExtent += FVector2D(Footprint.ClearanceMargin, Footprint.ClearanceMargin);
-	return Result;
+FCigPlacementRect FCigPlacementAuthority::EffectiveUseRect(const FTransform& Transform,
+	const FCigPlacementUseSpec& UseSpec)
+{
+	return RotatedRect(Transform, UseSpec.Size, UseSpec.CenterOffset,
+		UseSpec.YawOffsetDegrees, 0.f);
 }
 
 bool FCigPlacementAuthority::RectsOverlap(const FCigPlacementRect& A, const FCigPlacementRect& B)
@@ -267,6 +313,13 @@ bool FCigPlacementAuthority::IsInsideBounds(const FCigPlacementRect& Rect) const
 }
 
 FCigPlacementResult FCigPlacementAuthority::Validate(const FCigPlacementRequest& Request) const
+{
+	FCigPlacementRecord Candidate;
+	return EvaluateCandidate(Request, Candidate);
+}
+
+FCigPlacementResult FCigPlacementAuthority::EvaluateCandidate(const FCigPlacementRequest& Request,
+	FCigPlacementRecord& OutRecord) const
 {
 	FCigPlacementResult Result = Normalize(Request);
 	if (Result.Failure != ECigPlacementFailure::None)
@@ -292,6 +345,11 @@ FCigPlacementResult FCigPlacementAuthority::Validate(const FCigPlacementRequest&
 			Result.Failure = ECigPlacementFailure::LifetimeMismatch;
 			return Result;
 		}
+		if (!ExistingSelf->UseSpec.Equals(Request.UseSpec))
+		{
+			Result.Failure = ECigPlacementFailure::ConsequenceMismatch;
+			return Result;
+		}
 	}
 
 	if (!IsClassificationAllowed(Request))
@@ -300,10 +358,23 @@ FCigPlacementResult FCigPlacementAuthority::Validate(const FCigPlacementRequest&
 		return Result;
 	}
 
-	const FCigPlacementRect Candidate = EffectiveRect(Result.NormalizedTransform, Request.Footprint);
-	if (!IsInsideBounds(Candidate))
+	FCigPlacementConsequence Consequence;
+	const ECigPlacementFailure PolicyFailure = FCigPlacementConsequencePolicy::Derive(
+		Request, Result.NormalizedTransform, Consequence);
+	if (PolicyFailure != ECigPlacementFailure::None)
+	{
+		Result.Failure = PolicyFailure;
+		return Result;
+	}
+
+	if (!IsInsideBounds(Consequence.PhysicalRect))
 	{
 		Result.Failure = ECigPlacementFailure::OutsideShopBounds;
+		return Result;
+	}
+	if (Consequence.bHasUseArea && !IsInsideBounds(Consequence.UseRect))
+	{
+		Result.Failure = ECigPlacementFailure::FunctionalAreaOutsideShop;
 		return Result;
 	}
 
@@ -320,7 +391,9 @@ FCigPlacementResult FCigPlacementAuthority::Validate(const FCigPlacementRequest&
 		for (const FCigProtectedZone& Zone : ProtectedZones)
 		{
 			const FCigPlacementRect ZoneRect{ Zone.Center, Zone.HalfExtent };
-			if (!RectsOverlap(Candidate, ZoneRect))
+			const bool bPhysicalBlocks = RectsOverlap(Consequence.PhysicalRect, ZoneRect);
+			const bool bUseBlocks = Consequence.bHasUseArea && RectsOverlap(Consequence.UseRect, ZoneRect);
+			if (!bPhysicalBlocks && !bUseBlocks)
 			{
 				continue;
 			}
@@ -345,7 +418,7 @@ FCigPlacementResult FCigPlacementAuthority::Validate(const FCigPlacementRequest&
 		{
 			continue;
 		}
-		if (RectsOverlap(Candidate, EffectiveRect(Record.Transform, Record.Footprint))
+		if (RectsOverlap(Consequence.PhysicalRect, Record.Consequence.PhysicalRect)
 			&& (!BestConflict || StableIdLess(Record.StableId, BestConflict->StableId)))
 		{
 			BestConflict = &Record;
@@ -358,55 +431,132 @@ FCigPlacementResult FCigPlacementAuthority::Validate(const FCigPlacementRequest&
 		return Result;
 	}
 
+	const FCigPlacementRecord* BestFunctionalConflict = nullptr;
+	ECigPlacementFailure BestFunctionalFailure = ECigPlacementFailure::None;
+	for (const FCigPlacementRecord& Record : Records)
+	{
+		if (Record.StableId == Request.IgnoreStableId)
+		{
+			continue;
+		}
+		const bool bBlocksExistingUse = Record.Consequence.bHasUseArea
+			&& RectsOverlap(Consequence.PhysicalRect, Record.Consequence.UseRect);
+		const bool bUseBlockedByExisting = Consequence.bHasUseArea
+			&& RectsOverlap(Consequence.UseRect, Record.Consequence.PhysicalRect);
+		// Use areas are approach/work envelopes, not occupied solids. They may
+		// share floor (for example two adjacent counters using one aisle); only a
+		// physical footprint intruding into an authored use area is rejected.
+		if (!bBlocksExistingUse && !bUseBlockedByExisting)
+		{
+			continue;
+		}
+		const ECigPlacementFailure Failure =
+			(Request.Category == ECigPlacementCategory::Station
+				|| Record.Category == ECigPlacementCategory::Station)
+			? ECigPlacementFailure::BlocksStationAccess
+			: ECigPlacementFailure::BlocksFunctionalClearance;
+		if (!BestFunctionalConflict || (uint8)Failure < (uint8)BestFunctionalFailure
+			|| (Failure == BestFunctionalFailure
+				&& StableIdLess(Record.StableId, BestFunctionalConflict->StableId)))
+		{
+			BestFunctionalConflict = &Record;
+			BestFunctionalFailure = Failure;
+		}
+	}
+	if (BestFunctionalConflict)
+	{
+		Result.Failure = BestFunctionalFailure;
+		Result.ConflictingStableId = BestFunctionalConflict->StableId;
+		return Result;
+	}
+
+	OutRecord.StableId = Request.StableId;
+	OutRecord.Category = Request.Category;
+	OutRecord.Lifetime = Request.Lifetime;
+	OutRecord.Transform = Result.NormalizedTransform;
+	OutRecord.Footprint = Request.Footprint;
+	OutRecord.UseSpec = Request.UseSpec;
+	OutRecord.Consequence = Consequence;
+
 	Result.bAccepted = true;
 	return Result;
 }
 
 FCigPlacementResult FCigPlacementAuthority::TryRegister(const FCigPlacementRequest& Request)
 {
-	FCigPlacementResult Result = Validate(Request);
+	FCigPlacementRecord NewRecord;
+	FCigPlacementResult Result = EvaluateCandidate(Request, NewRecord);
 	if (!Result.bAccepted)
 	{
 		return Result;
 	}
 
-	FCigPlacementRecord NewRecord;
-	NewRecord.StableId = Request.StableId;
-	NewRecord.Category = Request.Category;
-	NewRecord.Lifetime = Request.Lifetime;
-	NewRecord.Transform = Result.NormalizedTransform;
-	NewRecord.Footprint = Request.Footprint;
-
-	for (FCigPlacementRecord& Existing : Records)
+	if (const int32* ExistingIndex = RecordIndices.Find(Request.StableId))
 	{
-		if (Existing.StableId == Request.StableId)
+		if (Records.IsValidIndex(*ExistingIndex))
 		{
-			Existing = NewRecord;
+			FCigPlacementRecord& Existing = Records[*ExistingIndex];
+			if (!RecordsEqual(Existing, NewRecord))
+			{
+				Existing = NewRecord;
+				Result.bStateChanged = true;
+			}
 			return Result;
 		}
 	}
-	Records.Add(NewRecord);
+	const int32 NewIndex = Records.Add(NewRecord);
+	RecordIndices.Add(NewRecord.StableId, NewIndex);
+	Result.bStateChanged = true;
 	return Result;
 }
 
 bool FCigPlacementAuthority::Remove(FName StableId)
 {
-	return Records.RemoveAll([StableId](const FCigPlacementRecord& Record)
+	const int32* ExistingIndex = RecordIndices.Find(StableId);
+	if (!ExistingIndex || !Records.IsValidIndex(*ExistingIndex))
 	{
-		return Record.StableId == StableId;
-	}) == 1;
+		return false;
+	}
+	Records.RemoveAt(*ExistingIndex);
+	RebuildRecordIndices();
+	return true;
 }
 
 const FCigPlacementRecord* FCigPlacementAuthority::Find(FName StableId) const
 {
-	for (const FCigPlacementRecord& Record : Records)
+	const int32* Index = RecordIndices.Find(StableId);
+	return Index && Records.IsValidIndex(*Index) ? &Records[*Index] : nullptr;
+}
+
+bool FCigPlacementAuthority::TryGetConsequence(FName StableId,
+	FCigPlacementConsequence& OutConsequence) const
+{
+	const FCigPlacementRecord* Record = Find(StableId);
+	if (!Record)
 	{
-		if (Record.StableId == StableId)
-		{
-			return &Record;
-		}
+		return false;
 	}
-	return nullptr;
+	OutConsequence = Record->Consequence;
+	return true;
+}
+
+void FCigPlacementAuthority::RebuildRecordIndices()
+{
+	RecordIndices.Reset();
+	for (int32 Index = 0; Index < Records.Num(); ++Index)
+	{
+		RecordIndices.Add(Records[Index].StableId, Index);
+	}
+}
+
+bool FCigPlacementAuthority::RecordsEqual(const FCigPlacementRecord& A, const FCigPlacementRecord& B)
+{
+	return A.StableId == B.StableId
+		&& A.Category == B.Category
+		&& A.Lifetime == B.Lifetime
+		&& A.Transform.Equals(B.Transform)
+		&& FootprintsEqual(A.Footprint, B.Footprint)
+		&& A.UseSpec.Equals(B.UseSpec);
 }
 
 int32 FCigPlacementAuthority::CountByCategory(ECigPlacementCategory Category) const
@@ -427,6 +577,71 @@ int32 FCigPlacementAuthority::CountByLifetime(ECigPlacementLifetime Lifetime) co
 		Count += Record.Lifetime == Lifetime ? 1 : 0;
 	}
 	return Count;
+}
+
+int32 FCigPlacementAuthority::CountFunctionalCapacity(ECigPlacementCategory Category) const
+{
+	int32 Count = 0;
+	for (const FCigPlacementRecord& Record : Records)
+	{
+		if (Record.Category == Category)
+		{
+			Count += Record.Consequence.FunctionalCapacity;
+		}
+	}
+	return Count;
+}
+
+int32 FCigPlacementAuthority::CountInstalledLayoutConsequences() const
+{
+	int32 Count = 0;
+	for (const FCigPlacementRecord& Record : Records)
+	{
+		Count += Record.Consequence.bInstalledLayout ? 1 : 0;
+	}
+	return Count;
+}
+
+ECigPlacementFailure FCigPlacementConsequencePolicy::Derive(const FCigPlacementRequest& Request,
+	const FTransform& NormalizedTransform, FCigPlacementConsequence& OutConsequence)
+{
+	if (!IsKnownCategory(Request.Category))
+	{
+		return ECigPlacementFailure::UnknownCategory;
+	}
+	if (!IsKnownLifetime(Request.Lifetime))
+	{
+		return ECigPlacementFailure::UnknownLifetime;
+	}
+
+	const bool bDecoration = Request.Category == ECigPlacementCategory::Decoration;
+	if ((bDecoration && !Request.UseSpec.IsEmpty())
+		|| (!bDecoration && !Request.UseSpec.IsValid()))
+	{
+		return ECigPlacementFailure::InvalidConsequence;
+	}
+	if ((Request.Category == ECigPlacementCategory::Station
+			|| Request.Category == ECigPlacementCategory::Storage)
+		&& Request.UseSpec.FunctionalCapacity != 1)
+	{
+		return ECigPlacementFailure::InvalidConsequence;
+	}
+
+	OutConsequence = FCigPlacementConsequence();
+	OutConsequence.StableId = Request.StableId;
+	OutConsequence.Category = Request.Category;
+	OutConsequence.Lifetime = Request.Lifetime;
+	OutConsequence.PhysicalRect = FCigPlacementAuthority::EffectiveRect(
+		NormalizedTransform, Request.Footprint);
+	OutConsequence.FunctionalCapacity = bDecoration ? 0 : Request.UseSpec.FunctionalCapacity;
+	OutConsequence.bHasUseArea = !bDecoration;
+	OutConsequence.bInstalledLayout = Request.Lifetime == ECigPlacementLifetime::Installed;
+	if (OutConsequence.bHasUseArea)
+	{
+		OutConsequence.UseRect = FCigPlacementAuthority::EffectiveUseRect(
+			NormalizedTransform, Request.UseSpec);
+	}
+	return ECigPlacementFailure::None;
 }
 
 FCigPlacementResult FCigPlacementAuthority::FindFirstValid(const FCigPlacementRequest& BaseRequest,

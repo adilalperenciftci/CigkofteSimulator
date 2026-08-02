@@ -4,6 +4,8 @@
 #include "Game/CigSystem.h"
 #include "CigEventBus.generated.h"
 
+struct FCigPlacementChange;
+
 // Event broadcasting between systems.
 //
 // The problem: on an event like "wrap rolled", OrderSystem used to call
@@ -30,6 +32,7 @@ public:
 	DECLARE_MULTICAST_DELEGATE_OneParam(FCigValueEvent, float);
 	// Serving: accuracy, quality, portions
 	DECLARE_MULTICAST_DELEGATE_ThreeParams(FCigServeEvent, float, float, int32);
+	DECLARE_MULTICAST_DELEGATE_OneParam(FCigPlacementEvent, const FCigPlacementChange&);
 
 	// --- Kitchen ---
 	FCigEvent IngredientAdded;
@@ -49,6 +52,7 @@ public:
 	FCigEvent UpgradeBought;
 	FCigEvent StaffHired;
 	FCigValueEvent ShopScoreChanged; // stars
+	FCigPlacementEvent PlacementChanged;
 
 	// --- Hygiene ---
 	FCigEvent Washed;

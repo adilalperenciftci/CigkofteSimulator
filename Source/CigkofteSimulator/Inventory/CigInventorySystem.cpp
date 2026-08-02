@@ -281,6 +281,7 @@ bool UCigInventorySystem::SpawnCrate(FCigPendingOrder& Order)
 	Request.Category = ECigPlacementCategory::Storage;
 	Request.Lifetime = ECigPlacementLifetime::Transient;
 	Request.Footprint = UCigPlacementSystem::StockCrateFootprint();
+	Request.UseSpec = UCigPlacementSystem::StockCrateUseSpec();
 	Request.Context = ECigPlacementContext::Delivery;
 	const FCigPlacementResult Candidate = GM->Placement->FindFirstValidPlacement(
 		Request, CigPlacementLayout::DeliverySpots());
@@ -307,6 +308,7 @@ bool UCigInventorySystem::SpawnCrate(FCigPendingOrder& Order)
 	}
 
 	Crate->PlacementId = PlacementId;
+	Crate->OnDestroyed.AddDynamic(this, &UCigInventorySystem::OnCrateDestroyed);
 	Crate->Setup(Order.Item, Order.Amount, Order.Quality);
 	Crates.Add(Crate);
 	GM->AddMessage(CigText::Format(TEXT("msg.inventory.cratearrived"), Order.Amount, *CigStockName(Order.Item)),
@@ -318,6 +320,19 @@ int32 UCigInventorySystem::UnloadCrate(ACigStockCrate* Crate)
 {
 	if (!Crate || Crate->Amount <= 0)
 	{
+		return 0;
+	}
+	FCigPlacementConsequence Consequence;
+	if (!GM || !GM->Placement
+		|| !GM->Placement->TryGetPlacementConsequence(Crate->PlacementId, Consequence)
+		|| Consequence.Category != ECigPlacementCategory::Storage
+		|| Consequence.FunctionalCapacity < 1)
+	{
+		if (GM)
+		{
+			GM->AddMessage(UCigPlacementSystem::FailureText(ECigPlacementFailure::InvalidConsequence),
+				FLinearColor(1.f, 0.6f, 0.2f));
+		}
 		return 0;
 	}
 
@@ -367,6 +382,22 @@ int32 UCigInventorySystem::UnloadCrate(ACigStockCrate* Crate)
 		Crate->Setup(Crate->Item, Crate->Amount, Crate->Quality);
 	}
 	return Moved;
+}
+
+void UCigInventorySystem::OnCrateDestroyed(AActor* DestroyedActor)
+{
+	ACigStockCrate* Crate = Cast<ACigStockCrate>(DestroyedActor);
+	if (!Crate)
+	{
+		return;
+	}
+	if (GM && GM->Placement && !Crate->PlacementId.IsNone())
+	{
+		// Normal unload/day-end already removed it. A second RemovePlacement is a
+		// no-op; unexpected actor destruction now cannot strand transient layout.
+		GM->Placement->RemovePlacement(Crate->PlacementId);
+	}
+	Crates.Remove(Crate);
 }
 
 void UCigInventorySystem::ChopPress()
