@@ -4,6 +4,8 @@
 #include "Game/CigkofteGameMode.h"
 #include "Placement/CigPlacementSystem.h"
 #include "Navigation/CigNavLayout.h"
+// The street's own numbers, and the pedestrian lanes derived from them.
+#include "Navigation/CigPedRegion.h"
 #include "Events/CigEventSystem.h"
 #include "Customers/CigkofteCustomer.h"
 #include "Vehicles/CigCar.h"
@@ -993,15 +995,30 @@ void UCigWorldBuilder::BuildCity()
 	GroundActor = SpawnBox(FVector(-7000.f, 0.f, -10.f), FVector(175.f, 275.f, 0.2f), FLinearColor(0.30f, 0.32f, 0.28f));
 
 	// North-south main street (runs past the shop; district junctions at both ends)
-	SpawnBox(FVector(-1800.f, 0.f, 3.f), FVector(7.f, 262.f, 0.04f), FLinearColor(0.12f, 0.12f, 0.13f));
-	for (float Y = -12600.f; Y <= 12600.f; Y += 600.f)
+	//
+	// Centre and half-width come from CigStreet rather than from literals here,
+	// because FCigPedRegion::MainStreet works out the pedestrian lanes from the
+	// same numbers. They were literals in both places once, and the wander box
+	// that resulted covered the whole carriageway.
 	{
-		SpawnBox(FVector(-1800.f, Y, 6.f), FVector(0.2f, 1.6f, 0.02f), FLinearColor(0.85f, 0.85f, 0.7f));
+		constexpr float RoadCenterX = (CigStreet::RoadMinX + CigStreet::RoadMaxX) * 0.5f;
+		constexpr float RoadHalfWidth = (CigStreet::RoadMaxX - CigStreet::RoadMinX) * 0.5f;
+		SpawnBox(FVector(RoadCenterX, 0.f, 3.f), FVector(RoadHalfWidth / 50.f, 262.f, 0.04f),
+			FLinearColor(0.12f, 0.12f, 0.13f));
+		for (float Y = -12600.f; Y <= 12600.f; Y += 600.f)
+		{
+			SpawnBox(FVector(RoadCenterX, Y, 6.f), FVector(0.2f, 1.6f, 0.02f), FLinearColor(0.85f, 0.85f, 0.7f));
+		}
 	}
 
 	// Pavements
-	SpawnBox(FVector(-1350.f, 0.f, 4.f), FVector(2.f, 262.f, 0.05f), FLinearColor(0.45f, 0.45f, 0.44f));
-	SpawnBox(FVector(-2250.f, 0.f, 4.f), FVector(2.f, 262.f, 0.05f), FLinearColor(0.45f, 0.45f, 0.44f));
+	{
+		constexpr float EastCenterX = (CigStreet::EastPavementMinX + CigStreet::EastPavementMaxX) * 0.5f;
+		constexpr float WestCenterX = (CigStreet::WestPavementMinX + CigStreet::WestPavementMaxX) * 0.5f;
+		constexpr float HalfWidth = (CigStreet::EastPavementMaxX - CigStreet::EastPavementMinX) * 0.5f;
+		SpawnBox(FVector(EastCenterX, 0.f, 4.f), FVector(HalfWidth / 50.f, 262.f, 0.05f), FLinearColor(0.45f, 0.45f, 0.44f));
+		SpawnBox(FVector(WestCenterX, 0.f, 4.f), FVector(HalfWidth / 50.f, 262.f, 0.05f), FLinearColor(0.45f, 0.45f, 0.44f));
+	}
 
 	// Buildings and delivery doors
 	int32 DoorNo = 1;
@@ -1097,23 +1114,35 @@ void UCigWorldBuilder::BuildCity()
 	};
 	for (float Y = -7000.f; Y <= 7000.f; Y += 1500.f)
 	{
-		SpawnTree(-2350.f, Y + FMath::FRandRange(-150.f, 150.f));
+		SpawnTree(CigStreet::WestTreeX, Y + FMath::FRandRange(-150.f, 150.f));
 		if (FMath::Abs(Y) > 1700.f)
 		{
-			SpawnTree(-1250.f, Y + FMath::FRandRange(-150.f, 150.f));
+			SpawnTree(CigStreet::EastTreeX, Y + FMath::FRandRange(-150.f, 150.f));
 		}
 	}
 
 	// Pedestrians
-	for (int32 i = 0; i < 8; ++i)
+	//
+	// They used to be handed a rectangle spanning the carriageway and spawned
+	// inside it, so they walked in traffic and through the trees and lamp posts -
+	// street furniture is spawned with collision off, so nothing stopped them.
+	// Now they are given the two pavement lanes and spawn on one of them.
 	{
-		ACigkofteCustomer* Ped = World->SpawnActor<ACigkofteCustomer>(
-			FVector(FMath::FRandRange(-2200.f, -1500.f), FMath::FRandRange(-6000.f, 6000.f), 0.f),
-			FRotator::ZeroRotator, CigAlwaysSpawnParams());
-		if (Ped)
+		const FCigPedRegion Street = FCigPedRegion::MainStreet();
+		for (int32 i = 0; i < 8; ++i)
 		{
-			Ped->InitVisuals();
-			Ped->InitAmbient(FVector2D(-2250.f, -6500.f), FVector2D(-1450.f, 6500.f));
+			// Alternating, so both pavements are used rather than whichever the
+			// random spawn happened to land nearer.
+			const int32 Lane = i % 2;
+			const FCigPedLane& L = Street.Lanes[Lane];
+			ACigkofteCustomer* Ped = World->SpawnActor<ACigkofteCustomer>(
+				FVector(L.Center().X, FMath::FRandRange(L.Min.Y, L.Max.Y), 0.f),
+				FRotator::ZeroRotator, CigAlwaysSpawnParams());
+			if (Ped)
+			{
+				Ped->InitVisuals();
+				Ped->InitAmbient(Street, Lane, 7717 + i);
+			}
 		}
 	}
 
@@ -1128,14 +1157,15 @@ void UCigWorldBuilder::BuildCity()
 		if (Car)
 		{
 			const float Dir = (i % 2 == 0) ? 1.f : -1.f;
-			Car->Init(Dir > 0.f ? -1950.f : -1650.f, Dir, CarColors[i], FMath::FRandRange(550.f, 800.f));
+			Car->Init(Dir > 0.f ? CigStreet::CarLaneWest : CigStreet::CarLaneEast, Dir, CarColors[i],
+				FMath::FRandRange(550.f, 800.f));
 		}
 	}
 
 	// Street lamps (lit in the evening)
 	for (float Y = -6000.f; Y <= 6000.f; Y += 2400.f)
 	{
-		for (float X : { -2150.f, -1450.f })
+		for (float X : { CigStreet::WestLampX, CigStreet::EastLampX })
 		{
 			if (UStaticMesh* Post = CigMesh::Park(TEXT("Props"), TEXT("SM_LampPost01")))
 			{
@@ -1293,6 +1323,11 @@ void UCigWorldBuilder::SpawnPedestrians(const FVector& Center, float Radius, int
 	{
 		return;
 	}
+	// A district gets one rectangle, deliberately. Its interior is authored props
+	// and buildings that nothing has modelled as walkable space, and describing it
+	// as lanes would claim a survey that has not been done. What the rectangle now
+	// buys is the rest of the containment: a pedestrian stays inside it, and a
+	// blocked one gives up on its target instead of pressing into a wall.
 	for (int32 i = 0; i < Count; ++i)
 	{
 		const FVector Pos = Center + FVector(FMath::FRandRange(-Radius, Radius), FMath::FRandRange(-Radius, Radius), 0.f);
@@ -1300,7 +1335,8 @@ void UCigWorldBuilder::SpawnPedestrians(const FVector& Center, float Radius, int
 		if (Ped)
 		{
 			Ped->InitVisuals();
-			Ped->InitAmbient(FVector2D(Center.X - Radius, Center.Y - Radius), FVector2D(Center.X + Radius, Center.Y + Radius));
+			Ped->InitAmbient(FVector2D(Center.X - Radius, Center.Y - Radius),
+				FVector2D(Center.X + Radius, Center.Y + Radius), 4211 + i);
 		}
 	}
 }

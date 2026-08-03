@@ -237,11 +237,35 @@ void ACigkofteCustomer::ApplyOrderVisuals()
 	}
 }
 
-void ACigkofteCustomer::InitAmbient(const FVector2D& WanderMin, const FVector2D& WanderMax)
+void ACigkofteCustomer::InitAmbient(const FVector2D& WanderMin, const FVector2D& WanderMax, int32 Seed)
+{
+	InitAmbient(FCigPedRegion::SingleLane(WanderMin, WanderMax), 0, Seed);
+}
+
+void ACigkofteCustomer::InitAmbient(const FCigPedRegion& Region, int32 LaneIndex, int32 Seed)
 {
 	bAmbient = true;
-	WanderLo = WanderMin;
-	WanderHi = WanderMax;
+	WanderRegion = Region;
+	WanderBlockedSteps = 0;
+
+	// A seed of 0 still has to differ per pedestrian, or eight of them walk the
+	// same route in step. The name is unique within the level and stable for the
+	// life of the actor, which is what a pooled pedestrian needs.
+	WanderStream.Initialize(Seed != 0 ? Seed : GetFName().GetNumber() + GetUniqueID());
+
+	const FVector Pos = GetActorLocation();
+	const FVector2D Pos2D(Pos.X, Pos.Y);
+	WanderLane = WanderRegion.Lanes.IsValidIndex(LaneIndex) ? LaneIndex : WanderRegion.NearestLane(Pos2D);
+
+	// Spawned before it was told where it may walk, and the spawn box does not
+	// have to agree with the lane. Put it on the pavement rather than letting it
+	// walk out of the road it started in.
+	if (WanderLane != INDEX_NONE)
+	{
+		const FVector2D Start = WanderRegion.ClampToLane(WanderLane, Pos2D, CigStreet::PedRadius);
+		SetActorLocation(FVector(Start.X, Start.Y, Pos.Z));
+	}
+
 	// Pedestrians have no order. TextRender defaults to "Text", so the empty
 	// check did not catch it and the word "Text" showed up along the street.
 	OrderText->SetText(FText::GetEmpty());
@@ -253,8 +277,16 @@ void ACigkofteCustomer::InitAmbient(const FVector2D& WanderMin, const FVector2D&
 
 void ACigkofteCustomer::PickWanderTarget()
 {
-	// Pedestrian wandering is decorative and stays out of the deterministic stream.
-	Target = FVector(FMath::FRandRange(WanderLo.X, WanderHi.X), FMath::FRandRange(WanderLo.Y, WanderHi.Y), 0.f);
+	// Decorative, and still deliberately out of the shared deterministic stream -
+	// but out of its own stream rather than out of the global one, so a test can
+	// fix a seed and get the same walk twice.
+	if (WanderLane == INDEX_NONE)
+	{
+		return;
+	}
+	WanderBlockedSteps = 0;
+	const FVector2D Point = WanderRegion.PickTarget(WanderLane, WanderStream, CigStreet::PedRadius);
+	Target = FVector(Point.X, Point.Y, 0.f);
 }
 
 void ACigkofteCustomer::SetNavSystem(UCigNavSystem* InNav)
@@ -454,6 +486,14 @@ void ACigkofteCustomer::Reactivate(const FVector& SpawnPos)
 	bNavStranded = false;
 	NavFailure = ECigPathFailure::None;
 	bStrandRecoveryAttempted = false;
+
+	// The pedestrian region goes with the pedestrian. A recycled actor that kept
+	// it would be clamped into a pavement on the other side of the city while
+	// serving as a shop customer, which is the same class of bug as keeping the
+	// previous visitor's route.
+	WanderRegion = FCigPedRegion();
+	WanderLane = INDEX_NONE;
+	WanderBlockedSteps = 0;
 
 	SetActorLocation(SpawnPos);
 	SetActorRotation(FRotator::ZeroRotator);
@@ -798,6 +838,22 @@ void ACigkofteCustomer::Tick(float DeltaSeconds)
 	const FVector Steer = Path.IsValidIndex(PathCursor) ? Path[PathCursor] : Target;
 	FVector NewPos = Pos;
 	const bool bBlocked = StepTowards(Steer, DeltaSeconds, Speed, NewPos);
+
+	// Containment, applied to the position rather than to the target.
+	//
+	// A pedestrian aimed inside its lane can still finish a step outside it: a
+	// long frame moves it further than the lane is wide, and the collision sweep
+	// that clamps the step knows nothing about pavements. Clamping here is what
+	// makes "never in the road" true regardless of frame rate, which is a
+	// property the old rectangle never had even when the rectangle was right.
+	if (bAmbient && WanderLane != INDEX_NONE)
+	{
+		const FVector2D Contained = WanderRegion.ClampToLane(
+			WanderLane, FVector2D(NewPos.X, NewPos.Y), CigStreet::PedRadius);
+		NewPos.X = Contained.X;
+		NewPos.Y = Contained.Y;
+	}
+
 	SetActorLocation(NewPos);
 
 	// The grid said this was walkable and the world disagreed. That is not a
@@ -838,7 +894,14 @@ void ACigkofteCustomer::Tick(float DeltaSeconds)
 
 	if (bAmbient)
 	{
-		if (!bWalking)
+		// Arrived, or gave up. Ambient pedestrians never repath - there is no
+		// route to compute, only a strip to walk along - so a blocked one used to
+		// press into whatever stopped it for the rest of the session, walking on
+		// the spot against a building with the walk animation playing. A bounded
+		// count of blocked steps turns that into picking somewhere else to go.
+		constexpr int32 GiveUpAfterBlockedSteps = 12;
+		WanderBlockedSteps = bBlocked ? WanderBlockedSteps + 1 : 0;
+		if (!bWalking || WanderBlockedSteps >= GiveUpAfterBlockedSteps)
 		{
 			PickWanderTarget();
 		}
