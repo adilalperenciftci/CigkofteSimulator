@@ -90,16 +90,22 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Packaging
 
-- **The shipped package carries Sentry's crash handler.** Both Development and
-  Shipping archives contain
-  `Plugins/Sentry/Binaries/Win64/crashpad_handler.exe`. `Plugins/Sentry` is
-  gitignored and local-only because `CRASH_PRIVACY.md` requires explicit consent,
-  a privacy policy, a retention period and a DSN before any endpoint is enabled,
-  and none of those exist. A plugin dropped into `Plugins/` is enabled by default
-  whether or not the `.uproject` names it, so a clean checkout produces a package
-  without these binaries and this machine does not. No DSN is configured, so
-  nothing is transmitted — but the binary should not be in a release archive.
-  Release blocker; needs its own branch.
+- **A local plugin can still change the editor, just not the game.** `Sentry` is
+  now `"Enabled": false` in the `.uproject`, which keeps it out of the cook, the
+  build and both packages — but only because it is named there. The guard
+  (`Test-CigLocalPlugins.ps1`) fails release validation when an untracked plugin
+  can reach a packaged Win64 game; it does **not** stop one from loading in the
+  editor, and an editor that loads a plugin a clean clone does not have is still
+  an editor other people cannot reproduce. `Tools/LocalPluginPolicy.json` records
+  the decision per plugin rather than preventing it.
+- **The stray-artefact scan matches names, not provenance.** It looks for path
+  fragments derived from the cook exclusion list and the local plugin policy
+  (`Toolset`, `ModelContextProtocol`, `Sentry`, `crashpad`, …). A future plugin
+  whose files carry none of those strings would need a policy entry before the
+  scan could see it, and a legitimate game asset containing one of those words in
+  its path would be a false positive.
+- **Neither guard covers engine plugins.** Both look under the project's
+  `Plugins/`. An engine plugin enabled by default is outside their scope.
 - **A Development archive is not a release artefact.** `PackageDemo.ps1` does not
   pass `-nodebuginfo`, so it carries a PDB. `Package-Windows.ps1` does unless
   `-IncludeSymbols` is given, which is why Shipping has none.
