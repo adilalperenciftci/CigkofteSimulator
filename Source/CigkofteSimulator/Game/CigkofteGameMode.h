@@ -7,6 +7,7 @@
 
 class UCigEventBus;
 class UCigPlacementSystem;
+class UCigNavSystem;
 class UCigWorldBuilder;
 class UCigDaySystem;
 class UCigCookingSystem;
@@ -135,6 +136,7 @@ public:
 	// Authoritative floor occupancy and protected routes. Built before the world
 	// builder and inventory because both register through it.
 	UPROPERTY() TObjectPtr<UCigPlacementSystem> Placement;
+	UPROPERTY() TObjectPtr<UCigNavSystem> Nav;
 	UPROPERTY() TObjectPtr<UCigWorldBuilder> WorldBuilder;
 	UPROPERTY() TObjectPtr<UCigDaySystem> Days;
 	UPROPERTY() TObjectPtr<UCigCookingSystem> Cooking;
