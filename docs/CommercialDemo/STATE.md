@@ -4,13 +4,16 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 
 | | |
 |---|---|
-| Branch | `feat/stage3-navigation-validation` |
-| Base | `14d37db` (PR #16 merge on master) |
+| Branch | `master` — nothing in flight |
+| Base | `64ed3aa` (PR #19 merge) |
 | Latest commit | see `git log -1` on the branch |
 | Stage 3.1 PR | **#7**, merged as `c06650e` |
 | Stage 3.2 PR | **#8**, merged as `e7372eb` |
 | Stage 3.3 PR | **#9**, merged as `ca8cee2`'s merge |
-| Current slice | **Stage 3.4 navigation validation** |
+| Current slice | Stage 3.4 done and hardened; **Stage 3.5 not started** |
+| Stage 3.4 PR | **#17**, merged as `4c6eb2f` |
+| Packaging fix PR | **#18**, merged as `cda0b96` |
+| Navigation hardening PR | **#19**, merged as `64ed3aa` |
 | Save version | **12** (unchanged — nothing here is persisted) |
 
 This table has gone stale twice, both times by naming a branch that had already
@@ -101,6 +104,30 @@ more. What is on the branch:
 
 Bundling this much into one PR is not a defence of the practice; it is a record
 of what a reviewer has to read.
+
+## Next exact task
+
+Nothing is in flight. Master is clean at `64ed3aa`, both packages build, and
+`ValidateAll` passes every non-package stage with 153/153 automation.
+
+Two navigation items are open and both are prerequisites for calling the
+navigation authority settled, in this order:
+
+1. **Ambient street pedestrian containment.** They still wander the unmodelled
+   street on direct movement and can cross authored static geometry. It needs
+   either authored pavement lanes they are constrained to, or a modelled street
+   region — a design choice, not just an implementation.
+2. **The Dynamic Recast NavMesh comparison.** The direction chosen was to measure
+   first and evaluate NavMesh afterwards; the evaluation has not been run, so
+   `docs/Architecture/NAVIGATION_AUTHORITY.md` does not exist and the grid is the
+   authority by default rather than by measurement.
+
+One release blocker is open and unrelated to navigation: both packages ship
+`crashpad_handler.exe` from the gitignored local `Plugins/Sentry`. See
+`KNOWN_LIMITATIONS.md`.
+
+Stage 3.5 placement persistence starts after those, on
+`feat/stage3-placement-persistence` from current master.
 
 ## Current task
 
