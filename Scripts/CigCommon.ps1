@@ -34,6 +34,50 @@ function Write-CigStep {
     Write-Host "==> $Text" -ForegroundColor Cyan
 }
 
+# Editor development plugins that must not be loaded by the cook.
+#
+# ModelContextProtocol and AllToolsets carry "TargetAllowList": ["Editor"], which
+# is correct and keeps them out of the shipped game. It does not keep them out of
+# the *cook*, because the cook commandlet is itself an editor. AllToolsets
+# depends on GameFeaturesToolset, which depends on GameFeatures, which demands an
+# asset-manager rule for GameFeatureData; the cook reports its absence as an
+# error and UAT fails the run with Error_UnknownCookFailure.
+#
+# Declaring that rule is the wrong fix, and Config/DefaultGame.ini says why at
+# length: the type's class does not load for the Game target, so the asset
+# manager ensures on it rather than shrugging. Tools/check_sources.py rejects it
+# statically. Both directions fail while the plugin is in the cook, so the plugin
+# is taken out of the cook rather than out of the project. The editor keeps its
+# tooling; the cook never loads it.
+$script:CigCookDisabledPlugins = @('AllToolsets', 'ModelContextProtocol')
+
+function Get-CigCookPluginExclusionArg {
+    <#
+    .SYNOPSIS
+    The -additionalcookeroptions argument that keeps editor tooling out of the cook.
+
+    .DESCRIPTION
+    Two details here were each got wrong once, so both are pinned by
+    Test-CigCookPluginExclusion.ps1 rather than left to memory.
+
+    The separator is a comma. FPluginManager::FindCommandLinePlugins splits
+    DisablePlugins= on "," (Engine/Source/Runtime/Projects/Private/PluginManager.cpp);
+    an earlier attempt joined the names with "+" and silently did nothing, because
+    "AllToolsets+ModelContextProtocol" is not the name of any plugin and the
+    engine simply found nothing to disable.
+
+    A command-line disable can override a plugin the .uproject enables only
+    because FindCommandLinePlugins runs before FindTargetPlugins - it claims the
+    name in ConfiguredPluginNames first, and the project-descriptor pass then
+    skips it. Reverse that order and this argument would be a no-op.
+    #>
+    return "-additionalcookeroptions=-DisablePlugins=$($script:CigCookDisabledPlugins -join ',')"
+}
+
+function Get-CigCookDisabledPlugins {
+    return $script:CigCookDisabledPlugins
+}
+
 function Resolve-CigPath {
     <#
     .SYNOPSIS

@@ -54,6 +54,10 @@ Invoke-CigStage 'harness' {
     Write-CigStep 'Paket cook kapsami politikasi'
     & (Join-Path $PSScriptRoot 'Test-SmokeCookPolicy.ps1') | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "Test-SmokeCookPolicy.ps1 exit $LASTEXITCODE" }
+
+    Write-CigStep 'Cook eklenti dislama'
+    & (Join-Path $PSScriptRoot 'Test-CigCookPluginExclusion.ps1') | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "Test-CigCookPluginExclusion.ps1 exit $LASTEXITCODE" }
 }
 
 Invoke-CigStage 'paths' {

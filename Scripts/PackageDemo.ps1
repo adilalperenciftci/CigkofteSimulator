@@ -57,6 +57,11 @@ $uatArgs = @(
     # engine's editor executable rather than on a project, so an editor open on
     # any project blocks this build and reports it as a compilation error.
     '-ubtargs=-NoHotReloadFromIDE'
+    # Keeps the editor's MCP tooling out of the cook. Shared with
+    # Package-Windows.ps1 because this script has its own UAT argument list:
+    # the first attempt at this fix was written into that script alone and never
+    # ran, which is exactly the failure mode two argument lists produce.
+    (Get-CigCookPluginExclusionArg)
 )
 
 & $uat @uatArgs | Tee-Object -Variable output | Out-Host

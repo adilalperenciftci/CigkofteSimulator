@@ -88,6 +88,28 @@ not fixed yet belong in `PLAN.md`, not here.
   persistence is Stage 3.5 and shop identity is Stage 3.6; neither is implemented
   here.
 
+## Packaging
+
+- **The shipped package carries Sentry's crash handler.** Both Development and
+  Shipping archives contain
+  `Plugins/Sentry/Binaries/Win64/crashpad_handler.exe`. `Plugins/Sentry` is
+  gitignored and local-only because `CRASH_PRIVACY.md` requires explicit consent,
+  a privacy policy, a retention period and a DSN before any endpoint is enabled,
+  and none of those exist. A plugin dropped into `Plugins/` is enabled by default
+  whether or not the `.uproject` names it, so a clean checkout produces a package
+  without these binaries and this machine does not. No DSN is configured, so
+  nothing is transmitted — but the binary should not be in a release archive.
+  Release blocker; needs its own branch.
+- **A Development archive is not a release artefact.** `PackageDemo.ps1` does not
+  pass `-nodebuginfo`, so it carries a PDB. `Package-Windows.ps1` does unless
+  `-IncludeSymbols` is given, which is why Shipping has none.
+- **Editor tooling is excluded from the cook by a command-line argument, not by
+  the project descriptor.** `ModelContextProtocol` and `AllToolsets` remain
+  enabled in the committed `.uproject` on purpose. Packaging outside
+  `PackageDemo.ps1` and `Package-Windows.ps1` — a raw `RunUAT` invocation, or a
+  future Steam staging script — will hit the original cook failure unless it also
+  uses `Get-CigCookPluginExclusionArg`.
+
 ## Navigation
 
 Stage 3.4 measures reachability with an A* search over an occupancy grid

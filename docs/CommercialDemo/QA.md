@@ -337,6 +337,113 @@ Still out of scope: player-facing category UI, category-specific layout effects,
 AI/path validation, player-authored placement persistence and shop identity.
 Stage 3.3 layout consequences is next; full navigation proof remains Stage 3.4.
 
+## 2026-08-03 — packaging restored with the editor toolsets left enabled
+
+Packaging had been impossible since PR #11. It works again, and the `.uproject`
+still enables `ModelContextProtocol` and `AllToolsets` for editor work — that was
+the constraint, not an afterthought.
+
+| Check | Result |
+|---|---|
+| Static source rules | clean — 150 automation tests, 25 systems |
+| Release self-test state machine | **49/49** assertions |
+| Packaged cook policy | **7/7** assertions |
+| Cook plugin exclusion | **18/18** assertions (new) |
+| Script path safety | **7/7** assertions |
+| Full automation | **150 passed, 0 failed** |
+| Runtime data load | **14/14** balance files, **0** warnings |
+| `ValidateAll.ps1` | static, harness, paths, Editor build, tests, data all PASS |
+| Development package | **BUILD SUCCESSFUL**, 8/8 smoke checks, mandatory self-test passed |
+| Shipping package | **BUILD SUCCESSFUL**, 3/3 smoke checks, mandatory self-test passed |
+| `Verify-Release.ps1` (Shipping) | **PASS** |
+
+### What was actually wrong
+
+`TargetAllowList: ["Editor"]` keeps a plugin out of the shipped game. It does not
+keep it out of the **cook**, because the cook commandlet is itself an editor.
+`AllToolsets` depends on `GameFeaturesToolset`, which depends on `GameFeatures`,
+which demands an asset-manager rule for `GameFeatureData`; the cook logs its
+absence as an error and UAT fails with `Error_UnknownCookFailure`. Declaring the
+rule is the wrong fix for reasons `DefaultGame.ini` gives at length and
+`check_sources.py` now enforces, so both directions were closed.
+
+### Three experiments, and what each one proved
+
+The engine parses `-DisablePlugins=` in
+`FPluginManager::FindCommandLinePlugins`, and that runs *before*
+`FindTargetPlugins` — which is precisely what lets a command-line disable beat a
+plugin the `.uproject` enables. The mechanism was right from the start; both
+earlier attempts failed for reasons that had nothing to do with it, and both
+failed **silently**, producing the identical cook error.
+
+1. **`-DisablePlugins=AllToolsets+ModelContextProtocol`** — failed. The engine
+   splits the list on `,`. `"AllToolsets+ModelContextProtocol"` is not the name of
+   any plugin, so nothing was disabled and nothing was reported.
+2. **Comma-separated, added to `Package-Windows.ps1`** — failed. The run that
+   matters goes through `PackageDemo.ps1`, which carries its own independent UAT
+   argument list. The edit was never executed. Confirmed by searching the UAT log
+   for `DisablePlugins` and finding no occurrence at all.
+3. **Comma-separated, from one shared helper used by both entry points** —
+   **BUILD SUCCESSFUL.**
+
+Two argument lists is what turned a one-line fix into three attempts, so the
+argument now has exactly one definition: `Get-CigCookPluginExclusionArg` in
+`CigCommon.ps1`. `Test-CigCookPluginExclusion.ps1` pins both failure modes — the
+separator, and either entry point drifting away from the helper — and also
+asserts that the committed `.uproject` still enables both plugins for the editor,
+so a future "fix" that quietly disables them there fails the tests instead of
+passing them. Verified in both directions: changing the separator back to `+`
+fails exactly 2 of 18 assertions.
+
+No project descriptor is mutated at any point. `git diff CigkofteSimulator.uproject`
+is empty across both package runs, so no transactional backup-and-restore wrapper
+was needed.
+
+### Packages
+
+| | Development | Shipping |
+|---|---|---|
+| Command | `PackageDemo.ps1 -Configuration Development` | `Package-Windows.ps1 -Configuration Shipping` |
+| Path | `Build/WindowsDemo` | `Build/Windows-Shipping` |
+| Files | 77 | 51 |
+| Bytes | 2,349,021,333 | 1,799,629,611 |
+| Runtime EXE | `CigkofteSimulator/Binaries/Win64/CigkofteSimulator.exe` | `CigkofteSimulator/Binaries/Win64/CigkofteSimulator-Win64-Shipping.exe` |
+| SHA-256 | `A742B9D08619079E89B1291E53C70446A24AA939F4F070156D18AB7C143A9579` | `E95ECEDBC6E9D503A0B8A7CAD3083EAB6781D130B4D9FC9F0965176DE41AFBEF` |
+| PDB files | **1** | **0** |
+| Editor tooling files | **0** | **0** |
+
+Both built from runtime commit on `fix/cook-with-editor-toolsets`. The hashes are
+of the runtime executable under the packaged `Binaries/Win64`, not of the 171 KB
+bootstrap launcher in the archive root.
+
+Development carries one PDB because `PackageDemo.ps1` does not pass
+`-nodebuginfo`; `Package-Windows.ps1` does unless `-IncludeSymbols` is given,
+which is why Shipping has none. That asymmetry is pre-existing and deliberate —
+the demo build is the one people debug — but it means a Development archive is
+not a release artefact.
+
+Neither archive contains any file matching `Toolset`, `ModelContextProtocol`,
+`GameFeature` or `MCP`. The exclusion worked at the level that matters.
+
+### Found while verifying: the shipped game carries Sentry's crash handler
+
+Not caused by this branch, and not fixed on it.
+
+Both packages ship `Plugins/Sentry/Binaries/Win64/crashpad_handler.exe`
+(1,094,656 bytes) and, in Development, `crashpad_wer.dll`. `Plugins/Sentry` is
+gitignored and local-only precisely because `CRASH_PRIVACY.md` says an endpoint
+is enabled only after explicit consent, a privacy policy, a stated retention
+period and a configured DSN — none of which exist.
+
+`WORKTREE_INVENTORY.md` already warned that a plugin dropped into `Plugins/` is
+enabled by default whether or not the `.uproject` mentions it, and that this
+machine and a fresh clone therefore do not build the same editor. That is now
+also true of the shipped game: a clean checkout would produce a package without
+these binaries, and this one does not.
+
+No DSN is configured, so nothing is transmitted. It is recorded as a release
+blocker rather than a privacy incident, and it needs its own branch.
+
 ## 2026-08-03 — Stage 3.4 navigation validation
 
 This validates measured reachability across the shop floor and the customer
