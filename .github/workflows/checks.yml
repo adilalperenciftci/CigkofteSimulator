@@ -43,6 +43,14 @@ jobs:
         shell: pwsh
         run: ./Scripts/Test-CigPathHelpers.ps1
 
+      - name: Cook plugin exclusion
+        # Packaging needs the editor's MCP tooling kept out of the cook, and both
+        # ways of getting that wrong are silent: a separator the engine does not
+        # split on, and an argument added to the packaging script that the run
+        # does not go through. Neither needs an engine to catch.
+        shell: pwsh
+        run: ./Scripts/Test-CigCookPluginExclusion.ps1
+
       - name: Line endings
         # .gitattributes says LF in the repository. A file committed with CRLF
         # shows up as un-normalised to git and is caught here.
