@@ -185,10 +185,16 @@ function Get-CigLocalPluginFindings {
     The parsed Tools/LocalPluginPolicy.json.
     #>
     param(
-        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Inventory,
+        # A checkout with no Plugins/ directory at all is the normal case - it is
+        # what CI has, and what the whole guard is measuring everyone else against.
+        # PowerShell collapses an empty array returned from a function to $null, so
+        # "no local plugins" arrives here as null rather than as nothing.
+        [Parameter(Mandatory)][AllowNull()][AllowEmptyCollection()][object[]]$Inventory,
         [Parameter(Mandatory)][object]$ProjectDescriptor,
         [Parameter(Mandatory)][object]$Policy
     )
+
+    $Inventory = @($Inventory | Where-Object { $null -ne $_ })
 
     $approved = @{}
     foreach ($entry in @(Get-CigJsonField -Object $Policy -Name 'localPlugins' -Default @())) {

@@ -165,6 +165,13 @@ $finding = Get-CigLocalPluginFindings -Inventory @($legacy) `
     -ProjectDescriptor (New-TestProject) -Policy (New-TestPolicy)
 Assert-CigEqual 'eski WhitelistPlatforms yazimi da okunmali' $true $finding[0].ReachesRuntime
 
+# The clean-clone case, which is also CI's: no Plugins/ directory at all. It
+# reaches the classifier as $null rather than as an empty array, and rejecting it
+# failed the build on the one checkout the guard exists to describe.
+$finding = @(Get-CigLocalPluginFindings -Inventory $null `
+    -ProjectDescriptor (New-TestProject) -Policy (New-TestPolicy))
+Assert-CigEqual 'eklentisiz checkout bulgu uretmemeli' 0 $finding.Count
+
 # A tracked plugin is in every clone and is not this check's business.
 $finding = Get-CigLocalPluginFindings `
     -Inventory @(New-TestPlugin -Name 'Telemetry' -Tracked $true) `
@@ -187,8 +194,8 @@ Assert-CigEqual 'politika mutlak yol icermemeli' $false ($policyText -match '[A-
 Assert-CigEqual 'politika kullanici adi icermemeli' $false ($policyText -match '(?i)users[\\/]')
 
 $project = Get-Content -LiteralPath (Join-Path $root 'CigkofteSimulator.uproject') -Raw | ConvertFrom-Json
-$inventory = Get-CigProjectPluginInventory -RepositoryRoot $root
-$findings = Get-CigLocalPluginFindings -Inventory $inventory -ProjectDescriptor $project -Policy $policy
+$inventory = @(Get-CigProjectPluginInventory -RepositoryRoot $root)
+$findings = @(Get-CigLocalPluginFindings -Inventory $inventory -ProjectDescriptor $project -Policy $policy)
 
 foreach ($f in $findings) {
     $state = if ($f.ReachesRuntime) { 'calisma zamanina girer' } else { 'calisma zamani disi' }
