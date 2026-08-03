@@ -174,8 +174,19 @@ Depends on Stage 2 storage actors existing as placeable objects.
   consequence without Tick/world scans; station, seating and transient crate
   gameplay query that authority. This is rectangular layout policy only, not a
   navmesh or persistence claim; save version 12 is unchanged.
-- 3.4 real path/navigation validation is next, followed by 3.5 persistence by
-  stable ID and 3.6 shop identity.
+- 3.4 real path/navigation validation — **done.** The stage started from a wrong
+  premise: there was no navigation to validate. `Source` contained no
+  `NavigationSystem`, no `AIController` and no navmesh, and customers were plain
+  actors interpolating in a straight line at their target — through counters,
+  tables and the shopfront wall. So 3.4 built the missing half rather than
+  auditing it. `FCigNavGrid` rasterises the placement records and the shop shell
+  into an occupancy grid inflated by the agent's own radius and runs A* over it;
+  `UCigNavSystem` owns that grid, rebuilds it only when a placement actually
+  changes, and audits the routes the shop must keep open. Customers now walk the
+  routes it returns. The grid is checked against real engine collision with the
+  player's own capsule, so it is measured rather than asserted. It is not a
+  navmesh and does not claim to be — see `KNOWN_LIMITATIONS.md`.
+- 3.5 persistence by stable ID, then 3.6 shop identity.
 
 ## Stage 4 — customer life and readability
 

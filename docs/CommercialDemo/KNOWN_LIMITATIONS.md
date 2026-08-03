@@ -74,7 +74,7 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 139 automation tests cover pure formulas, tables, data integrity and one
+- The 150 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
@@ -83,10 +83,42 @@ not fixed yet belong in `PLAN.md`, not here.
   it from the test macros and fails when a document disagrees.
 - Placement tests prove deterministic rectangular occupancy, category-specific
   use/approach rectangles, functional capacity, atomic move/remove and declared
-  crate alternatives. They do **not** prove Unreal navigation paths or that an
-  AI pawn can traverse every future player-authored layout; full path validation
-  is Stage 3.4. Placement save/load persistence is Stage 3.5 and shop identity is
-  Stage 3.6; neither is implemented here.
+  crate alternatives. Reachability across those rectangles is now measured rather
+  than assumed — see the navigation section below. Placement save/load
+  persistence is Stage 3.5 and shop identity is Stage 3.6; neither is implemented
+  here.
+
+## Navigation
+
+Stage 3.4 measures reachability with an A* search over an occupancy grid
+rasterised from the placement records and the shop shell, inflated by the agent's
+own radius. What that is and is not:
+
+- **It is not a navmesh.** There is no authored map to build one on: the shop is
+  spawned at runtime into `/Engine/Maps/Entry`. The floor is a single plane and
+  the game has no vertical traversal, so the one thing a navmesh would add that
+  this does not have is unused. The grid is cross-checked against real engine
+  collision with the player's own capsule
+  (`Cigkofte.Navigation.Collision.TheEngineAgreesWithTheGrid`), which is what
+  stops it being a private opinion about a shop it never touched.
+- **The street is not modelled.** The navigable region covers the shop and the
+  pavement the queue stands on. Beyond it the grid assumes open ground, and
+  `BuildCity` has put real geometry out there. Nothing outside can be moved by
+  the player, so nothing outside can block a route, which is why the boundary is
+  drawn where it is — but a grid answer taken from the deep street is not
+  trustworthy and nothing should ask for one.
+- **Street pedestrians still walk through things.** Ambient wanderers are
+  deliberately left on direct movement, because pathing them would mean pathing
+  across the unmodelled street.
+- **A customer with no route walks straight at its target.** Standing still
+  forever is the worse failure — a customer frozen mid-shop with no way to leave
+  is a leak the player cannot clear — so the fallback is deliberate. It is
+  reachable only if the shop is furnished into a state the route audit rejects.
+- **The player is not path-constrained.** They are a real `ACharacter` with a
+  capsule and move against engine collision, which is stricter than the grid. The
+  grid answers questions *about* the player's width; it does not steer them.
+- **No human has walked the shop since this landed.** Every claim here is from
+  automation. See the QA section.
 
 ## Platform
 

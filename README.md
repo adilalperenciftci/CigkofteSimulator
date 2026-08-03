@@ -121,7 +121,7 @@ the tablet's Achievements tab with your lifetime statistics.
 
 ## Systems
 
-24 independent systems are what make this a business rather than a
+25 independent systems are what make this a business rather than a
 click-and-sell loop:
 
 | System | What it does |
@@ -225,7 +225,7 @@ paths resolve against exactly those names (`World/CigMeshLibrary.cpp`).
 
 ## Architecture
 
-`ACigkofteGameMode` is a coordinator; the gameplay is split across 24 systems
+`ACigkofteGameMode` is a coordinator; the gameplay is split across 25 systems
 deriving from `UCigSystem` (a `UObject`), foldered under
 `Source/CigkofteSimulator/`:
 
