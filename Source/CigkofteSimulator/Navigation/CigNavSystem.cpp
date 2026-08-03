@@ -24,6 +24,11 @@ void UCigNavSystem::HandlePlacementChanged(const FCigPlacementChange& Change)
 void UCigNavSystem::MarkDirty()
 {
 	bDirty = true;
+	// Bumped with the dirty flag rather than with the rebuild, because the point
+	// of it is to tell a body already walking that its route describes a shop
+	// that has changed - which is true the moment the record changes, not when
+	// somebody next asks for a grid.
+	++LayoutRevisionCounter;
 }
 
 void UCigNavSystem::GatherObstacles(TArray<FCigPlacementRecord>& OutRecords,

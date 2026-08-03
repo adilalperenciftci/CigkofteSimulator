@@ -14,6 +14,7 @@
 #include "Navigation/CigNavLayout.h"
 #include "Navigation/CigNavSystem.h"
 #include "Placement/CigPlacementSystem.h"
+#include "Customers/CigkofteCustomer.h"
 #include "Tests/CigTestShop.h"
 #include "World/CigWorldBuilder.h"
 #include "Engine/World.h"
@@ -359,6 +360,116 @@ bool FCigNavInvalidationTest::RunTest(const FString&)
 		Shop.GM->Nav->IsCustomerStandable(FVector(WasBlocked, 0.f)));
 	TestEqual(TEXT("Kirlenme tam olarak bir yeniden kurulum yapmalı"),
 		Shop.GM->Nav->RebuildCount(), SettledRebuilds + 1);
+	return true;
+}
+
+// --- Hardening: what a customer does when the answer is "no" ---------------
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigNavStrandedTest,
+	"Cigkofte.Navigation.Hardening.ACustomerWithNoRouteStopsAndIsRecovered",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigNavStrandedTest::RunTest(const FString&)
+{
+	// Stage 3.4 fell back to direct movement when no route existed, on the
+	// reasoning that a frozen customer is worse than one clipping a table. The
+	// trade was wrong in the one direction that mattered: the fallback fires
+	// exactly on the layouts the measured navigation exists to catch, so the case
+	// where the answer was needed was the case it was thrown away.
+	FCigTestShop Shop;
+	if (!BuildRealShop(*this, Shop)) { return false; }
+
+	ACigkofteCustomer* Customer = Shop.World->SpawnActor<ACigkofteCustomer>(
+		FVector(CigNavLayout::StreetApproach(), 0.f), FRotator::ZeroRotator);
+	Customer->SetNavSystem(Shop.GM->Nav);
+	if (!TestNotNull(TEXT("Test musterisi spawn edilmeli"), Customer))
+	{
+		return false;
+	}
+
+	// A target inside the east wall: standable nowhere, reachable by nothing.
+	Customer->SetTarget(FVector(1000.f, 0.f, 0.f));
+
+	TestTrue(TEXT("Rotasiz hedef musteriyi mahsur birakmali"), Customer->bNavStranded);
+	TestEqual(TEXT("Mahsur musteri yol tasimamali"), Customer->PathPointCountForTest(), 0);
+
+	// The load-bearing assertion: it does not creep toward the wall.
+	const FVector Before = Customer->GetActorLocation();
+	Customer->Tick(0.5f);
+	Customer->Tick(0.5f);
+	TestTrue(TEXT("Mahsur musteri hedefe dogru ilerlememeli"),
+		Customer->GetActorLocation().Equals(Before, 1.f));
+
+	Customer->Destroy();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigNavStalePathTest,
+	"Cigkofte.Navigation.Hardening.APlacementChangeInvalidatesAWalkingRoute",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigNavStalePathTest::RunTest(const FString&)
+{
+	FCigTestShop Shop;
+	if (!BuildRealShop(*this, Shop)) { return false; }
+
+	const int32 Before = Shop.GM->Nav->LayoutRevision();
+	TestTrue(TEXT("Yerlesim revizyonu sifirdan buyuk baslamali"), Before > 0);
+
+	// The revision must move with the layout, not with the rebuild. Rebuilds are
+	// lazy, so a walker watching the rebuild counter would keep following a route
+	// through a table that is already standing in it.
+	Shop.GM->Placement->RemovePlacement(TEXT("fixture.seating.table.1"));
+	TestTrue(TEXT("Yerlesim degisikligi revizyonu ilerletmeli"),
+		Shop.GM->Nav->LayoutRevision() > Before);
+	TestEqual(TEXT("Revizyon degisikligi yeniden kurulum tetiklememeli"),
+		Shop.GM->Nav->RebuildCount(), 0);
+
+	// And a customer holding a route built before it repaths on the next tick.
+	ACigkofteCustomer* Customer = Shop.World->SpawnActor<ACigkofteCustomer>(
+		FVector(CigNavLayout::StreetApproach(), 0.f), FRotator::ZeroRotator);
+	Customer->SetNavSystem(Shop.GM->Nav);
+	if (!TestNotNull(TEXT("Test musterisi spawn edilmeli"), Customer)) { return false; }
+
+	Customer->SetTarget(CigPlacementLayout::QueueFront());
+	const int32 Built = Customer->PathRevisionForTest();
+	TestTrue(TEXT("Yol bir revizyona bagli kurulmali"), Built > 0);
+
+	Shop.GM->Placement->RemovePlacement(TEXT("fixture.seating.table.2"));
+	Customer->Tick(0.016f);
+	TestTrue(TEXT("Bayat yol bir sonraki tick'te yenilenmeli"),
+		Customer->PathRevisionForTest() > Built);
+
+	Customer->Destroy();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigNavPoolResetTest,
+	"Cigkofte.Navigation.Hardening.ThePoolReturnsACustomerWithNoNavigationState",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigNavPoolResetTest::RunTest(const FString&)
+{
+	// A pooled actor keeping the previous visitor's route walks it from a
+	// completely different spawn, and a pooled actor keeping their stranded flag
+	// is recycled again the moment it arrives.
+	FCigTestShop Shop;
+	if (!BuildRealShop(*this, Shop)) { return false; }
+
+	ACigkofteCustomer* Customer = Shop.World->SpawnActor<ACigkofteCustomer>(
+		FVector(CigNavLayout::StreetApproach(), 0.f), FRotator::ZeroRotator);
+	Customer->SetNavSystem(Shop.GM->Nav);
+	if (!TestNotNull(TEXT("Test musterisi spawn edilmeli"), Customer)) { return false; }
+
+	Customer->SetTarget(FVector(1000.f, 0.f, 0.f));
+	TestTrue(TEXT("Once mahsur kalmali"), Customer->bNavStranded);
+
+	Customer->Reactivate(FVector(CigNavLayout::StreetApproach(), 0.f));
+	TestFalse(TEXT("Havuzdan donen musteri mahsur olmamali"), Customer->bNavStranded);
+	TestEqual(TEXT("Havuzdan donen musteri yol tasimamali"), Customer->PathPointCountForTest(), 0);
+	TestEqual(TEXT("Havuzdan donen musteri revizyon tasimamali"), Customer->PathRevisionForTest(), 0);
+
+	Customer->Destroy();
 	return true;
 }
 

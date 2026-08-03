@@ -3,6 +3,9 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Core/CigkofteTypes.h"
+// For ECigPathFailure. The customer stores why navigation gave up, and a
+// forward declaration is not enough for a default-initialised member.
+#include "Navigation/CigNavGrid.h"
 #include "CigkofteCustomer.generated.h"
 
 class UStaticMeshComponent;
@@ -41,6 +44,36 @@ public:
 	// busy day reuses the same actors instead of doing several SpawnActor and
 	// Destroy calls per second.
 	bool bAwaitingRecycle = false;
+
+	// No route to the current target, and the customer has stopped rather than
+	// walked through whatever was in the way.
+	//
+	// Stage 3.4 shipped a direct fallback here on the argument that a frozen
+	// customer is worse than one that clips a table. Both are wrong: the fallback
+	// meant the measured navigation could be bypassed by the exact layouts it
+	// existed to catch. Stopping is only half an answer, so the customer system
+	// sweeps this flag and gets them out of the shop through a real transition.
+	bool bNavStranded = false;
+	ECigPathFailure NavFailure = ECigPathFailure::None;
+	// Set once the system has already tried to send a stranded customer home, so
+	// a second failure recycles instead of looping.
+	bool bStrandRecoveryAttempted = false;
+
+	// The navigation this customer paths against. Handed over by whoever spawned
+	// or reused them rather than looked up.
+	//
+	// The first version resolved it through GetWorld()->GetAuthGameMode(), which
+	// is null in the test harness - FCigTestShop spawns a GameMode rather than
+	// installing one - so every customer in every test silently had no navigation
+	// and behaved exactly as if the shop were empty. An explicit dependency
+	// cannot be quietly absent.
+	void SetNavSystem(class UCigNavSystem* InNav);
+
+	// Route state, for tests. The path itself stays private: nothing in gameplay
+	// has any business reading a customer's waypoints, and exposing them would
+	// invite a second thing to start steering from them.
+	int32 PathPointCountForTest() const { return Path.Num(); }
+	int32 PathRevisionForTest() const { return PathRevision; }
 
 	// Called on entering the pool: hide, and switch off tick and collision.
 	void Deactivate();
@@ -106,6 +139,10 @@ private:
 	// through counters, tables and the shopfront wall on the way.
 	TArray<FVector> Path;
 	int32 PathCursor = 0;
+	// The layout revision this route was built against. A placement that moves
+	// invalidates every route built before it, and comparing one integer per tick
+	// is what makes that cheap enough to check rather than hope about.
+	int32 PathRevision = 0;
 
 	// Recomputes Path for the current Target. Called when the target changes and
 	// never per frame: the shop does not move between frames, and the nav system
@@ -124,6 +161,18 @@ private:
 
 	void PickWanderTarget();
 	void ApplyWalkAnim(bool bWalking, float DeltaSeconds);
+
+	// The navigation system this customer paths against, or null outside a real
+	// shop. Cached because Tick compares a layout revision every frame and
+	// resolving the GameMode for that would be a lookup per customer per frame.
+	class UCigNavSystem* ResolveNav() const;
+	mutable TWeakObjectPtr<class UCigNavSystem> CachedNav;
+
+	// Moves toward Steer without passing through world geometry, and reports
+	// whether something blocked. The grid answers where a body may walk; this
+	// answers what actually happened when it tried, which is not the same
+	// question once a crate is standing somewhere the grid has not seen yet.
+	bool StepTowards(const FVector& Steer, float DeltaSeconds, float Speed, FVector& OutLocation) const;
 
 	// True once a skeletal body is standing in for the primitives.
 	bool bSkeletal = false;

@@ -257,10 +257,71 @@ void ACigkofteCustomer::PickWanderTarget()
 	Target = FVector(FMath::FRandRange(WanderLo.X, WanderHi.X), FMath::FRandRange(WanderLo.Y, WanderHi.Y), 0.f);
 }
 
+void ACigkofteCustomer::SetNavSystem(UCigNavSystem* InNav)
+{
+	CachedNav = InNav;
+}
+
+UCigNavSystem* ACigkofteCustomer::ResolveNav() const
+{
+	if (CachedNav.IsValid())
+	{
+		return CachedNav.Get();
+	}
+	// Fallback for an actor placed in a level rather than handed one. Kept
+	// because it costs nothing when the pointer is already set, and returning
+	// null here means "no shop", which the caller handles.
+	const ACigkofteGameMode* Mode = GetWorld() ? Cast<ACigkofteGameMode>(GetWorld()->GetAuthGameMode()) : nullptr;
+	UCigNavSystem* Nav = Mode ? Mode->Nav.Get() : nullptr;
+	CachedNav = Nav;
+	return Nav;
+}
+
+bool ACigkofteCustomer::StepTowards(const FVector& Steer, float DeltaSeconds, float Speed,
+	FVector& OutLocation) const
+{
+	const FVector From = GetActorLocation();
+	OutLocation = FMath::VInterpConstantTo(From, Steer, DeltaSeconds, Speed);
+
+	const UWorld* World = GetWorld();
+	if (!World || OutLocation.Equals(From))
+	{
+		return false;
+	}
+
+	// A sphere at chest height rather than the actor's own collision: the root is
+	// a bare scene component with nothing to sweep, and the visible body is
+	// QueryOnly precisely so that customers do not shove each other about. This
+	// asks the one question that matters - is there world geometry in the step -
+	// against static world only, so a queue does not deadlock on itself.
+	constexpr float BodyRadius = 30.f;
+	constexpr float ChestHeight = 90.f;
+	const FVector Offset(0.f, 0.f, ChestHeight);
+
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	FHitResult Hit;
+	const bool bBlocked = World->SweepSingleByChannel(Hit, From + Offset, OutLocation + Offset,
+		FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeSphere(BodyRadius), Params);
+
+	if (bBlocked)
+	{
+		// Stop just short rather than at the surface, so the next step is not
+		// started already overlapping and immediately blocked again.
+		const FVector Direction = (OutLocation - From).GetSafeNormal();
+		const float Travelled = FMath::Max(0.f, (Hit.Location - (From + Offset)).Size() - 2.f);
+		OutLocation = From + Direction * Travelled;
+	}
+	return bBlocked;
+}
+
 void ACigkofteCustomer::RepathToTarget()
 {
 	Path.Reset();
 	PathCursor = 0;
+	bNavStranded = false;
+	NavFailure = ECigPathFailure::None;
 
 	// Pedestrians wander the street, and the street is not part of the navigable
 	// region. Asking for a path there would either fail or return a route across
@@ -270,12 +331,15 @@ void ACigkofteCustomer::RepathToTarget()
 		return;
 	}
 
-	const ACigkofteGameMode* Mode = GetWorld() ? Cast<ACigkofteGameMode>(GetWorld()->GetAuthGameMode()) : nullptr;
-	const UCigNavSystem* Nav = Mode ? Mode->Nav.Get() : nullptr;
+	const UCigNavSystem* Nav = ResolveNav();
 	if (!Nav)
 	{
+		// No shop around this actor - a bare spawn in a test world. Not a
+		// navigation failure, and marking it as one would strand customers in
+		// every harness that does not build a world.
 		return;
 	}
+	PathRevision = Nav->LayoutRevision();
 
 	const FVector Start = GetActorLocation();
 	FCigPathResult Result = Nav->FindCustomerPath(Start, Target);
@@ -302,10 +366,16 @@ void ACigkofteCustomer::RepathToTarget()
 
 	if (!Result.bSuccess)
 	{
-		// No route. Walking straight there is wrong, but standing still forever is
-		// worse: a customer frozen mid-shop with no way to leave is a leak the
-		// player cannot clear. The direct fallback keeps them recoverable, and the
-		// case is recorded in KNOWN_LIMITATIONS.md rather than hidden here.
+		// No route, and no walking through the thing in the way.
+		//
+		// Stage 3.4 fell back to direct movement here, reasoning that a frozen
+		// customer is worse than one clipping a table. That was the wrong trade:
+		// the fallback triggers on exactly the layouts the measured navigation
+		// exists to catch, so the one case where the answer mattered was the one
+		// case it was ignored. The customer stops, and UCigCustomerSystem sweeps
+		// this flag and takes them out of the shop through a real transition.
+		bNavStranded = true;
+		NavFailure = Result.Failure;
 		return;
 	}
 
@@ -380,6 +450,10 @@ void ACigkofteCustomer::Reactivate(const FVector& SpawnPos)
 	// completely different spawn.
 	Path.Reset();
 	PathCursor = 0;
+	PathRevision = 0;
+	bNavStranded = false;
+	NavFailure = ECigPathFailure::None;
+	bStrandRecoveryAttempted = false;
 
 	SetActorLocation(SpawnPos);
 	SetActorRotation(FRotator::ZeroRotator);
@@ -692,14 +766,48 @@ void ACigkofteCustomer::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	// The shop may have moved under a route that is already being walked. One
+	// integer compare per customer is what makes checking this cheaper than
+	// hoping, and it is a compare rather than a rebuild: the grid itself is still
+	// lazy, so a burst of placement changes costs one rasterisation between them.
+	if (!bAmbient)
+	{
+		if (const UCigNavSystem* Nav = ResolveNav())
+		{
+			if (Nav->LayoutRevision() != PathRevision)
+			{
+				RepathToTarget();
+			}
+		}
+	}
+
+	// Stranded: stopped, waiting for the customer system to take ownership back.
+	// Deliberately still animating, so a customer waiting to be recycled reads as
+	// a person standing there rather than as a frozen prop.
+	if (bNavStranded)
+	{
+		ApplyWalkAnim(false, DeltaSeconds);
+		return;
+	}
+
 	const FVector Pos = GetActorLocation();
 	const float Speed = bAmbient ? 220.f : 300.f;
 
 	// Steer at the next corner of the route, or straight at the target when there
 	// is no route to follow.
 	const FVector Steer = Path.IsValidIndex(PathCursor) ? Path[PathCursor] : Target;
-	const FVector NewPos = FMath::VInterpConstantTo(Pos, Steer, DeltaSeconds, Speed);
+	FVector NewPos = Pos;
+	const bool bBlocked = StepTowards(Steer, DeltaSeconds, Speed, NewPos);
 	SetActorLocation(NewPos);
+
+	// The grid said this was walkable and the world disagreed. That is not a
+	// contradiction to suppress: the grid only knows about placements and the
+	// shop shell, so anything else standing there is exactly what a sweep is for.
+	// One repath, and if there is no way round it the branch above takes over.
+	if (bBlocked && !bAmbient)
+	{
+		RepathToTarget();
+	}
 
 	// Corner tolerance is under half a walking second, so a customer rounds a
 	// counter rather than orbiting the waypoint it is trying to reach.
