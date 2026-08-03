@@ -51,6 +51,13 @@ jobs:
         shell: pwsh
         run: ./Scripts/Test-CigCookPluginExclusion.ps1
 
+      - name: Local plugin policy
+        # A plugin dropped into Plugins/ needs no entry anywhere to be enabled, so
+        # a developer machine can build a game the repository cannot reproduce.
+        # The runner has no such plugin; the fixture cases carry the coverage.
+        shell: pwsh
+        run: ./Scripts/Test-CigLocalPlugins.ps1
+
       - name: Line endings
         # .gitattributes says LF in the repository. A file committed with CRLF
         # shows up as un-normalised to git and is caught here.

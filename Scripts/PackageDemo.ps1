@@ -32,6 +32,12 @@ $uat = Join-Path $engine 'Engine\Build\BatchFiles\RunUAT.bat'
 
 Write-CigStep "Packaging Windows $Configuration to $OutputDir"
 
+# UAT copies into -archivedirectory and removes nothing, so whatever an earlier
+# build put there is still in the archive after a build that would not produce it.
+# That is not theoretical: this directory kept crashpad_handler.exe through a run
+# whose own staging manifests never mention Sentry.
+Clear-CigPackageOutputDirectory -Path $OutputDir -RepositoryRoot $RepoRoot
+
 # Built as an array of explicitly quoted strings and splatted.
 #
 # Backtick-continued bare arguments look tidier and are a trap: a token like

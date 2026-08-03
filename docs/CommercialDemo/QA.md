@@ -765,3 +765,112 @@ fell back.
 The count is the point. The same command against the same source reported 93 an
 hour earlier because the build had failed and left the previous module in place.
 139 is what the suite says when the binary is the one the run produced.
+
+## 2026-08-04 — the package stops being a record of every earlier package
+
+Branch `fix/exclude-unapproved-local-sentry`. Two faults, found in that order,
+both of which made the packaged game something a clean clone does not build.
+
+### Found first: the GameFeatureData dialog had been accepted
+
+`Config/DefaultGame.ini` was modified in the working tree, uncommitted, with a
+`PrimaryAssetTypesToScan` entry for `GameFeatureData` and the whole
+`[/Script/Engine.AssetManagerSettings]` section the editor writes with it. This
+is exactly the change `check_sources.py` was taught to reject in PR #16, and it
+did:
+
+```
+Config/DefaultGame.ini:154: /Script/GameFeatures paketlenen oyunda yok, ama bir
+Primary Asset Type onu taban sınıf olarak bildiriyor.
+```
+
+Reverted, not committed. The guard works; the dialog will keep appearing, and
+the answer stays no.
+
+### Root cause: nothing enabled Sentry, and that is the mechanism
+
+`Sentry.uplugin` has no `EnabledByDefault`. In UE 5.8,
+`FPlugin::IsEnabledByDefault` (`Engine/Source/Runtime/Projects/Private/PluginManager.cpp`)
+ends:
+
+```cpp
+else
+{
+    return GetLoadedFrom() == EPluginLoadedFrom::Project;
+}
+```
+
+Being under the project's `Plugins/` **is** the decision. UnrealBuildTool agrees
+and synthesises a reference for it (`UEBuildTarget.cs`, "synthesize references
+for plugins which are enabled by default"). Both process project references
+first and skip a name already claimed, which is why `"Enabled": false` in the
+`.uproject` is the fix — and
+`FPluginReferenceDescriptor::IsEnabledForTarget` returns false for a disabled
+reference before the plugin is ever looked up, so the entry is also safe in a
+checkout that does not have the plugin.
+
+### Found second: the archive directory is never cleared
+
+With the fix in, the new stray-artefact check still failed:
+
+```
+yabanci dosya  FAIL - crashpad_handler.exe, crashpad_wer.dll
+```
+
+The staging manifests that run wrote (`Manifest_UFSFiles_Win64.txt`,
+`Manifest_NonUFSFiles_Win64.txt`, `Manifest_DebugFiles_Win64.txt`) contain no
+match for `Sentry` or `crashpad`, and the string does not appear anywhere in the
+build, cook or stage output. UAT copies into `-archivedirectory` and removes
+nothing, so files an earlier build staged survive every later package. Copied
+files keep their source timestamps, so the leftovers did not look old either.
+
+Both entry points now clear the output directory first, behind a guard that
+refuses the repository root, anything containing it, a drive root, and any
+non-empty directory that does not look like UAT output.
+
+### Gates
+
+| Check | Command | Result |
+|---|---|---|
+| Static source rules | `python Tools/check_sources.py` | clean — 153 automation tests, 25 systems, 893 bilingual keys |
+| Release self-test state machine | `Test-SelfTestState.ps1` | **49/49** |
+| Packaged cook policy | `Test-SmokeCookPolicy.ps1` | **7/7** |
+| Cook plugin exclusion | `Test-CigCookPluginExclusion.ps1` | **18/18** |
+| Local plugin policy | `Test-CigLocalPlugins.ps1` | **28/28** (new) |
+| Script path safety | `Test-CigPathHelpers.ps1` | **13/13** (was 7/7) |
+| Editor build | `ValidateAll.ps1` | **PASS** |
+| Full automation | `ValidateAll.ps1` | **153 passed, 0 failed** |
+| Runtime data load | `ValidateAll.ps1` | 14/14 balance files, 0 warnings |
+
+`ValidateAll` ran at `01ff825`. Nothing in C++ or content changed after it; the
+later commit is PowerShell, covered by the focused tests above.
+
+### Packages
+
+Both built from the tree now at `1d776d9`, with the editor closed.
+
+| | Development | Shipping |
+|---|---|---|
+| Command | `PackageDemo.ps1 -Configuration Development` | `Package-Windows.ps1 -Configuration Shipping` |
+| Path | `Build/WindowsDemo` | `Build/Windows-Shipping` |
+| Files | 74 (was 77) | 49 (was 51) |
+| Bytes | 2,339,920,566 (was 2,349,021,333) | 1,797,793,166 (was 1,799,629,611) |
+| Runtime EXE | `CigkofteSimulator/Binaries/Win64/CigkofteSimulator.exe` | `CigkofteSimulator-Win64-Shipping.exe` |
+| SHA-256 | `4C87837D93B19CDE882764D106D063E18E86DCFA9B80DDA6F023FD1EBFEE535F` | `257E6716512B3F3217B1383AFAD5D336E99000A154EA4421D917942E22EDE4D2` |
+| PDB files | 1 | **0** |
+| Sentry / crashpad files | **0** (was 2) | **0** (was 2) |
+| Editor tooling files | **0** | **0** |
+| Smoke test | **9/9** | **4/4** (Shipping has no log) |
+| Mandatory self-test | **passed** | **passed** |
+| `Verify-Release` | not run (Development is not a release artefact) | **PASS** |
+
+Both runtime hashes differ from the PR #18 evidence, which is the expected
+consequence: the Sentry module is no longer linked into the monolithic
+executable. The Development PDB is the pre-existing asymmetry —
+`PackageDemo.ps1` does not pass `-nodebuginfo`.
+
+### Still needs a human
+
+Nobody has launched either package by hand this session. The smoke test starts
+the game with `-nullrhi -nosound` and reads its log; it says nothing about
+rendering, input, language switching or loading a save.

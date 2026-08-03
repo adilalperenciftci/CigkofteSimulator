@@ -107,8 +107,9 @@ of what a reviewer has to read.
 
 ## Next exact task
 
-Nothing is in flight. Master is clean at `64ed3aa`, both packages build, and
-`ValidateAll` passes every non-package stage with 153/153 automation.
+Master is clean, both packages build and carry nothing from a plugin the
+repository does not contain, and `ValidateAll` passes every non-package stage
+with 153/153 automation.
 
 Two navigation items are open and both are prerequisites for calling the
 navigation authority settled, in this order:
@@ -122,14 +123,46 @@ navigation authority settled, in this order:
    `docs/Architecture/NAVIGATION_AUTHORITY.md` does not exist and the grid is the
    authority by default rather than by measurement.
 
-One release blocker is open and unrelated to navigation: both packages ship
-`crashpad_handler.exe` from the gitignored local `Plugins/Sentry`. See
-`KNOWN_LIMITATIONS.md`.
-
 Stage 3.5 placement persistence starts after those, on
 `feat/stage3-placement-persistence` from current master.
 
 ## Current task
+
+**Package reproducibility.** Both packages carried
+`crashpad_handler.exe` and `crashpad_wer.dll` from `Plugins/Sentry`, which is
+gitignored and exists on one machine. Nothing enabled it: for a descriptor
+without `EnabledByDefault`, `FPlugin::IsEnabledByDefault` answers
+`GetLoadedFrom() == EPluginLoadedFrom::Project`, so being under `Plugins/` was
+the whole decision, and UnrealBuildTool synthesises a matching reference. An
+explicit `"Sentry": { "Enabled": false }` in the `.uproject` is what both of them
+read first, and it is safe in a checkout without the plugin because a disabled
+reference is dropped before the plugin is looked up.
+
+That fixed the staging and the package was still wrong. UAT copies into
+`-archivedirectory` and removes nothing, so files an earlier build staged outlive
+the build that produced them — and copied files keep their source timestamps, so
+they do not even look stale. Both entry points now clear the output directory
+first, behind a guard that refuses the repository root, anything containing it, a
+drive root, and any non-empty directory that does not look like UAT output.
+
+`Test-CigLocalPlugins.ps1` is the general form: it reads every
+`Plugins/**/*.uplugin`, works out whether git tracks it and whether it can reach
+a packaged Win64 game, and fails when an untracked one can.
+`Tools/LocalPluginPolicy.json` records the decision per plugin. The
+stray-artefact scan now derives its names from the cook exclusion list and that
+policy instead of being done by hand, and runs in the smoke test and
+`Verify-Release`.
+
+Development 2,339,920,566 bytes / 74 files / 1 PDB; Shipping 1,797,793,166 bytes
+/ 49 files / 0 PDB. Zero Sentry, crashpad or editor-tooling files in either.
+Both self-tests passed, `Verify-Release` returned PASS for Shipping. `QA.md`
+carries the hashes and the evidence that separated the two faults.
+
+Also found and reverted, uncommitted: the GameFeatureData asset-manager dialog
+had been accepted in `Config/DefaultGame.ini`. `check_sources.py` caught it,
+which is what it was written for.
+
+## Previous task
 
 **Packaging restored.** It had been impossible since PR #11 enabled the editor
 MCP plugins, and Stage 3.4 could not produce package evidence because of it.
