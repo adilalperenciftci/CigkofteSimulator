@@ -111,14 +111,10 @@ Master is clean, both packages build and carry nothing from a plugin the
 repository does not contain, and `ValidateAll` passes every non-package stage
 with 153/153 automation.
 
-Two navigation items are open and both are prerequisites for calling the
-navigation authority settled, in this order:
+One navigation item is left before the navigation authority can be called
+settled:
 
-1. **Ambient street pedestrian containment.** They still wander the unmodelled
-   street on direct movement and can cross authored static geometry. It needs
-   either authored pavement lanes they are constrained to, or a modelled street
-   region — a design choice, not just an implementation.
-2. **The Dynamic Recast NavMesh comparison.** The direction chosen was to measure
+1. **The Dynamic Recast NavMesh comparison.** The direction chosen was to measure
    first and evaluate NavMesh afterwards; the evaluation has not been run, so
    `docs/Architecture/NAVIGATION_AUTHORITY.md` does not exist and the grid is the
    authority by default rather than by measurement.
@@ -127,6 +123,34 @@ Stage 3.5 placement persistence starts after those, on
 `feat/stage3-placement-persistence` from current master.
 
 ## Current task
+
+**Ambient pedestrian containment.** The wander rectangle handed to main-street
+pedestrians was X in [-2250, -1450] and the carriageway is X in [-2150, -1450]:
+the box was the road, and eight pedestrians walked in moving traffic. The street
+geometry and the wander box were separate literals in the same function with
+nothing comparing them.
+
+They walked through trees and lamp posts as well, which is not a fault in the
+collision sweep: `SpawnProp` defaults `bCollision` to false and both furniture
+call sites take the default, so there is nothing to sweep. Buildings do block —
+and a pedestrian that hit one pressed into it forever, because the repath on a
+blocked step is guarded by `!bAmbient`.
+
+`FCigPedRegion` gives the street a lane per pavement, derived from the same
+`CigStreet` constants the geometry is spawned from. A lane graph rather than a
+grid or splines: the street is straight, the furniture stands on known lines, and
+there are eight of them. The clamp runs on the position after the step rather
+than on the target, so containment survives a frame longer than the lane is wide.
+Twelve blocked steps and a pedestrian picks somewhere else to go.
+
+Districts still get one rectangle each. Their interiors are authored props nobody
+has surveyed; they get containment and recovery, not a route.
+
+165 automation tests (12 new), Development and Shipping both packaged and clean,
+both self-tests passed, `Verify-Release` PASS. Nobody has watched a pedestrian
+walk — the tests prove the geometry, not that it reads as people on a pavement.
+
+## Previous task
 
 **Package reproducibility.** Both packages carried
 `crashpad_handler.exe` and `crashpad_wer.dll` from `Plugins/Sentry`, which is
