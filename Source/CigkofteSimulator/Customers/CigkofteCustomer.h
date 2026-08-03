@@ -6,6 +6,8 @@
 // For ECigPathFailure. The customer stores why navigation gave up, and a
 // forward declaration is not enough for a default-initialised member.
 #include "Navigation/CigNavGrid.h"
+// Ambient pedestrians carry the region they are allowed to walk in, by value.
+#include "Navigation/CigPedRegion.h"
 #include "CigkofteCustomer.generated.h"
 
 class UStaticMeshComponent;
@@ -29,7 +31,19 @@ public:
 	void ApplyOrderVisuals();
 
 	// Sets them up as a street pedestrian who never orders.
-	void InitAmbient(const FVector2D& WanderMin, const FVector2D& WanderMax);
+	//
+	// The rectangle overload is what a district gets: one lane, no obstacles, and
+	// no claim that the district interior is modelled. The region overload is for
+	// the main street, where the pavements are known and the road must not be
+	// walked in. Seed makes the wander deterministic per pedestrian without
+	// putting decorative movement into the shared gameplay stream.
+	void InitAmbient(const FVector2D& WanderMin, const FVector2D& WanderMax, int32 Seed = 0);
+	void InitAmbient(const FCigPedRegion& Region, int32 LaneIndex, int32 Seed);
+
+	// Where this pedestrian may walk, for tests and for the world builder. An
+	// empty region means it is not an ambient pedestrian.
+	const FCigPedRegion& AmbientRegion() const { return WanderRegion; }
+	int32 AmbientLane() const { return WanderLane; }
 	void SetTarget(const FVector& InTarget);
 	void Leave(bool bAngry, const FVector& ExitPos);
 	void SetPatienceColor(float Frac01);
@@ -149,8 +163,16 @@ private:
 	// rebuilds only when a placement actually changes.
 	void RepathToTarget();
 
-	FVector2D WanderLo = FVector2D::ZeroVector;
-	FVector2D WanderHi = FVector2D::ZeroVector;
+	FCigPedRegion WanderRegion;
+	int32 WanderLane = INDEX_NONE;
+	// Its own stream, seeded per pedestrian. Decorative wandering stays out of the
+	// deterministic gameplay stream - that was a deliberate decision and this
+	// keeps it - but a test still needs the same seed to produce the same walk.
+	FRandomStream WanderStream;
+	// Consecutive blocked steps. Ambient pedestrians do not repath, so this is
+	// what stops one pressing into a wall forever: after a few, it gives up on
+	// the target and picks another.
+	int32 WanderBlockedSteps = 0;
 	float WalkPhase = 0.f;
 	float HopTime = 0.f;
 	float IdleSeed = 0.f;

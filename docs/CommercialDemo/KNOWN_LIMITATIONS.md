@@ -74,7 +74,7 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 153 automation tests cover pure formulas, tables, data integrity and one
+- The 165 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
@@ -135,9 +135,12 @@ own radius. What that is and is not:
   the player, so nothing outside can block a route, which is why the boundary is
   drawn where it is — but a grid answer taken from the deep street is not
   trustworthy and nothing should ask for one.
-- **Street pedestrians still walk through things.** Ambient wanderers are
-  deliberately left on direct movement, because pathing them would mean pathing
-  across the unmodelled street.
+- **Street pedestrians are contained, not navigated.** Ambient wanderers are
+  still on direct movement — they have no route and ask the grid for nothing.
+  What they now have is a region: `FCigPedRegion` gives the main street a lane on
+  each pavement, and a pedestrian's position is clamped into its lane every step.
+  That is a containment guarantee rather than a path, and it is deliberately the
+  smaller claim.
 - **A customer with no route stops.** It used to walk straight at the target,
   which was the wrong trade: the fallback fires on exactly the layouts the
   measured navigation exists to catch. They now stop, release the seat and queue
@@ -154,10 +157,20 @@ own radius. What that is and is not:
 - **The player is not path-constrained.** They are a real `ACharacter` with a
   capsule and move against engine collision, which is stricter than the grid. The
   grid answers questions *about* the player's width; it does not steer them.
-- **Ambient street pedestrians are still not hardened.** They wander the
-  unmodelled street on direct movement and can cross authored static geometry.
-  Constraining them needs either authored pavement lanes or a modelled street
-  region, and neither is done. Open.
+- **Only the main street has pedestrian lanes.** The two pavements outside the
+  shop are modelled, because they are two straight strips whose furniture stands
+  on known lines. The six districts are not: each still gets one rectangle around
+  its centre, and a pedestrian inside it can walk through a market stall whose
+  collision is off. Containment and blocked-step recovery apply there; a route
+  does not. Modelling district interiors is open.
+- **Street furniture has no collision, so clearance is doing the work.** Trees
+  and lamp posts are spawned with `bCollision = false` — that is the default of
+  `UCigWorldBuilder::SpawnProp` and both call sites take it. Nothing at runtime
+  would stop a pedestrian walking through one, so the lanes are inset from the
+  furniture lines instead, with clearances chosen generously rather than measured
+  off a mesh (the packs are optional and the primitive fallbacks are thinner).
+  Giving the furniture collision would be the better fix and is a separate
+  change: it affects the player too.
 - **The Dynamic Recast NavMesh comparison has not been run.** The decision to
   measure first and evaluate NavMesh afterwards still stands; the evaluation
   itself is outstanding, so `docs/Architecture/NAVIGATION_AUTHORITY.md` does not

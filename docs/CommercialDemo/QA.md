@@ -874,3 +874,90 @@ executable. The Development PDB is the pre-existing asymmetry —
 Nobody has launched either package by hand this session. The smoke test starts
 the game with `-nullrhi -nosound` and reads its log; it says nothing about
 rendering, input, language switching or loading a save.
+
+## 2026-08-04 — pedestrians stop walking in the traffic
+
+Branch `feat/ambient-pedestrian-containment`, runtime commit `e5b7821`.
+
+### What the numbers said
+
+`BuildCity` spawns the street from literals, and ambient pedestrians were handed
+their wander box from different literals in the same function. Put side by side:
+
+| | X range |
+|---|---|
+| Carriageway | **-2150 … -1450** |
+| Car lanes | -1950, -1650 |
+| West pavement | -2350 … -2150 |
+| East pavement | -1450 … -1250 |
+| **Old wander box** | **-2250 … -1450** |
+
+The wander box was the road. Eight pedestrians walked in both lanes of moving
+traffic for the whole game.
+
+They also walked through the trees and lamp posts. The sweep in
+`ACigkofteCustomer::StepTowards` is not at fault: `UCigWorldBuilder::SpawnProp`
+declares `bCollision = false` and both furniture call sites take the default, so
+there is nothing there to sweep against. Buildings do have collision — and a
+pedestrian that hit one pressed into it for the rest of the session, because the
+repath on a blocked step is guarded by `!bAmbient`.
+
+### What was done
+
+`FCigPedRegion`. A lane per pavement, derived from the same `CigStreet` constants
+the geometry is spawned from. A lane graph rather than a grid or splines because
+the street is straight, the furniture stands on known lines, and there are eight
+pedestrians; anything more general would model a city nobody has surveyed.
+
+The clamp is applied to the **position** after the step, not to the target. A
+pedestrian aimed inside a 60 cm lane can still finish a long frame outside it, so
+containment has to survive the step rather than only constrain the intent.
+
+Districts keep one rectangle each. They get containment and blocked-step
+recovery; they do not get a route, and `KNOWN_LIMITATIONS.md` says so.
+
+### Gates
+
+| Check | Command | Result |
+|---|---|---|
+| Static source rules | `python Tools/check_sources.py` | clean — 165 automation tests, 25 systems |
+| Pedestrian automation | `RunUnrealTests.ps1 -TestFilter Cigkofte.Pedestrian` | **12 passed, 0 failed** |
+| Full automation | `ValidateAll.ps1` | **165 passed, 0 failed** (153 before) |
+| Editor build | `ValidateAll.ps1` | **PASS** |
+| Runtime data load | `ValidateAll.ps1` | 14/14 balance files, 0 warnings |
+| Harness assertions | `ValidateAll.ps1` | 49/49, 7/7, 18/18, 32/32, 13/13 |
+
+The first build attempt failed `LNK1104` on
+`UnrealEditor-CigkofteSimulator.dll`. Compilation had already succeeded; the
+editor was open and holding the DLL. Closed it and rebuilt. Recorded because the
+error reads like a code fault and is not one.
+
+### Packages
+
+| | Development | Shipping |
+|---|---|---|
+| Command | `PackageDemo.ps1 -Configuration Development` | `Package-Windows.ps1 -Configuration Shipping` |
+| Files | 71 | 49 |
+| Bytes | 2,340,039,155 | 1,797,797,774 |
+| Runtime EXE | `CigkofteSimulator.exe` | `CigkofteSimulator-Win64-Shipping.exe` |
+| SHA-256 | `17F1C3CF233AB2A5A75C9F8CD33BED35CBD7AF06A888EF961BECEDD6ECBDECCC` | `65389E82B0AB02B1AD697B610219A2A7A433E8C7D2BEB23194012D3A977FE8E1` |
+| PDB files | 1 | **0** |
+| Sentry / crashpad / editor tooling | **0** | **0** |
+| Smoke test | **9/9** | **4/4** |
+| Mandatory self-test | **passed** | **passed** |
+| `Verify-Release` | not run | **PASS** |
+
+The Development file count moved from 74 to 71 without any content changing, and
+the reason is worth writing down rather than reporting as a saving: 7 of the
+files in that tree are written by the smoke test itself — the self-test report,
+two logs, `GameUserSettings.ini`, and a `CrashReportClient.ini` under a directory
+named after the run. The number of those directories depends on how many times
+the harness launched the game, so a file count measured after a smoke test is
+run-dependent by a few files and should not be read as a content difference.
+
+### Still needs a human
+
+Nobody has watched a pedestrian walk. The tests prove the region's geometry and
+that a position cannot leave its lane; whether the result *looks* like people
+using a pavement — spacing, turning at the ends, walking through each other —
+is a thing to see, not to assert.
