@@ -321,7 +321,7 @@ $checks += @(
 # Editor tooling and unapproved local plugins are kept out by two different
 # mechanisms, and both failed silently at least once. This looks at the artefact
 # rather than at the argument that was supposed to produce it.
-$strays = Get-CigForbiddenPackageArtefacts -PackageDirectory $package -RepositoryRoot $RepoRoot
+$strays = @(Get-CigForbiddenPackageArtefacts -PackageDirectory $package -RepositoryRoot $RepoRoot)
 $checks += @(
     @{ Name = 'yabanci dosya';   Ok = ($strays.Count -eq 0)
        Fail = "pakete gelistirme araci dosyalari girmis: $(($strays | Select-Object -First 5 | ForEach-Object { $_.Name }) -join ', ')" }

@@ -329,6 +329,79 @@ function Get-CigForbiddenPackageArtefacts {
     })
 }
 
+function Test-CigPackageOutputDirectory {
+    <#
+    .SYNOPSIS
+    Whether a directory is safe to delete as a previous package output.
+
+    .DESCRIPTION
+    UAT copies into -archivedirectory and never removes what is already there, so
+    a file staged by an earlier build survives every later package. That is how
+    crashpad_handler.exe stayed in Build/WindowsDemo through a run whose own
+    staging manifests do not mention it: the fix was working and the archive was
+    still wrong.
+
+    Clearing the directory is the fix, and clearing a directory is worth being
+    careful about. A path passes only if it does not exist, is empty, or actually
+    looks like something UAT produced.
+
+    .OUTPUTS
+    True when the directory may be removed. Throws when the path is one that must
+    never be deleted; returns false when it exists but is not a package output.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$RepositoryRoot
+    )
+
+    $full = (Resolve-CigPath $Path).TrimEnd([char]'\', [char]'/')
+    $root = (Resolve-CigPath $RepositoryRoot).TrimEnd([char]'\', [char]'/')
+
+    if ([string]::Equals($full, $root, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Paket cikti klasoru depo kokunun kendisi olamaz: $full"
+    }
+    # A drive root, or any ancestor of the repository, is never an output directory.
+    if ([string]::IsNullOrEmpty([IO.Path]::GetDirectoryName($full))) {
+        throw "Paket cikti klasoru bir surucu koku olamaz: $full"
+    }
+    if (Test-CigPathWithinDirectory -Path $root -Directory $full) {
+        throw "Paket cikti klasoru depoyu iceriyor: $full"
+    }
+    if (-not (Test-Path -LiteralPath $full -PathType Container)) { return $true }
+
+    $entries = @(Get-ChildItem -LiteralPath $full -Force -ErrorAction Stop)
+    if ($entries.Count -eq 0) { return $true }
+
+    # What UAT leaves behind: a staging manifest, or the archived game folder next
+    # to a launcher executable. Anything else is someone else's directory.
+    $looksStaged = @($entries | Where-Object { $_.Name -like 'Manifest_*Files_*.txt' }).Count -gt 0
+    if (-not $looksStaged) {
+        $looksStaged = @($entries | Where-Object { $_.Extension -eq '.exe' }).Count -gt 0 -and
+            @($entries | Where-Object { $_.PSIsContainer }).Count -gt 0
+    }
+    return $looksStaged
+}
+
+function Clear-CigPackageOutputDirectory {
+    <#
+    .SYNOPSIS
+    Removes a previous package output so the next one is only what this run built.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$RepositoryRoot
+    )
+
+    $full = (Resolve-CigPath $Path).TrimEnd([char]'\', [char]'/')
+    if (-not (Test-CigPackageOutputDirectory -Path $full -RepositoryRoot $RepositoryRoot)) {
+        throw "Cikti klasoru onceki bir paket gibi gorunmuyor, silinmedi: $full. Bos bir klasor secin ya da kendiniz kaldirin."
+    }
+    if (Test-Path -LiteralPath $full -PathType Container) {
+        Write-CigStep "Onceki paket ciktisi temizleniyor: $full"
+        Remove-Item -LiteralPath $full -Recurse -Force -ErrorAction Stop
+    }
+}
+
 function Get-CigProjectPluginInventory {
     <#
     .SYNOPSIS

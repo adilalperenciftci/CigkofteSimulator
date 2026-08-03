@@ -33,8 +33,8 @@ if ($forbidden) { throw "Yasak debug/secret adayı bulundu: $($forbidden.FullNam
 # Development tooling reaches a package by two routes that both fail silently: an
 # editor plugin the cook loaded anyway, and a plugin installed into Plugins/ that
 # enabled itself. Neither shows up as an error, only as files.
-$strays = Get-CigForbiddenPackageArtefacts -PackageDirectory $build -RepositoryRoot $RepoRoot
-if ($strays) { throw "Geliştirme aracı dosyaları sürüme girmiş: $(($strays | Select-Object -First 5 -ExpandProperty Name) -join ', ')" }
+$strays = @(Get-CigForbiddenPackageArtefacts -PackageDirectory $build -RepositoryRoot $RepoRoot)
+if ($strays.Count -gt 0) { throw "Geliştirme aracı dosyaları sürüme girmiş: $(($strays | Select-Object -First 5 -ExpandProperty Name) -join ', ')" }
 if ($ChecksumFile) {
     $line = (Get-Content -LiteralPath $ChecksumFile -Raw).Trim()
     if ($line -notmatch '^(?<hash>[0-9a-fA-F]{64})\s+\*?(?<file>.+)$') { throw 'Checksum formatı geçersiz.' }

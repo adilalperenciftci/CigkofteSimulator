@@ -47,9 +47,50 @@ try {
         (Test-CigPathWithinDirectory -Path $sibling -Directory $root)
     Assert-CigEqual 'nokta-nokta ile disari cikis reddedilir' $false `
         (Test-CigPathWithinDirectory -Path (Join-Path $root '..\outside.txt') -Directory $root)
+
+    # The package output directory is deleted before each build, so the rule that
+    # decides what may be deleted is worth more than a comment. Nothing here is
+    # removed: only the predicate is exercised.
+    $repo = Join-Path $base 'Repo'
+    $null = New-Item -ItemType Directory -Path $repo -Force
+
+    $missing = Join-Path $repo 'Build\NeverBuilt'
+    Assert-CigEqual 'var olmayan cikti klasoru silinebilir sayilir' $true `
+        (Test-CigPackageOutputDirectory -Path $missing -RepositoryRoot $repo)
+
+    $empty = Join-Path $repo 'Build\Empty'
+    $null = New-Item -ItemType Directory -Path $empty -Force
+    Assert-CigEqual 'bos cikti klasoru silinebilir' $true `
+        (Test-CigPackageOutputDirectory -Path $empty -RepositoryRoot $repo)
+
+    $staged = Join-Path $repo 'Build\Staged'
+    $null = New-Item -ItemType Directory -Path $staged -Force
+    $null = New-Item -ItemType File -Path (Join-Path $staged 'Manifest_UFSFiles_Win64.txt') -Force
+    Assert-CigEqual 'staging manifesti tasiyan klasor paket ciktisi sayilir' $true `
+        (Test-CigPackageOutputDirectory -Path $staged -RepositoryRoot $repo)
+
+    # Someone's documents folder passed as -OutputDirectory by mistake.
+    $foreign = Join-Path $repo 'Build\Foreign'
+    $null = New-Item -ItemType Directory -Path $foreign -Force
+    $null = New-Item -ItemType File -Path (Join-Path $foreign 'notes.txt') -Force
+    Assert-CigEqual 'paket gibi gorunmeyen dolu klasor silinmez' $false `
+        (Test-CigPackageOutputDirectory -Path $foreign -RepositoryRoot $repo)
+
+    foreach ($case in @(
+        @{ What = 'depo kokunun kendisi reddedilir'; Path = $repo }
+        @{ What = 'depoyu iceren ust klasor reddedilir'; Path = $base }
+    )) {
+        $threw = $false
+        try { $null = Test-CigPackageOutputDirectory -Path $case.Path -RepositoryRoot $repo }
+        catch { $threw = $true }
+        Assert-CigEqual $case.What $true $threw
+    }
 }
 finally {
     Set-Location $original
+    if (Test-Path -LiteralPath $base) {
+        Remove-Item -LiteralPath $base -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 if ($script:failures -gt 0) {

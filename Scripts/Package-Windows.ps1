@@ -73,6 +73,9 @@ if ($DryRun) {
     exit 0
 }
 $null = New-Item -ItemType Directory -Path $logDir -Force
+# See PackageDemo.ps1: UAT adds to the archive directory and never takes anything
+# out of it, so a stale file outlives the build that produced it.
+Clear-CigPackageOutputDirectory -Path $output -RepositoryRoot $root
 & $uat @args 2>&1 | Tee-Object -FilePath $log
 $exitCode = if ($null -eq $LASTEXITCODE) { 1 } else { [int]$LASTEXITCODE }
 if ($exitCode -ne 0) { throw "Paketleme başarısız (exit $exitCode). Log: $log" }
