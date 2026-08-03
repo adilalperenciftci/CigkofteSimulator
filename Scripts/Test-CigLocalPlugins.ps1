@@ -165,12 +165,37 @@ $finding = Get-CigLocalPluginFindings -Inventory @($legacy) `
     -ProjectDescriptor (New-TestProject) -Policy (New-TestPolicy)
 Assert-CigEqual 'eski WhitelistPlatforms yazimi da okunmali' $true $finding[0].ReachesRuntime
 
-# The clean-clone case, which is also CI's: no Plugins/ directory at all. It
-# reaches the classifier as $null rather than as an empty array, and rejecting it
-# failed the build on the one checkout the guard exists to describe.
-$finding = @(Get-CigLocalPluginFindings -Inventory $null `
-    -ProjectDescriptor (New-TestProject) -Policy (New-TestPolicy))
-Assert-CigEqual 'eklentisiz checkout bulgu uretmemeli' 0 $finding.Count
+# The clean-clone case, which is also CI's. Discovery finds nothing, PowerShell
+# returns an empty array from a function as $null, and a Mandatory [object[]]
+# refuses to bind it - so the one checkout this guard exists to describe was the
+# one it could not run on. Both spellings of "nothing" are pinned here, and so is
+# discovery itself, because the null arrives from there rather than from a caller.
+$emptyRoot = Join-Path ([IO.Path]::GetTempPath()) 'CigCleanCloneFixture'
+if (Test-Path -LiteralPath $emptyRoot) { Remove-Item -LiteralPath $emptyRoot -Recurse -Force }
+try {
+    $null = New-Item -ItemType Directory -Path $emptyRoot -Force
+    Assert-CigEqual 'Plugins klasoru olmayan checkout bos envanter verir' 0 `
+        (@(Get-CigProjectPluginInventory -RepositoryRoot $emptyRoot)).Count
+
+    $null = New-Item -ItemType Directory -Path (Join-Path $emptyRoot 'Plugins') -Force
+    $null = New-Item -ItemType File -Path (Join-Path $emptyRoot 'Plugins/README.md') -Force
+    Assert-CigEqual 'uplugin icermeyen Plugins klasoru bos envanter verir' 0 `
+        (@(Get-CigProjectPluginInventory -RepositoryRoot $emptyRoot)).Count
+}
+finally {
+    if (Test-Path -LiteralPath $emptyRoot) {
+        Remove-Item -LiteralPath $emptyRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+foreach ($case in @(
+    @{ What = 'bos dizi envanteri'; Inventory = @() }
+    @{ What = 'null envanter'; Inventory = $null }
+)) {
+    $finding = @(Get-CigLocalPluginFindings -Inventory $case.Inventory `
+        -ProjectDescriptor (New-TestProject) -Policy (New-TestPolicy))
+    Assert-CigEqual "$($case.What) bulgu uretmemeli" 0 $finding.Count
+}
 
 # A tracked plugin is in every clone and is not this check's business.
 $finding = Get-CigLocalPluginFindings `
