@@ -59,6 +59,11 @@ if ($useIoStore) { $args += '-iostore' } else { $args += '-noiostore' }
 # has opted out of the IDE hot-reload path since it was written; packaging is the
 # same kind of batch build and had no equivalent.
 $args += '-ubtargs=-NoHotReloadFromIDE'
+
+# Keeps the editor's MCP tooling out of the cook; see CigCommon.ps1 for why the
+# Editor target allow-list is not enough on its own.
+$args += (Get-CigCookPluginExclusionArg)
+
 if ($Clean) { $args += '-clean' }
 if ($IncludePrereqs) { $args += '-prereqs' }
 if (-not $IncludeSymbols) { $args += '-nodebuginfo' }
