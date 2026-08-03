@@ -58,6 +58,12 @@ Invoke-CigStage 'harness' {
     Write-CigStep 'Cook eklenti dislama'
     & (Join-Path $PSScriptRoot 'Test-CigCookPluginExclusion.ps1') | Out-Host
     if ($LASTEXITCODE -ne 0) { throw "Test-CigCookPluginExclusion.ps1 exit $LASTEXITCODE" }
+
+    # A plugin installed into Plugins/ enables itself. This is the only step that
+    # looks at what is on this machine but not in the repository.
+    Write-CigStep 'Yerel eklenti politikasi'
+    & (Join-Path $PSScriptRoot 'Test-CigLocalPlugins.ps1') | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "Test-CigLocalPlugins.ps1 exit $LASTEXITCODE" }
 }
 
 Invoke-CigStage 'paths' {

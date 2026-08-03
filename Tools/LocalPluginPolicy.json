@@ -1,0 +1,21 @@
+{
+  "comment": [
+    "Local plugins that exist under Plugins/ on a developer machine but are not",
+    "tracked by this repository. A clean clone does not have them, so anything",
+    "they add to a build makes that build unreproducible. Scripts/Test-CigLocalPlugins.ps1",
+    "reads this file and fails when an untracked plugin can still reach the packaged game.",
+    "",
+    "Names only. No absolute paths, no user names, no install directories: this file is",
+    "read on every machine and in CI, where none of those exist."
+  ],
+  "localPlugins": [
+    {
+      "name": "Sentry",
+      "reason": "Crash reporting was evaluated, not adopted. It is present only because the plugin was installed into Plugins/ locally, and .gitignore keeps it out of the repository. Adoption needs its own reviewed feature: a DSN, a consent decision and CRASH_PRIVACY.md all have to change together.",
+      "approvedTargets": [],
+      "cookMayLoad": false,
+      "runtimeOutputMayInclude": false,
+      "artefactPatterns": ["sentry", "crashpad"]
+    }
+  ]
+}
