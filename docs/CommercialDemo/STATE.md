@@ -104,6 +104,39 @@ of what a reviewer has to read.
 
 ## Current task
 
+**Packaging restored.** It had been impossible since PR #11 enabled the editor
+MCP plugins, and Stage 3.4 could not produce package evidence because of it.
+Both configurations build again with `ModelContextProtocol` and `AllToolsets`
+still enabled in the committed `.uproject`, which was the constraint.
+
+`TargetAllowList: ["Editor"]` keeps a plugin out of the shipped game but not out
+of the cook, because the cook commandlet is an editor. The fix excludes the two
+tooling plugins from the cook command line only —
+`Get-CigCookPluginExclusionArg` in `CigCommon.ps1`, used by both package entry
+points. No descriptor is mutated, so no backup-and-restore wrapper exists to go
+wrong.
+
+It took three attempts and the mechanism was never the problem. `-DisablePlugins=`
+is parsed in `FPluginManager::FindCommandLinePlugins`, which runs before
+`FindTargetPlugins` — that ordering is exactly what lets it beat the `.uproject`.
+The first attempt joined the names with `+` when the engine splits on `,`; the
+second was written into `Package-Windows.ps1` while the run went through
+`PackageDemo.ps1`, which has its own UAT argument list. Both failed silently with
+the identical cook error. There is now one definition of the argument and
+`Test-CigCookPluginExclusion.ps1` (18 assertions, in CI) pins both failure modes
+plus the requirement that the committed `.uproject` keeps the plugins enabled.
+
+Development 2,349,021,333 bytes / 77 files / 1 PDB; Shipping 1,799,629,611 bytes
+/ 51 files / 0 PDB. Both passed their mandatory self-tests; `Verify-Release`
+returned PASS for Shipping. Neither archive contains any editor tooling file.
+`QA.md` carries the hashes.
+
+Found while verifying and **not** fixed here: both archives ship
+`crashpad_handler.exe` from the gitignored local `Plugins/Sentry`. Release
+blocker, own branch, recorded in `KNOWN_LIMITATIONS.md`.
+
+## Stage 3.4, finished
+
 **Stage 3.4 navigation validation.** The brief was to validate the shop's paths.
 There were none: `Source` had no `NavigationSystem`, no `AIController` and no
 navmesh, the only match for the word in the whole tree was a comment in a test
