@@ -107,7 +107,7 @@ devretmeye kadar. Tabletin Başarımlar sekmesinde toplam istatistiklerinle birl
 
 ## Sistemler
 
-24 bağımsız sistem, oyunu bir "tıkla ve sat" döngüsünden çıkarıp işletmeye çeviriyor:
+25 bağımsız sistem, oyunu bir "tıkla ve sat" döngüsünden çıkarıp işletmeye çeviriyor:
 
 | Sistem | Ne yapıyor |
 | --- | --- |
@@ -208,7 +208,7 @@ mesh yolları yukarıdaki klasör adlarına göre çözülür (`World/CigMeshLib
 
 ## Mimari
 
-`ACigkofteGameMode` bir koordinatör; oynanışın tamamı `UCigSystem` (UObject) türevi 24 sisteme
+`ACigkofteGameMode` bir koordinatör; oynanışın tamamı `UCigSystem` (UObject) türevi 25 sisteme
 bölünmüş ve `Source/CigkofteSimulator/` altında klasörlenmiştir:
 
 ```

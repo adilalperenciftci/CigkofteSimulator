@@ -1,6 +1,7 @@
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigEventBus.h"
 #include "Placement/CigPlacementSystem.h"
+#include "Navigation/CigNavSystem.h"
 #include "Game/CigDaySystem.h"
 #include "World/CigWorldBuilder.h"
 #include "World/CigkofteStation.h"
@@ -111,6 +112,12 @@ void ACigkofteGameMode::CreateSystems()
 	// below subscribes to it during InitSystem.
 	CreateSystem(Bus);
 	CreateSystem(Placement);
+	// Before WorldBuilder: the builder registers every fixture, and each
+	// registration publishes PlacementChanged. Navigation subscribes in OnInit,
+	// so creating it afterwards would have it miss the shop it is meant to
+	// describe. It starts dirty regardless, but relying on that would make the
+	// order look arbitrary when it is not.
+	CreateSystem(Nav);
 	CreateSystem(WorldBuilder);
 	CreateSystem(Days);
 	CreateSystem(Inventory);

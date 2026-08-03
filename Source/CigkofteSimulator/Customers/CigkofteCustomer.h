@@ -93,7 +93,25 @@ public:
 	void SetWorkAnim(EWorkAnim InWork);
 
 private:
+	// Where the customer is going. Arrival is always measured against this, never
+	// against a waypoint - otherwise a customer would sit down, or start queueing,
+	// at the first corner it rounded.
 	FVector Target = FVector::ZeroVector;
+
+	// The route to it. Empty means walk straight there, which is correct for
+	// street pedestrians: the pavement outside is not modelled, so a path across
+	// it would be a guess dressed up as a measurement.
+	//
+	// Before this existed a customer interpolated straight at its target and went
+	// through counters, tables and the shopfront wall on the way.
+	TArray<FVector> Path;
+	int32 PathCursor = 0;
+
+	// Recomputes Path for the current Target. Called when the target changes and
+	// never per frame: the shop does not move between frames, and the nav system
+	// rebuilds only when a placement actually changes.
+	void RepathToTarget();
+
 	FVector2D WanderLo = FVector2D::ZeroVector;
 	FVector2D WanderHi = FVector2D::ZeroVector;
 	float WalkPhase = 0.f;

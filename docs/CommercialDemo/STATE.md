@@ -4,13 +4,14 @@ Resume point for the commercial-demo overhaul. Update before any interruption.
 
 | | |
 |---|---|
-| Branch | `feat/stage3-layout-consequences` |
-| Base | `e7372eb` (PR #8 merge on master) |
+| Branch | `feat/stage3-navigation-validation` |
+| Base | `14d37db` (PR #16 merge on master) |
 | Latest commit | see `git log -1` on the branch |
 | Stage 3.1 PR | **#7**, merged as `c06650e` |
 | Stage 3.2 PR | **#8**, merged as `e7372eb` |
-| Current slice | **Stage 3.3 layout consequences** |
-| Save version | **12** |
+| Stage 3.3 PR | **#9**, merged as `ca8cee2`'s merge |
+| Current slice | **Stage 3.4 navigation validation** |
+| Save version | **12** (unchanged — nothing here is persisted) |
 
 This table has gone stale twice, both times by naming a branch that had already
 been merged. It is a resume point and nothing else: check it against
@@ -102,6 +103,61 @@ Bundling this much into one PR is not a defence of the practice; it is a record
 of what a reviewer has to read.
 
 ## Current task
+
+**Stage 3.4 navigation validation.** The brief was to validate the shop's paths.
+There were none: `Source` had no `NavigationSystem`, no `AIController` and no
+navmesh, the only match for the word in the whole tree was a comment in a test
+saying a queue slot is not one, and customers were plain `AActor`s running
+`VInterpConstantTo` straight at their target. They walked through the counter,
+the tables and the shopfront wall, and had done since they were written.
+
+So this stage built the missing half. `Navigation/CigNavGrid` rasterises the
+placement records and the shop shell into an occupancy grid inflated by the
+agent's own radius, then runs A* over it — 8-connected, no corner cutting,
+deterministic tie-break, greedy string pulling so a body walks corners rather
+than a staircase. `UCigNavSystem` owns two grids (player 38cm, customer 35cm),
+rebuilds them lazily, and audits the routes the shop must keep open: the queue
+along the pavement, the counter, and one per seat.
+
+**This is where `UCigEventBus::PlacementChanged` finally got a production
+subscriber, and it earned it.** The grid is derived from the records, so a record
+that moves or goes away leaves the grid describing a shop that is not there.
+Invalidation is a dirty flag rather than an immediate rebuild because world build
+registers about thirty fixtures in one pass, and rebuilding per registration
+would be thirty rasterisations to produce the one grid the first query needs.
+`APlacementChangeRebuildsOnceOnNextQuery` pins both halves: five repeated queries
+rebuild nothing, and one removal rebuilds exactly once.
+
+Two things were got wrong and are worth keeping:
+
+- **The service counter is the doorway.** The first route model had customers
+  walking in through the middle of the shopfront at (-600, 0). `SpawnStation`
+  puts the Servis counter at exactly (-600, 0) — the counter stands in the gap,
+  which is what a street çiğköfteci is. A customer being served never comes
+  inside; only one given a seat crosses the line, and goes round the counter to
+  do it. Every route failed until the model matched the shop.
+- **The pavement and the shop floor are different heights.** The collision test
+  placed the player capsule by one constant and reported the pavement as an
+  obstacle blocking the queue. The floor tops are 4.5 and 6.5; the capsule bottom
+  was at 6. The world was right and the test was wrong, which is the direction
+  that costs an afternoon if the failure message does not name the actor. It now
+  does.
+
+The walls moved into `CigNavLayout::ShellWalls()` and `BuildKitchen` spawns them
+from there. They were five literal `SpawnBox` calls; the moment navigation needed
+the same numbers, leaving them in two places was a second authority that would
+have diverged silently — a customer routing through masonry that is still
+standing.
+
+Customers follow the returned route. Ambient street pedestrians deliberately do
+not: the street outside is not modelled, so pathing them would be a guess dressed
+as a measurement. Save version 12 is unchanged — nothing here is persisted.
+
+Gates: static PASS (49/49 self-test-state, 7/7 cook policy, 7/7 path safety),
+Editor build PASS, **150/150** automation (139 before; eleven new
+`Cigkofte.Navigation` tests), 14/14 runtime balance files with zero warnings.
+
+## Stage 3.3, finished
 
 **Stage 3.3 layout consequences.** PR #8 is merged as `e7372eb` and this branch
 starts from that exact merge. Placement now derives a *consequence* — a physical

@@ -1,5 +1,7 @@
 #include "Customers/CigkofteCustomer.h"
 #include "Core/CigText.h"
+#include "Game/CigkofteGameMode.h"
+#include "Navigation/CigNavSystem.h"
 #include "Orders/CigOrderSystem.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -255,9 +257,78 @@ void ACigkofteCustomer::PickWanderTarget()
 	Target = FVector(FMath::FRandRange(WanderLo.X, WanderHi.X), FMath::FRandRange(WanderLo.Y, WanderHi.Y), 0.f);
 }
 
+void ACigkofteCustomer::RepathToTarget()
+{
+	Path.Reset();
+	PathCursor = 0;
+
+	// Pedestrians wander the street, and the street is not part of the navigable
+	// region. Asking for a path there would either fail or return a route across
+	// geometry the grid has never seen, so they keep walking as they always did.
+	if (bAmbient)
+	{
+		return;
+	}
+
+	const ACigkofteGameMode* Mode = GetWorld() ? Cast<ACigkofteGameMode>(GetWorld()->GetAuthGameMode()) : nullptr;
+	const UCigNavSystem* Nav = Mode ? Mode->Nav.Get() : nullptr;
+	if (!Nav)
+	{
+		return;
+	}
+
+	const FVector Start = GetActorLocation();
+	FCigPathResult Result = Nav->FindCustomerPath(Start, Target);
+
+	// A customer already standing in something - a crate dropped where they were,
+	// a table moved onto them - is recovered rather than left stuck. Same for a
+	// target inside a table, which is every seat by construction.
+	if (Result.Failure == ECigPathFailure::StartBlocked)
+	{
+		FVector Stand = Start;
+		if (Nav->FindCustomerStand(Start, Stand))
+		{
+			Result = Nav->FindCustomerPath(Stand, Target);
+		}
+	}
+	if (Result.Failure == ECigPathFailure::GoalBlocked)
+	{
+		FVector Stand = Target;
+		if (Nav->FindCustomerStand(Target, Stand))
+		{
+			Result = Nav->FindCustomerPath(GetActorLocation(), Stand);
+		}
+	}
+
+	if (!Result.bSuccess)
+	{
+		// No route. Walking straight there is wrong, but standing still forever is
+		// worse: a customer frozen mid-shop with no way to leave is a leak the
+		// player cannot clear. The direct fallback keeps them recoverable, and the
+		// case is recorded in KNOWN_LIMITATIONS.md rather than hidden here.
+		return;
+	}
+
+	Path.Reserve(Result.Points.Num());
+	for (const FVector2D& Point : Result.Points)
+	{
+		Path.Add(FVector(Point.X, Point.Y, Target.Z));
+	}
+	// The first point is where the customer already is.
+	PathCursor = Path.Num() > 1 ? 1 : 0;
+}
+
 void ACigkofteCustomer::SetTarget(const FVector& InTarget)
 {
+	// Re-issuing the same queue slot every tick is normal - the customer system
+	// pushes slots as the queue advances - so an unchanged target must not throw
+	// away a route that is already being walked.
+	if (Target.Equals(InTarget, 1.f) && Path.Num() > 0)
+	{
+		return;
+	}
 	Target = InTarget;
+	RepathToTarget();
 }
 
 void ACigkofteCustomer::Leave(bool bAngry, const FVector& ExitPos)
@@ -269,6 +340,7 @@ void ACigkofteCustomer::Leave(bool bAngry, const FVector& ExitPos)
 	bHappy = !bAngry;
 	HopTime = 0.f;
 	Target = ExitPos;
+	RepathToTarget();
 	OrderText->SetText(FText::FromString(bAngry ? CigText::Get(TEXT("customer.leave.angry")) : CigText::Get(TEXT("customer.leave.happy"))));
 	OrderText->SetTextRenderColor(bAngry ? FColor::Red : FColor::Cyan);
 	OrderText->SetVisibility(true);
@@ -303,6 +375,11 @@ void ACigkofteCustomer::Reactivate(const FVector& SpawnPos)
 	HopTime = 0.f;
 	EatPhase = 0.f;
 	bAwaitingRecycle = false;
+	// The route belongs to the customer that was recycled, not to this one. A
+	// pooled actor keeping it would walk the previous visitor's path from a
+	// completely different spawn.
+	Path.Reset();
+	PathCursor = 0;
 
 	SetActorLocation(SpawnPos);
 	SetActorRotation(FRotator::ZeroRotator);
@@ -321,6 +398,7 @@ void ACigkofteCustomer::GoToSeat(const FVector& SeatPos, float InSeatYaw)
 	bArrived = false;
 	bLeaving = false;
 	Target = SeatPos;
+	RepathToTarget();
 	SeatYaw = InSeatYaw;
 	OrderText->SetText(FText::FromString(CigText::Get(TEXT("customer.seated"))));
 	OrderText->SetTextRenderColor(FColor(120, 220, 255));
@@ -616,16 +694,28 @@ void ACigkofteCustomer::Tick(float DeltaSeconds)
 
 	const FVector Pos = GetActorLocation();
 	const float Speed = bAmbient ? 220.f : 300.f;
-	const FVector NewPos = FMath::VInterpConstantTo(Pos, Target, DeltaSeconds, Speed);
+
+	// Steer at the next corner of the route, or straight at the target when there
+	// is no route to follow.
+	const FVector Steer = Path.IsValidIndex(PathCursor) ? Path[PathCursor] : Target;
+	const FVector NewPos = FMath::VInterpConstantTo(Pos, Steer, DeltaSeconds, Speed);
 	SetActorLocation(NewPos);
 
+	// Corner tolerance is under half a walking second, so a customer rounds a
+	// counter rather than orbiting the waypoint it is trying to reach.
+	if (Path.IsValidIndex(PathCursor) && FVector::Dist2D(NewPos, Steer) < 30.f)
+	{
+		++PathCursor;
+	}
+
+	// Arrival is against the real target, never the corner being walked to.
 	const float Dist = FVector::Dist2D(NewPos, Target);
 	const bool bWalking = Dist > 35.f;
 
 	// Face the target while walking, face the shop (+X) while queueing
 	if (bWalking)
 	{
-		const FVector Dir = (Target - NewPos).GetSafeNormal2D();
+		const FVector Dir = (Steer - NewPos).GetSafeNormal2D();
 		if (!Dir.IsNearlyZero())
 		{
 			SetActorRotation(FRotator(0.f, Dir.Rotation().Yaw, 0.f));

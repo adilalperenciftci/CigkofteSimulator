@@ -337,6 +337,89 @@ Still out of scope: player-facing category UI, category-specific layout effects,
 AI/path validation, player-authored placement persistence and shop identity.
 Stage 3.3 layout consequences is next; full navigation proof remains Stage 3.4.
 
+## 2026-08-03 — Stage 3.4 navigation validation
+
+This validates measured reachability across the shop floor and the customer
+locomotion that now follows it. It is **not** a human navigation, build-mode or
+layout-usability playtest. Nobody has walked the shop since this landed.
+
+| Check | Result |
+|---|---|
+| Static source rules | clean — **150** automation tests, **25** systems, 893 bilingual keys |
+| Release self-test state machine | **49/49** assertions |
+| Packaged cook policy | **7/7** assertions |
+| Script path safety | **7/7** assertions |
+| Navigation automation | **11 passed, 0 failed** |
+| Full automation | **150 passed, 0 failed** (139 before) |
+| Runtime data load | **14/14** balance files, **0** warnings |
+| `ValidateAll.ps1` | static, harness, paths, Editor build, tests and data all PASS |
+| Development package | **blocked on master**, see below |
+| Shipping package | not attempted — same blocker |
+
+The eleven navigation tests split three ways. Seven exercise the pure grid with
+no world at all: an open floor collapsing to two points, a sealed wall having no
+route, endpoint failures being named separately rather than all reported as "no
+route", diagonals refusing the squeeze between two objects that touch at a
+corner, and the same query returning an identical path twice on a symmetric
+layout. One is the reason the stage exists — `AGapNarrowerThanTheAgentIsNotARoute`
+puts two obstacles 60cm apart, asserts through `RectsOverlap` that the placement
+authority has no objection to either, and then shows a 70cm body cannot pass;
+widening the gap to 120 opens it with the rectangles still not overlapping.
+
+Two stand up the real shop through `BuildWorld` and audit its routes, and one
+pins invalidation: five repeated queries rebuild the grid zero times, and a
+single `RemovePlacement` rebuilds it exactly once and makes the floor the table
+stood on walkable.
+
+The last one is `Cigkofte.Navigation.Collision.TheEngineAgreesWithTheGrid`. It
+overlaps the player's real capsule (38 x 88) against the actually spawned
+geometry at four points the grid calls open and at every wall centre, so the grid
+is checked against the engine rather than against itself.
+
+### The packaging blocker, which is not this stage's
+
+`PackageDemo.ps1 -Configuration Development` fails during cook:
+
+```
+LogGameFeatures: Error: Asset manager settings do not include a rule for assets
+of type GameFeatureData, which is required for game feature plugins to function
+AutomationTool exiting with ExitCode=25 (Error_UnknownCookFailure)
+```
+
+Confirmed pre-existing rather than assumed: `master` at `14d37db` was checked out
+clean and packaged, and failed identically. This branch touches no config and no
+plugin entry.
+
+Root cause proven by experiment rather than reasoning. `AllToolsets` was set to
+`"Enabled": false` in the `.uproject`, nothing else changed, and the same command
+produced **BUILD SUCCESSFUL** with all eight smoke checks green including the
+mandatory self-test. The experiment was then reverted.
+
+So: `AllToolsets` is constrained to Editor targets, but **cook runs in the
+editor**. It depends on `GameFeaturesToolset`, which depends on `GameFeatures`,
+so the cook commandlet loads a module whose asset-manager rule the project
+deliberately does not declare — and `DefaultGame.ini` explains at length why
+declaring it is the wrong fix. Both directions currently fail. Packaging has been
+impossible since PR #11 enabled the plugin; Stage 3.3's packages predate that
+merge, which is why nobody noticed.
+
+Evidence from the experimental run, recorded because it is the only measurement
+of this branch's runtime behaviour in a packaged build, and flagged because it
+was **not** built from the committed plugin list:
+
+| | |
+|---|---|
+| Files | 74 |
+| Bytes | 2,348,950,416 |
+| Runtime EXE SHA-256 | `8CB8474E0BC05452F475CDF1DB19755EB8D3C00D5DA0B5F2CFC9DBCB4C7DC92A` |
+| PDB files | **1** — this run did not use `-nodebuginfo`, unlike Stage 3.3's |
+| Smoke checks | 8/8, mandatory self-test passed |
+
+That package is not release evidence and must not be quoted as such. Fixing the
+blocker belongs on its own branch: it is a packaging and plugin-scope defect, not
+a gameplay one, and the choice between disabling `AllToolsets` and excluding it
+from the cook is a decision about the editor workflow rather than about the game.
+
 ## 2026-08-02 — Stage 3.3 layout consequences
 
 This validates deterministic layout-consequence policy and the gameplay that now

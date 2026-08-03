@@ -3,6 +3,7 @@
 #include "World/CigFloatText.h"
 #include "Game/CigkofteGameMode.h"
 #include "Placement/CigPlacementSystem.h"
+#include "Navigation/CigNavLayout.h"
 #include "Events/CigEventSystem.h"
 #include "Customers/CigkofteCustomer.h"
 #include "Vehicles/CigCar.h"
@@ -584,13 +585,20 @@ void UCigWorldBuilder::BuildKitchen()
 {
 	// Shop floor and walls (the front is open to the street)
 	SpawnBox(FVector(150.f, 0.f, 2.f), FVector(17.5f, 26.f, 0.05f), FLinearColor(0.42f, 0.34f, 0.24f));
-	// The four walls of the shop. Tiled where the pack is installed, painted
-	// cream where it is not.
-	SpawnBox(FVector(1000.f, 0.f, 200.f), FVector(0.4f, 26.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, WallTileMaterial);
-	SpawnBox(FVector(150.f, 1300.f, 200.f), FVector(17.f, 0.4f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, WallTileMaterial);
-	SpawnBox(FVector(150.f, -1300.f, 200.f), FVector(17.f, 0.4f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, WallTileMaterial);
-	SpawnBox(FVector(-700.f, 900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, BrickMaterial);
-	SpawnBox(FVector(-700.f, -900.f, 200.f), FVector(0.4f, 8.f, 4.f), FLinearColor(0.65f, 0.55f, 0.45f), nullptr, BrickMaterial);
+	// The walls of the shop, spawned from the one place their geometry is
+	// written down. Navigation rasterises the same rectangles, so a wall that
+	// moves here moves for pathing too rather than leaving a customer walking
+	// through masonry that is still standing.
+	for (const CigNavLayout::FCigShellWall& Wall : CigNavLayout::ShellWalls())
+	{
+		UMaterialInterface* Surface = (Wall.Surface == CigNavLayout::EShellSurface::Brick)
+			? BrickMaterial : WallTileMaterial;
+		SpawnBox(
+			FVector(Wall.Rect.Center.X, Wall.Rect.Center.Y, CigNavLayout::WallCenterZ()),
+			FVector(Wall.Rect.HalfExtent.X / 50.f, Wall.Rect.HalfExtent.Y / 50.f,
+				CigNavLayout::WallHalfHeight() / 50.f),
+			FLinearColor(0.65f, 0.55f, 0.45f), nullptr, Surface);
+	}
 
 	// The shop sign, on a board.
 	//
