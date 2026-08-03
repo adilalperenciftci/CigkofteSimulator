@@ -58,6 +58,15 @@ public:
 	// still leave a gap narrower than a customer.
 	bool WouldCloseRequiredRoute(const FCigPlacementRecord& Candidate, FName& OutRouteId) const;
 
+	// How many times the layout has changed. A path built at one revision is not
+	// a statement about any later one, and this is the cheapest possible way for
+	// a body already walking to find out that the shop moved under it.
+	//
+	// Deliberately not RebuildCount: rebuilds are lazy, so a layout can change
+	// several times without one happening, and a walker that watched the rebuild
+	// counter would keep following a route through a table that is now there.
+	int32 LayoutRevision() const { return LayoutRevisionCounter; }
+
 	// Observability. Both are read by tests that assert the rebuild is not
 	// happening more often than the layout actually changes.
 	int32 RebuildCount() const { return RebuildCounter; }
@@ -78,4 +87,7 @@ private:
 	mutable bool bDirty = true;
 	mutable int32 RebuildCounter = 0;
 	mutable int32 QueryCounter = 0;
+	// Starts at 1 so a walker whose stored revision is still 0 always repaths
+	// once rather than trusting a path it never built.
+	int32 LayoutRevisionCounter = 1;
 };

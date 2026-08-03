@@ -74,7 +74,7 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 150 automation tests cover pure formulas, tables, data integrity and one
+- The 153 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
@@ -132,13 +132,31 @@ own radius. What that is and is not:
 - **Street pedestrians still walk through things.** Ambient wanderers are
   deliberately left on direct movement, because pathing them would mean pathing
   across the unmodelled street.
-- **A customer with no route walks straight at its target.** Standing still
-  forever is the worse failure — a customer frozen mid-shop with no way to leave
-  is a leak the player cannot clear — so the fallback is deliberate. It is
-  reachable only if the shop is furnished into a state the route audit rejects.
+- **A customer with no route stops.** It used to walk straight at the target,
+  which was the wrong trade: the fallback fires on exactly the layouts the
+  measured navigation exists to catch. They now stop, release the seat and queue
+  slot they were holding, and `UCigCustomerSystem::RecoverStrandedCustomers`
+  gives them one attempt to walk out before recycling them through the pool. The
+  attempt is bounded and counted (`StrandedRecovered` / `StrandedRecycled`); a
+  customer is never left standing in the shop with no way for the player to clear
+  them.
+- **Movement is swept against static world geometry, not against other
+  customers.** A sphere sweep on `ECC_WorldStatic` stops a customer short of
+  anything the grid did not know about and triggers one repath. Customers pass
+  through each other by design — the visible body is `QueryOnly` so a queue
+  cannot deadlock on itself.
 - **The player is not path-constrained.** They are a real `ACharacter` with a
   capsule and move against engine collision, which is stricter than the grid. The
   grid answers questions *about* the player's width; it does not steer them.
+- **Ambient street pedestrians are still not hardened.** They wander the
+  unmodelled street on direct movement and can cross authored static geometry.
+  Constraining them needs either authored pavement lanes or a modelled street
+  region, and neither is done. Open.
+- **The Dynamic Recast NavMesh comparison has not been run.** The decision to
+  measure first and evaluate NavMesh afterwards still stands; the evaluation
+  itself is outstanding, so `docs/Architecture/NAVIGATION_AUTHORITY.md` does not
+  exist yet and the grid is the authority by default rather than by measurement.
+  Open.
 - **No human has walked the shop since this landed.** Every claim here is from
   automation. See the QA section.
 

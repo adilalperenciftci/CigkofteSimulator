@@ -67,6 +67,13 @@ public:
 	// shop shuts, which is now a window before the books are closed.
 	void SendEveryoneHome();
 
+	// Customers that stopped because navigation could not reach their target, and
+	// what became of them. Read by tests: a shop that strands customers is a
+	// layout defect, and one that leaks them is a code defect, so the two are
+	// counted apart rather than together.
+	int32 StrandedRecovered = 0;
+	int32 StrandedRecycled = 0;
+
 private:
 	float CustomerTimer = 5.f;
 
@@ -83,6 +90,13 @@ private:
 	ACigkofteCustomer* AcquireCustomer(const FVector& SpawnPos);
 	// Moves customers that reached the exit (bAwaitingRecycle) into the pool.
 	void RecycleFinished();
+	// Takes ownership back from customers navigation could not move, and gets
+	// them out of the shop. Bounded: one attempt to send them home, then the pool.
+	void RecoverStrandedCustomers();
+	// Releases the seat and queue slot a customer holds. Seat release goes through
+	// the world builder, because Seated is a view of a reservation that lives
+	// there - dropping the record alone leaks the chair.
+	void ReleaseCustomerOwnership(ACigkofteCustomer* C);
 
 	ECigTrait RollTraits(int32 Day) const;
 	// Picks a single trait from the weighted pool (Config/Balance/Traits.csv).

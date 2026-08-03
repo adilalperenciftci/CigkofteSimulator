@@ -75,6 +75,9 @@ ACigkofteCustomer* UCigCustomerSystem::AcquireCustomer(const FVector& SpawnPos)
 		ACigkofteCustomer* Reused = Pool.Pop(EAllowShrinking::No);
 		if (IsValid(Reused))
 		{
+			// Re-handed on every reuse rather than only on spawn: a pooled actor
+			// can outlive the systems it was first given.
+			Reused->SetNavSystem(GM ? GM->Nav.Get() : nullptr);
 			Reused->Reactivate(SpawnPos);
 			Live.Add(Reused);
 			UE_LOG(LogCig, Verbose, TEXT("Musteri havuzdan alindi (havuz %d, sahnede %d)"), Pool.Num(), Live.Num());
@@ -85,9 +88,66 @@ ACigkofteCustomer* UCigCustomerSystem::AcquireCustomer(const FVector& SpawnPos)
 	ACigkofteCustomer* Fresh = World->SpawnActor<ACigkofteCustomer>(SpawnPos, FRotator::ZeroRotator, CigAlwaysSpawnParams());
 	if (Fresh)
 	{
+		Fresh->SetNavSystem(GM ? GM->Nav.Get() : nullptr);
 		Live.Add(Fresh);
 	}
 	return Fresh;
+}
+
+void UCigCustomerSystem::ReleaseCustomerOwnership(ACigkofteCustomer* C)
+{
+	Queue.Remove(C);
+	for (int32 i = Seated.Num() - 1; i >= 0; --i)
+	{
+		if (Seated[i].Customer.Get() != C)
+		{
+			continue;
+		}
+		if (Seated[i].SeatIndex >= 0 && GM && GM->WorldBuilder)
+		{
+			GM->WorldBuilder->ReleaseSeat(Seated[i].SeatIndex);
+		}
+		Seated.RemoveAt(i);
+	}
+}
+
+void UCigCustomerSystem::RecoverStrandedCustomers()
+{
+	for (int32 i = Live.Num() - 1; i >= 0; --i)
+	{
+		ACigkofteCustomer* C = Live[i].Get();
+		if (!IsValid(C) || !C->bNavStranded || C->bAwaitingRecycle)
+		{
+			continue;
+		}
+
+		// Whatever they were holding, they are not going to use it. A seat
+		// reserved by a customer who cannot reach it is a chair the shop has lost.
+		ReleaseCustomerOwnership(C);
+
+		if (!C->bStrandRecoveryAttempted)
+		{
+			// One try at walking out the way they came. Leave() repaths, so this
+			// clears the flag by itself when the exit is still reachable - which
+			// it usually is, because what stranded them was a target inside the
+			// shop rather than the shop being sealed.
+			C->bStrandRecoveryAttempted = true;
+			C->Leave(false, GCustomerExit);
+			if (!C->bNavStranded)
+			{
+				++StrandedRecovered;
+				continue;
+			}
+		}
+
+		// Sent home and still stuck: the exit is unreachable too. Recycling is
+		// the only bounded end - retrying forever would leave a body standing in
+		// the shop that the player has no way to clear.
+		UE_LOG(LogCig, Warning, TEXT("Musteri rotasiz kaldi ve havuza alindi (sebep %d)"),
+			(int32)C->NavFailure);
+		C->Deactivate();
+		++StrandedRecycled;
+	}
 }
 
 void UCigCustomerSystem::RecycleFinished()
@@ -108,8 +168,13 @@ void UCigCustomerSystem::RecycleFinished()
 		// Every reference in the scene has to be cleared, otherwise an actor taken
 		// from the pool keeps showing up in its old role (in the queue, or as the
 		// inspector).
-		Queue.Remove(C);
-		Seated.RemoveAll([C](const FSeatedGuest& G) { return G.Customer.Get() == C; });
+		//
+		// Dropping the Seated record is not the same as releasing the chair: the
+		// reservation lives in the world builder and Seated is only a view of it.
+		// Removing the record alone left the seat marked occupied forever, so a
+		// shop that recycled a seated customer lost a chair for the rest of the
+		// day.
+		ReleaseCustomerOwnership(C);
 		if (Inspector.Get() == C)
 		{
 			Inspector = nullptr;
@@ -760,6 +825,10 @@ void UCigCustomerSystem::UpdateSystem(float DeltaSeconds)
 {
 	// Before the phase check: customers who left at end of day must return to
 	// the pool too, so hidden actors do not pile up in the scene.
+	//
+	// Recovery runs first, because it is what turns a stranded customer into a
+	// recyclable one; running it after would leave them standing for a frame.
+	RecoverStrandedCustomers();
 	RecycleFinished();
 
 	const UCigDaySystem* Days = GM ? GM->Days.Get() : nullptr;

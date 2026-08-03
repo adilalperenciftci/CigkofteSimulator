@@ -337,6 +337,96 @@ Still out of scope: player-facing category UI, category-specific layout effects,
 AI/path validation, player-authored placement persistence and shop identity.
 Stage 3.3 layout consequences is next; full navigation proof remains Stage 3.4.
 
+## 2026-08-03 — navigation hardening
+
+Closes the residual Stage 3.4 defects the stage itself documented rather than
+fixed. Still not a human navigation playtest.
+
+| Check | Result |
+|---|---|
+| Static source rules | clean — **153** automation tests, 25 systems |
+| Release self-test state machine | **49/49** |
+| Packaged cook policy | **7/7** |
+| Cook plugin exclusion | **18/18** |
+| Script path safety | **7/7** |
+| Navigation automation | **14 passed, 0 failed** (11 before) |
+| Full automation | **153 passed, 0 failed** (150 before) |
+| Runtime data load | **14/14** balance files, **0** warnings |
+| `ValidateAll.ps1` | all non-package stages PASS |
+| Development package | BUILD SUCCESSFUL, 8/8 smoke, self-test passed |
+| Shipping package | BUILD SUCCESSFUL, 3/3 smoke, self-test passed |
+| `Verify-Release.ps1` (Shipping) | **PASS** |
+
+### The direct fallback is gone
+
+Stage 3.4 shipped a fallback: no route meant walk straight at the target. The
+argument was that a frozen customer is worse than one clipping a table. That was
+the wrong trade in the only direction that mattered — the fallback fires on
+exactly the layouts the measured navigation exists to catch, so the one case
+where the answer was needed was the case it was discarded.
+
+A customer with no route now stops. `UCigCustomerSystem::RecoverStrandedCustomers`
+takes ownership back — releasing the seat and queue slot first, because a chair
+reserved by someone who cannot reach it is a chair the shop has lost — gives them
+one attempt to walk out, and recycles them through the pool if the exit is
+unreachable too. Bounded by `bStrandRecoveryAttempted`, counted by
+`StrandedRecovered` and `StrandedRecycled`, and logged with the failure reason.
+
+### A seat leak found while writing that
+
+`RecycleFinished` dropped the `Seated` record without calling
+`UCigWorldBuilder::ReleaseSeat`. `Seated` is only a view of a reservation that
+lives in the world builder, so any customer recycled while seated left the chair
+marked occupied for the rest of the day. Both paths now go through one
+`ReleaseCustomerOwnership`.
+
+### Stale routes
+
+`UCigNavSystem::LayoutRevision()` increments with the dirty flag, and a customer
+stores the revision its route was built at. Deliberately not the rebuild counter:
+rebuilds are lazy, so a layout can change several times without one happening,
+and a walker watching rebuilds would keep following a route through a table that
+is already standing in it. One integer compare per customer per tick.
+
+### Swept movement
+
+`SetActorLocation` was unswept, and could not usefully be swept: the root is a
+bare `USceneComponent` with no collision and the visible body is `QueryOnly` so
+customers do not shove each other. Movement now sphere-sweeps
+`ECC_WorldStatic` along the step, stops short of a blocker and repaths once. The
+grid knows about placements and the shop shell; the sweep is what catches
+anything else.
+
+### The bug the tests found in the tests
+
+All three new tests failed on first run because every customer had no navigation
+at all. `ACigkofteCustomer` resolved it through
+`GetWorld()->GetAuthGameMode()`, which is null under `FCigTestShop` — the harness
+spawns a GameMode rather than installing one. So the customer behaved exactly as
+if the shop were empty, and would have done in any future test too. The
+dependency is now handed over explicitly by whoever spawns or reuses the
+customer; an explicit dependency cannot be quietly absent.
+
+### Packages
+
+| | Development | Shipping |
+|---|---|---|
+| Files | 80 | 51 |
+| Bytes | 2,349,271,780 | 1,799,632,683 |
+| Runtime EXE SHA-256 | `C0A551633D5FF9A8EE93B502E607940CB9D039DF959C35F3999BAF19B340965F` | `E029928B8D785AF08CB8EA1F0F6504BA4AAFDCCDC983C5CA70C1A439FF7F9BFF` |
+| PDB files | 1 | 0 |
+
+### Not done on this branch
+
+- Ambient street pedestrians still use direct movement and can cross authored
+  static geometry. Constraining them needs authored pavement lanes or a modelled
+  street region.
+- The Dynamic Recast NavMesh comparison has not been run, so
+  `docs/Architecture/NAVIGATION_AUTHORITY.md` does not exist and the grid is the
+  authority by default rather than by measurement.
+
+Both are recorded in `KNOWN_LIMITATIONS.md` as open.
+
 ## 2026-08-03 — packaging restored with the editor toolsets left enabled
 
 Packaging had been impossible since PR #11. It works again, and the `.uproject`
