@@ -111,8 +111,12 @@ Master is clean, both packages build and carry nothing from a plugin the
 repository does not contain, and `ValidateAll` passes every non-package stage
 with 153/153 automation.
 
-One navigation item is left before the navigation authority can be called
-settled:
+Navigation authority is settled and measured — see
+`docs/Architecture/NAVIGATION_AUTHORITY.md`. Stage 3.5 placement persistence is
+unblocked and is the next task, on `feat/stage3-placement-persistence` from
+current master.
+
+The entry below is kept for the record of what was outstanding:
 
 1. **The Dynamic Recast NavMesh comparison.** The direction chosen was to measure
    first and evaluate NavMesh afterwards; the evaluation has not been run, so

@@ -171,11 +171,17 @@ own radius. What that is and is not:
   off a mesh (the packs are optional and the primitive fallbacks are thinner).
   Giving the furniture collision would be the better fix and is a separate
   change: it affects the player too.
-- **The Dynamic Recast NavMesh comparison has not been run.** The decision to
-  measure first and evaluate NavMesh afterwards still stands; the evaluation
-  itself is outstanding, so `docs/Architecture/NAVIGATION_AUTHORITY.md` does not
-  exist yet and the grid is the authority by default rather than by measurement.
-  Open.
+- **The grid is the navigation authority by measurement, and Recast is not
+  available.** `docs/Architecture/NAVIGATION_AUTHORITY.md` records the experiment.
+  No `ARecastNavMesh` is created in this project in any environment measured —
+  editor `-game`, packaged Development or packaged Shipping — because
+  `UNavigationSystemV1::OnWorldInitDone` only creates navigation data when
+  navigation bounds already exist, and a game with no authored map cannot have
+  any: the API to register them from game code is protected, and
+  `bWholeWorldNavigable` has had its config property commented out by Epic as
+  broken. What stays open is the condition, not the question: if the project ever
+  gains an authored map for another reason, the hybrid option becomes measurable
+  for the first time.
 - **No human has walked the shop since this landed.** Every claim here is from
   automation. See the QA section.
 
