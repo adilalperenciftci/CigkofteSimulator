@@ -961,3 +961,73 @@ Nobody has watched a pedestrian walk. The tests prove the region's geometry and
 that a position cannot leave its lane; whether the result *looks* like people
 using a pavement — spacing, turning at the ends, walking through each other —
 is a thing to see, not to assert.
+
+## 2026-08-04 — the Recast experiment, and what it could not reach
+
+Branch `spike/runtime-recast-navmesh`. The decision and its evidence are in
+`docs/Architecture/NAVIGATION_AUTHORITY.md`; this records the runs.
+
+`ACigRecastProbe` was built behind `-CigNavExperiment`, spawned from one guarded
+line in `InitGame`, and removed again before this branch's PR. Production
+navigation was not touched at any point: `UCigNavSystem`, `FCigNavGrid` and
+customer path following are identical before and after.
+
+### Runs
+
+| | Editor `-game` | Packaged Development | Packaged Shipping |
+|---|---|---|---|
+| Navigation system present | yes | yes | yes |
+| Invoker registered | yes | yes | yes |
+| **Nav data instances** | **0** | **0** | **0** |
+| **`ARecastNavMesh` created** | **no** | **no** | **no** |
+| Path queries succeeding | 0 of 5 | 0 of 5 | 0 of 5 |
+| Probe exit status | 13 | 13 | 13 |
+
+Three configurations were tried before stopping, which is the limit this project
+sets for one hypothesis family: `RuntimeGeneration=Dynamic` on the derived class,
+the same on the declaring base class, and `bWholeWorldNavigable=True`. None
+changed the result, and the third one explains the other two —
+`bWholeWorldNavigable`'s `UPROPERTY(config)` is commented out in
+`NavigationSystem.h:370` with the note *"currently broken"*.
+
+The probe reports `build_*_ms` figures of 0.86–7.77 ms per mutation. **These are
+not rebuild times.** With no navigation data registered the first poll returns
+immediately; quoting them as measurements of Recast would be inventing evidence
+for a system that was never created.
+
+### Gates after the experiment was removed
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 165 automation tests, 25 systems |
+| `Test-SelfTestState.ps1` | 49/49 |
+| `Test-SmokeCookPolicy.ps1` | 7/7 |
+| `Test-CigCookPluginExclusion.ps1` | 18/18 |
+| `Test-CigLocalPlugins.ps1` | 32/32 |
+| `Test-CigPathHelpers.ps1` | 13/13 |
+| Editor build | PASS |
+| Full automation | **165 passed, 0 failed** |
+| Runtime data load | 14/14, 0 warnings |
+
+### Packages, rebuilt from the cleaned tree
+
+| | Development | Shipping |
+|---|---|---|
+| Files | 71 | 49 |
+| Bytes | 2,340,039,155 | 1,797,797,774 |
+| SHA-256 | `1FAC8FAB2D95AB4C53771AA0D3EFE1D55F810B3B4B960E709C7DEDF15711D8F4` | `65389E82B0AB02B1AD697B610219A2A7A433E8C7D2BEB23194012D3A977FE8E1` |
+| PDB | 1 | 0 |
+| Sentry / crashpad / editor tooling | 0 | 0 |
+| Smoke test | 9/9 | 4/4 |
+| Mandatory self-test | passed | passed |
+| `Verify-Release` | — | PASS |
+
+The Shipping hash is byte-identical to the one recorded before the experiment,
+which is the cleanest evidence available that the branch leaves the shipped game
+unchanged. The Development hash differs from its own earlier value with identical
+source; Development is not built reproducibly here and never has been, so that
+difference says nothing either way.
+
+### Still needs a human
+
+Nobody played either package. The experiment queried paths; it moved nobody.
