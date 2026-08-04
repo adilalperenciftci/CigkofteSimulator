@@ -380,4 +380,114 @@ bool FCigSaveUnknownLayoutTest::RunTest(const FString&)
 	return true;
 }
 
+// ---------------------------------------------------------- transient records
+
+namespace
+{
+	// A delivery crate, as the inventory system registers one: the same footprint,
+	// the same context, and one of the authored delivery spots rather than a
+	// coordinate picked by hand. The first hand-picked one was inside a protected
+	// zone and the authority refused it, which is the authority working.
+	bool AddCrate(FCigTestShop& Shop, FName Id)
+	{
+		FCigPlacementRequest Request;
+		Request.StableId = Id;
+		Request.Category = ECigPlacementCategory::Storage;
+		Request.Lifetime = ECigPlacementLifetime::Transient;
+		Request.Footprint = UCigPlacementSystem::StockCrateFootprint();
+		Request.UseSpec = UCigPlacementSystem::StockCrateUseSpec();
+		Request.Context = ECigPlacementContext::Delivery;
+
+		const FCigPlacementResult Result = Shop.GM->Placement->FindFirstValidPlacement(
+			Request, CigPlacementLayout::DeliverySpots());
+		if (!Result.bAccepted)
+		{
+			return false;
+		}
+		Request.CandidateTransform = Result.NormalizedTransform;
+		return Shop.GM->Placement->RegisterPlacement(Request).bAccepted;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigCrateNotSavedTest,
+	"Cigkofte.LayoutApply.Transient.ACrateIsNotWrittenIntoTheLayout",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigCrateNotSavedTest::RunTest(const FString&)
+{
+	FCigTestShop Shop;
+	if (!BuildShop(Shop, *this)) { return false; }
+
+	const FName CrateId(TEXT("crate.delivery.0"));
+	if (!AddCrate(Shop, CrateId))
+	{
+		AddError(TEXT("Test kasasi kurulamadi."));
+		return false;
+	}
+
+	UCigSaveGame* Save = NewObject<UCigSaveGame>();
+	Save->AddToRoot();
+	Shop.GM->CaptureSave(*Save);
+
+	// Written here it would come back twice on load: once from the layout and once
+	// from the delivery state that already persists.
+	const bool bFound = Save->InstalledLayout.ContainsByPredicate([CrateId](const FCigSavePlacement& S)
+	{
+		return S.StableId == CrateId;
+	});
+	TestFalse(TEXT("Kasa yerlesim dosyasina yazilmamali"), bFound);
+	TestTrue(TEXT("Kasa dukkanda duruyor olmali"),
+		Shop.GM->Placement->FindPlacement(CrateId) != nullptr);
+
+	Save->RemoveFromRoot();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigCrateSurvivesLoadTest,
+	"Cigkofte.LayoutApply.Transient.ACrateStandingInTheShopSurvivesALoad",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigCrateSurvivesLoadTest::RunTest(const FString&)
+{
+	FCigTestShop Shop;
+	if (!BuildShop(Shop, *this)) { return false; }
+
+	const TArray<FCigSavePlacement> Saved = CaptureLive(Shop);
+
+	const FName CrateId(TEXT("crate.delivery.0"));
+	if (!AddCrate(Shop, CrateId))
+	{
+		AddError(TEXT("Test kasasi kurulamadi."));
+		return false;
+	}
+	const FVector CrateWhere = Shop.GM->Placement->FindPlacement(CrateId)->Transform.GetLocation();
+
+	// The layout swap replaces the whole record set. Without carrying transients
+	// across it, the crate would vanish from the floor while the delivery system
+	// went on believing it had one.
+	FString Diagnostic;
+	if (!Shop.GM->WorldBuilder->ApplyLoadedLayout(Saved, Diagnostic))
+	{
+		AddError(FString::Printf(TEXT("Yerlesim kabul edilmedi: %s"), *Diagnostic));
+		return false;
+	}
+
+	const FCigPlacementRecord* After = Shop.GM->Placement->FindPlacement(CrateId);
+	TestTrue(TEXT("Kasa yuklemeden sonra da durmali"), After != nullptr);
+	if (After)
+	{
+		TestTrue(TEXT("Kasa yerinden oynamamali"), After->Transform.GetLocation().Equals(CrateWhere, 0.01f));
+		TestTrue(TEXT("Kasa gecici kalmali"), After->Lifetime == ECigPlacementLifetime::Transient);
+	}
+
+	// And exactly one: the layout must not have produced a second.
+	int32 Crates = 0;
+	for (const FCigPlacementRecord& Record : Shop.GM->Placement->PlacementRecords())
+	{
+		if (Record.Lifetime == ECigPlacementLifetime::Transient) { ++Crates; }
+	}
+	TestEqual(TEXT("Tam bir kasa olmali"), Crates, 1);
+	return true;
+}
+
 #endif

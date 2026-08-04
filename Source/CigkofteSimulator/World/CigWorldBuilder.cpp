@@ -444,6 +444,42 @@ bool UCigWorldBuilder::ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved,
 			PreviousTransforms.Add(Record.StableId, Record.Transform);
 		}
 	}
+	// Transient placements are not in the file and must not be lost by the swap.
+	//
+	// A delivery crate belongs to the system that put it there, and its record has
+	// to survive a load the way the crate itself does. Carried into the candidate
+	// rather than re-added afterwards, so the layout that gets adopted is the whole
+	// truth about the floor and never briefly missing something standing on it.
+	//
+	// One that no longer fits is dropped rather than refusing the load: the saved
+	// layout is the player's decision and a crate is temporary, so a table moved
+	// onto a crate loses the crate. Logged, because the delivery system still
+	// thinks it has one.
+	for (const FCigPlacementRecord& Record : GM->Placement->PlacementRecords())
+	{
+		if (Record.Lifetime != ECigPlacementLifetime::Transient)
+		{
+			continue;
+		}
+		FCigPlacementRequest Request;
+		Request.StableId = Record.StableId;
+		Request.Category = Record.Category;
+		Request.Lifetime = Record.Lifetime;
+		Request.CandidateTransform = Record.Transform;
+		Request.Footprint = Record.Footprint;
+		Request.UseSpec = Record.UseSpec;
+		// The only context a transient placement is allowed in; see
+		// IsClassificationAllowed.
+		Request.Context = ECigPlacementContext::Delivery;
+
+		if (!Candidate.TryRegister(Request).bAccepted)
+		{
+			UE_LOG(LogCig, Warning,
+				TEXT("Yuklenen yerlesim gecici bir kaydin yerini aldi, dusuruldu: %s"),
+				*Record.StableId.ToString());
+		}
+	}
+
 	// The swap. One assignment rather than a replay of every record, so nothing
 	// downstream sees a shop that is half one layout and half another, and so the
 	// authority cannot answer differently the second time it is asked.
