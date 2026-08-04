@@ -490,4 +490,148 @@ bool FCigCrateSurvivesLoadTest::RunTest(const FString&)
 	return true;
 }
 
+// ------------------------------------------------ round trip and idempotence
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLayoutIdempotentTest,
+	"Cigkofte.LayoutApply.RoundTrip.RepeatedSaveAndLoadDoesNotDriftTheShop",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigLayoutIdempotentTest::RunTest(const FString&)
+{
+	FCigTestShop Shop;
+	if (!BuildShop(Shop, *this)) { return false; }
+
+	// Three cycles rather than one. A single round trip cannot show drift: the
+	// interesting failure is a transform that is re-snapped a little further each
+	// time, and that only appears when the output of one load is the input of the
+	// next.
+	TArray<FCigSavePlacement> First = CaptureLive(Shop);
+	FString Diagnostic;
+
+	for (int32 Cycle = 0; Cycle < 3; ++Cycle)
+	{
+		const TArray<FCigSavePlacement> Before = CaptureLive(Shop);
+		if (!Shop.GM->WorldBuilder->ApplyLoadedLayout(Before, Diagnostic))
+		{
+			AddError(FString::Printf(TEXT("Dongu %d kabul edilmedi: %s"), Cycle, *Diagnostic));
+			return false;
+		}
+		const TArray<FCigSavePlacement> After = CaptureLive(Shop);
+
+		TestEqual(FString::Printf(TEXT("Dongu %d kayit sayisini korumali"), Cycle),
+			After.Num(), First.Num());
+		for (int32 i = 0; i < After.Num() && i < First.Num(); ++i)
+		{
+			TestEqual(FString::Printf(TEXT("Dongu %d sirayi korumali"), Cycle),
+				After[i].StableId, First[i].StableId);
+			// Exact rather than within a centimetre: drift is the thing being
+			// looked for, and a tolerance would hide it for three cycles.
+			TestTrue(FString::Printf(TEXT("Dongu %d %s konumunu korumali"),
+					Cycle, *After[i].StableId.ToString()),
+				After[i].Transform.GetLocation().Equals(First[i].Transform.GetLocation(), 0.001f));
+		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLayoutKeepsCapacityTest,
+	"Cigkofte.LayoutApply.RoundTrip.SeatsAndStationCapacitySurviveALoad",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigLayoutKeepsCapacityTest::RunTest(const FString&)
+{
+	FCigTestShop Shop;
+	if (!BuildShop(Shop, *this)) { return false; }
+
+	// Capacity is derived from the use spec by policy, so a load that dropped the
+	// use spec would leave a shop with tables nobody can sit at and stations
+	// nobody can work - and the record count would look perfectly correct.
+	const int32 SeatsBefore = Shop.GM->WorldBuilder->Seats.Num();
+	const int32 SeatingCapacityBefore =
+		Shop.GM->Placement->FunctionalCapacityByCategory(ECigPlacementCategory::Seating);
+	const int32 StationCapacityBefore =
+		Shop.GM->Placement->FunctionalCapacityByCategory(ECigPlacementCategory::Station);
+	const int32 InstalledConsequencesBefore = Shop.GM->Placement->InstalledLayoutConsequenceCount();
+
+	TestTrue(TEXT("Varsayilan dukkanin oturma kapasitesi olmali"), SeatingCapacityBefore > 0);
+	TestTrue(TEXT("Varsayilan dukkanin istasyon kapasitesi olmali"), StationCapacityBefore > 0);
+
+	FString Diagnostic;
+	if (!Shop.GM->WorldBuilder->ApplyLoadedLayout(CaptureLive(Shop), Diagnostic))
+	{
+		AddError(FString::Printf(TEXT("Yerlesim kabul edilmedi: %s"), *Diagnostic));
+		return false;
+	}
+
+	TestEqual(TEXT("Koltuk sayisi korunmali"), Shop.GM->WorldBuilder->Seats.Num(), SeatsBefore);
+	TestEqual(TEXT("Oturma kapasitesi korunmali"),
+		Shop.GM->Placement->FunctionalCapacityByCategory(ECigPlacementCategory::Seating),
+		SeatingCapacityBefore);
+	TestEqual(TEXT("Istasyon kapasitesi korunmali"),
+		Shop.GM->Placement->FunctionalCapacityByCategory(ECigPlacementCategory::Station),
+		StationCapacityBefore);
+	// Derived exactly once per record: a duplicate would mean two consequences
+	// describing the same object.
+	TestEqual(TEXT("Kurulu sonuc sayisi korunmali"),
+		Shop.GM->Placement->InstalledLayoutConsequenceCount(), InstalledConsequencesBefore);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLayoutBlockedDoorTest,
+	"Cigkofte.LayoutApply.RoundTrip.ALayoutThatWallsOffTheShopIsRefused",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigLayoutBlockedDoorTest::RunTest(const FString&)
+{
+	FCigTestShop Shop;
+	if (!BuildShop(Shop, *this)) { return false; }
+
+	const int32 BeforeCount = Shop.GM->Placement->PlacementCount();
+
+	// Decorations across the shopfront opening. Each one is a legal placement on
+	// its own; together they are a wall, and only a route search can tell.
+	TArray<FCigSavePlacement> Saved = CaptureLive(Shop);
+	for (int32 i = 0; i < 5; ++i)
+	{
+		FCigSavePlacement Block;
+		Block.StableId = FName(*FString::Printf(TEXT("deco.wall.%d"), i));
+		Block.Category = (uint8)ECigPlacementCategory::Decoration;
+		Block.Lifetime = (uint8)ECigPlacementLifetime::Installed;
+		Block.Transform = FTransform(FRotator::ZeroRotator, FVector(-700.f, -400.f + i * 200.f, 0.f));
+		Block.FootprintSize = FVector2D(100.f, 200.f);
+		Saved.Add(Block);
+	}
+
+	FString Diagnostic;
+	const bool bAccepted = Shop.GM->WorldBuilder->ApplyLoadedLayout(Saved, Diagnostic);
+
+	// Either it was refused for closing a route, or it was refused for running
+	// into something already there. Both are refusals; what must not happen is
+	// acceptance, and what must not happen either is a half-applied shop.
+	TestFalse(FString::Printf(TEXT("Duvar oren yerlesim kabul edilmemeli (%s)"), *Diagnostic),
+		bAccepted);
+	TestEqual(TEXT("Reddedilen yerlesim kayit sayisini degistirmemeli"),
+		Shop.GM->Placement->PlacementCount(), BeforeCount);
+	TestTrue(TEXT("Reddedilen yerlesimin duvarlari kurulmamali"),
+		Shop.GM->Placement->FindPlacement(FName(TEXT("deco.wall.0"))) == nullptr);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigLayoutTestShopIsolatedTest,
+	"Cigkofte.LayoutApply.RoundTrip.TheTestShopCannotTouchTheRealSaveFile",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigLayoutTestShopIsolatedTest::RunTest(const FString&)
+{
+	// These tests capture and apply saves against a real game mode. A headless run
+	// once replaced somebody's day-3 file with a test world's day 1, so the guard
+	// that stops it is worth asserting rather than assuming - especially now that
+	// the layout is in the file and a bad test could rewrite a shop.
+	FCigTestShop Shop;
+	if (!Shop.Build(*this)) { return false; }
+
+	TestTrue(TEXT("Test dukkaninda kayit kapali olmali"), Shop.GM->bSaveDisabled);
+	return true;
+}
+
 #endif

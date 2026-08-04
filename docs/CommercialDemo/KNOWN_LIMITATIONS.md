@@ -74,7 +74,7 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 199 automation tests cover pure formulas, tables, data integrity and one
+- The 203 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
