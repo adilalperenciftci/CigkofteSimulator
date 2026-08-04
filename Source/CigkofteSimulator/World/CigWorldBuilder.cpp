@@ -277,6 +277,9 @@ ACigkofteStation* UCigWorldBuilder::SpawnStation(ECigStation Type, const FVector
 		S->Setup(Type, Color, Label, LabelYaw);
 		Stations.Add(Type, S);
 		RegisterStationPlacement(Type, Loc, LabelYaw);
+		// After registration: the offset is captured against the record, and the
+		// record does not exist until the line above.
+		AttachPlacementVisual(StationPlacementId(Type), S);
 	}
 	return S;
 }
@@ -343,6 +346,38 @@ void UCigWorldBuilder::RegisterFixturePlacement(FName StableId, ECigPlacementCat
 		UE_LOG(LogCig, Error, TEXT("Sabit demirbas yerlesim kaydi reddedildi: %s (%d)"),
 			*StableId.ToString(), (int32)Result.Failure);
 	}
+}
+
+bool UCigWorldBuilder::AttachPlacementVisual(FName StableId, AActor* Actor)
+{
+	if (!GM || !GM->Placement)
+	{
+		return false;
+	}
+	// Against the record the authority actually kept, not against the location the
+	// caller asked for. The two differ by the position and rotation snap, and
+	// capturing the difference would bake it into the offset.
+	const FCigPlacementRecord* Record = GM->Placement->FindPlacement(StableId);
+	if (!Record)
+	{
+		UE_LOG(LogCig, Warning, TEXT("Gorsel baglanamadi, kayit yok: %s"), *StableId.ToString());
+		return false;
+	}
+	return PlacementVisuals.Attach(StableId, Actor, Record->Transform);
+}
+
+int32 UCigWorldBuilder::SyncPlacementVisuals(FName StableId)
+{
+	if (!GM || !GM->Placement)
+	{
+		return 0;
+	}
+	const FCigPlacementRecord* Record = GM->Placement->FindPlacement(StableId);
+	if (!Record)
+	{
+		return 0;
+	}
+	return PlacementVisuals.Apply(StableId, Record->Transform);
 }
 
 UStaticMesh* UCigWorldBuilder::PreferDukkan(const TCHAR* DukkanName, UStaticMesh* KenneyFallback) const
@@ -764,11 +799,16 @@ void UCigWorldBuilder::BuildSeatingArea()
 		}
 		TableMesh = PreferDukkan(TEXT("table_061"), TableMesh);
 		TableMesh = PreferPark(TEXT("Props"), TEXT("SM_CafeTable01"), TableMesh); // the cafe table fits best
-		SpawnProp(TableMesh, FVector(X, Y, 0.f), 95.f, 0.f, FLinearColor(0.55f, 0.38f, 0.20f), true);
+
+		// Collected rather than attached here: the record does not exist until
+		// RegisterFixturePlacement below, and the offsets have to be captured
+		// against the transform the authority normalizes it to.
+		TArray<AActor*> TableActors;
+		TableActors.Add(SpawnProp(TableMesh, FVector(X, Y, 0.f), 95.f, 0.f, FLinearColor(0.55f, 0.38f, 0.20f), true));
 
 		// Table setting
-		SpawnProp(PreferDukkan(TEXT("21_Plates_served_with_bowl008"), nullptr),
-			FVector(X, Y, 96.f), 14.f, FMath::FRandRange(0.f, 360.f), FLinearColor(0.9f, 0.88f, 0.85f));
+		TableActors.Add(SpawnProp(PreferDukkan(TEXT("21_Plates_served_with_bowl008"), nullptr),
+			FVector(X, Y, 96.f), 14.f, FMath::FRandRange(0.f, 360.f), FLinearColor(0.9f, 0.88f, 0.85f)));
 
 		// Two chairs, on opposite sides of the table
 		const float SeatOffset = 95.f;
@@ -780,7 +820,7 @@ void UCigWorldBuilder::BuildSeatingArea()
 		{
 			const auto& Slot = Slots[SlotIndex];
 			const FVector SeatPos(X + Slot.DX, Y + Slot.DY, 0.f);
-			SpawnProp(PreferPark(TEXT("Props"), TEXT("SM_CafeChair01"), CigMesh::Furniture(TEXT("chairCushion"))), SeatPos, 90.f, Slot.Yaw + 180.f, FLinearColor(0.4f, 0.28f, 0.15f), false);
+			TableActors.Add(SpawnProp(PreferPark(TEXT("Props"), TEXT("SM_CafeChair01"), CigMesh::Furniture(TEXT("chairCushion"))), SeatPos, 90.f, Slot.Yaw + 180.f, FLinearColor(0.4f, 0.28f, 0.15f), false));
 			FCigSeat Seat;
 			Seat.Pos = FVector(X + Slot.DX, Y + Slot.DY, 0.f);
 			Seat.Yaw = Slot.Yaw; // facing the table
@@ -793,6 +833,13 @@ void UCigWorldBuilder::BuildSeatingArea()
 		// absent, but the authored fallback footprint does not disappear with them.
 		RegisterFixturePlacement(TablePlacementId, ECigPlacementCategory::Seating,
 			FVector(X, Y, 0.f), FVector2D(160.f, 280.f), 0.f, 2, FVector2D(160.f, 320.f));
+
+		// The table, its plate and both chairs are one record. A move has to take
+		// all four, which is the whole reason this join exists.
+		for (AActor* Actor : TableActors)
+		{
+			AttachPlacementVisual(TablePlacementId, Actor);
+		}
 	};
 
 	// Layout along the right wall (Y+ side) and near the entrance
@@ -804,9 +851,11 @@ void UCigWorldBuilder::BuildSeatingArea()
 	// A small sofa corner (atmosphere)
 	const FVector SofaLocation(-600.f, 1050.f, 0.f);
 	constexpr float SofaYaw = 90.f;
-	SpawnProp(CigMesh::Furniture(TEXT("loungeSofa")), SofaLocation, 90.f, SofaYaw, FLinearColor(0.4f, 0.3f, 0.5f));
-	RegisterFixturePlacement(FName(*FString::Printf(TEXT("fixture.seating.%s"), TEXT("sofa"))),
-		ECigPlacementCategory::Decoration, SofaLocation, FVector2D(90.f, 180.f), SofaYaw);
+	AActor* Sofa = SpawnProp(CigMesh::Furniture(TEXT("loungeSofa")), SofaLocation, 90.f, SofaYaw, FLinearColor(0.4f, 0.3f, 0.5f));
+	const FName SofaId(*FString::Printf(TEXT("fixture.seating.%s"), TEXT("sofa")));
+	RegisterFixturePlacement(SofaId, ECigPlacementCategory::Decoration, SofaLocation,
+		FVector2D(90.f, 180.f), SofaYaw);
+	AttachPlacementVisual(SofaId, Sofa);
 }
 
 int32 UCigWorldBuilder::ReserveSeat()

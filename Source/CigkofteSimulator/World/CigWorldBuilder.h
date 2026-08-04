@@ -4,6 +4,9 @@
 #include "Game/CigSystem.h"
 #include "Core/CigkofteTypes.h"
 #include "Core/CigUnlocks.h"
+// Held by value: the builder owns the join between placement records and the
+// actors that represent them.
+#include "Placement/CigPlacementVisuals.h"
 #include "CigWorldBuilder.generated.h"
 
 class ACigkofteStation;
@@ -240,6 +243,29 @@ private:
 	TMap<ECigStation, FCigLabelVisibilityState> StationLabelVisibility;
 	void UpdateStationLabelRange();
 	void RegisterStationPlacement(ECigStation Type, const FVector& Loc, float LabelYaw);
+
+public:
+	// Which actors a placement record is made of, and where they sit relative to
+	// it. Nothing joined records to meshes before this: a table was a record and,
+	// separately, four actors nobody could reach from its StableId.
+	//
+	// Public because placement persistence has to reconstruct presentation from a
+	// loaded record, and because the invariant worth testing - every installed
+	// record has at least one actor - is only checkable from outside.
+	FCigPlacementVisualRegistry PlacementVisuals;
+
+	// Records Actor as part of StableId, in the frame of the record's *normalized*
+	// transform. Normalized rather than the requested one: the authority snaps
+	// position and rotation, so capturing against the request would bake the snap
+	// into every offset and drift the chairs a little further from the table on
+	// each move.
+	bool AttachPlacementVisual(FName StableId, AActor* Actor);
+
+	// Moves a placement's actors to follow its current record. Returns how many
+	// moved.
+	int32 SyncPlacementVisuals(FName StableId);
+
+private:
 	void RegisterFixturePlacement(FName StableId, ECigPlacementCategory Category,
 		const FVector& Loc, const FVector2D& Size, float Yaw = 0.f,
 		int32 FunctionalCapacity = 0, const FVector2D& UseSize = FVector2D::ZeroVector,
