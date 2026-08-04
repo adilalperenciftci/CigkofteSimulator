@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
+#include "Save/CigSavePlacement.h"
 #include "CigSaveGame.generated.h"
 
 // A regular customer's record in the save file.
@@ -230,6 +231,22 @@ public:
 	UPROPERTY() int32 StoryProgress = 0;
 	UPROPERTY() bool bTutorialActive = true;
 	UPROPERTY() uint8 TutorialStep = 0;
+
+	// --- Shop layout (version 13) ---
+	// The installed placements, authored inputs only: the derived consequence is
+	// recomputed by policy on load, so storing it would be a second authority.
+	// Transient placements are absent on purpose - a delivery crate belongs to the
+	// delivery state that already persists, and writing it here would restore two.
+	UPROPERTY() TArray<FCigSavePlacement> InstalledLayout;
+
+	// Whether InstalledLayout means anything.
+	//
+	// The field it disambiguates is the array above, which reads back empty both
+	// for a save written before layout was persisted and for a shop the player has
+	// genuinely emptied. Those need opposite handling - the first falls back to the
+	// authored default, the second is honoured - and nothing else in the file can
+	// tell them apart once MigrateV12ToV13 has moved the version forward.
+	UPROPERTY() bool bLayoutPersisted = false;
 
 	// --- Randomness ---
 	// The session's starting seed (the number quoted in bug reports) and the

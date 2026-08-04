@@ -6,6 +6,9 @@
 #include "Navigation/CigNavLayout.h"
 // The street's own numbers, and the pedestrian lanes derived from them.
 #include "Navigation/CigPedRegion.h"
+// Restoring a saved layout: the transaction that decides whether it may, and the
+// value type it arrives as.
+#include "Save/CigLayoutLoad.h"
 #include "Events/CigEventSystem.h"
 #include "Customers/CigkofteCustomer.h"
 #include "Vehicles/CigCar.h"
@@ -277,6 +280,9 @@ ACigkofteStation* UCigWorldBuilder::SpawnStation(ECigStation Type, const FVector
 		S->Setup(Type, Color, Label, LabelYaw);
 		Stations.Add(Type, S);
 		RegisterStationPlacement(Type, Loc, LabelYaw);
+		// After registration: the offset is captured against the record, and the
+		// record does not exist until the line above.
+		AttachPlacementVisual(StationPlacementId(Type), S);
 	}
 	return S;
 }
@@ -343,6 +349,185 @@ void UCigWorldBuilder::RegisterFixturePlacement(FName StableId, ECigPlacementCat
 		UE_LOG(LogCig, Error, TEXT("Sabit demirbas yerlesim kaydi reddedildi: %s (%d)"),
 			*StableId.ToString(), (int32)Result.Failure);
 	}
+}
+
+bool UCigWorldBuilder::AttachPlacementVisual(FName StableId, AActor* Actor)
+{
+	if (!GM || !GM->Placement)
+	{
+		return false;
+	}
+	// Against the record the authority actually kept, not against the location the
+	// caller asked for. The two differ by the position and rotation snap, and
+	// capturing the difference would bake it into the offset.
+	const FCigPlacementRecord* Record = GM->Placement->FindPlacement(StableId);
+	if (!Record)
+	{
+		UE_LOG(LogCig, Warning, TEXT("Gorsel baglanamadi, kayit yok: %s"), *StableId.ToString());
+		return false;
+	}
+	return PlacementVisuals.Attach(StableId, Actor, Record->Transform);
+}
+
+int32 UCigWorldBuilder::SyncPlacementVisuals(FName StableId)
+{
+	if (!GM || !GM->Placement)
+	{
+		return 0;
+	}
+	const FCigPlacementRecord* Record = GM->Placement->FindPlacement(StableId);
+	if (!Record)
+	{
+		return 0;
+	}
+	return PlacementVisuals.Apply(StableId, Record->Transform);
+}
+
+bool UCigWorldBuilder::ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved, FString& OutDiagnostic)
+{
+	OutDiagnostic.Reset();
+	if (!GM || !GM->Placement)
+	{
+		OutDiagnostic = TEXT("yerlesim sistemi yok");
+		return false;
+	}
+
+	// Seat stands come from the world as it stands now. A saved layout that closes
+	// the way to a chair has to be refused before anything moves, and the chairs
+	// this shop has are the ones to ask about.
+	TArray<FVector2D> SeatStands;
+	SeatStands.Reserve(Seats.Num());
+	for (const FCigSeat& Seat : Seats)
+	{
+		SeatStands.Add(FVector2D(Seat.Pos.X, Seat.Pos.Y));
+	}
+
+	FCigPlacementAuthority Candidate;
+	const FCigLayoutLoadReport Report = CigLayoutLoad::BuildCandidate(Saved,
+		CigPlacementLayout::ShopBounds(), CigLayoutLoad::ShopProtectedZones(), SeatStands, Candidate);
+	if (!Report.bAccepted)
+	{
+		// Nothing has been touched. The authored default is still standing, which
+		// is the state a refused load has to leave behind.
+		OutDiagnostic = FString::Printf(TEXT("%s: %s"),
+			CigLayoutLoad::FailureText(Report.Failure), *Report.Diagnostic);
+		UE_LOG(LogCig, Warning, TEXT("Kayitli yerlesim reddedildi - %s"), *OutDiagnostic);
+		return false;
+	}
+
+	// From here the layout is known good and the shop is brought to match it.
+	TSet<FName> SavedIds;
+	SavedIds.Reserve(Saved.Num());
+	for (const FCigSavePlacement& One : Saved)
+	{
+		SavedIds.Add(One.StableId);
+	}
+
+	// Every installed record comes out before any goes back in, and the transforms
+	// they had are kept so seats can be moved by the delta their table moved by.
+	//
+	// Clearing rather than registering over the top. Re-registering an ID that is
+	// still on the floor is a move, and a move is judged by different rules than
+	// world registration: the service counter stands in the middle of the entrance
+	// by authored design, which registration allows and a player move does not. A
+	// load is restoring authored layout, not accepting an edit, so it must ask the
+	// same question the candidate was asked - and asking it of an empty floor is
+	// what makes "the candidate accepted but the live authority refused"
+	// impossible rather than merely unlikely.
+	TMap<FName, FTransform> PreviousTransforms;
+	TArray<FName> Existing;
+	for (const FCigPlacementRecord& Record : GM->Placement->PlacementRecords())
+	{
+		if (Record.Lifetime == ECigPlacementLifetime::Installed)
+		{
+			Existing.Add(Record.StableId);
+			PreviousTransforms.Add(Record.StableId, Record.Transform);
+		}
+	}
+	// Transient placements are not in the file and must not be lost by the swap.
+	//
+	// A delivery crate belongs to the system that put it there, and its record has
+	// to survive a load the way the crate itself does. Carried into the candidate
+	// rather than re-added afterwards, so the layout that gets adopted is the whole
+	// truth about the floor and never briefly missing something standing on it.
+	//
+	// One that no longer fits is dropped rather than refusing the load: the saved
+	// layout is the player's decision and a crate is temporary, so a table moved
+	// onto a crate loses the crate. Logged, because the delivery system still
+	// thinks it has one.
+	for (const FCigPlacementRecord& Record : GM->Placement->PlacementRecords())
+	{
+		if (Record.Lifetime != ECigPlacementLifetime::Transient)
+		{
+			continue;
+		}
+		FCigPlacementRequest Request;
+		Request.StableId = Record.StableId;
+		Request.Category = Record.Category;
+		Request.Lifetime = Record.Lifetime;
+		Request.CandidateTransform = Record.Transform;
+		Request.Footprint = Record.Footprint;
+		Request.UseSpec = Record.UseSpec;
+		// The only context a transient placement is allowed in; see
+		// IsClassificationAllowed.
+		Request.Context = ECigPlacementContext::Delivery;
+
+		if (!Candidate.TryRegister(Request).bAccepted)
+		{
+			UE_LOG(LogCig, Warning,
+				TEXT("Yuklenen yerlesim gecici bir kaydin yerini aldi, dusuruldu: %s"),
+				*Record.StableId.ToString());
+		}
+	}
+
+	// The swap. One assignment rather than a replay of every record, so nothing
+	// downstream sees a shop that is half one layout and half another, and so the
+	// authority cannot answer differently the second time it is asked.
+	GM->Placement->AdoptValidatedLayout(Candidate);
+
+	for (const FName& Id : Existing)
+	{
+		if (!SavedIds.Contains(Id))
+		{
+			// The save does not mention it, so the player removed it. Destroyed
+			// rather than hidden: a hidden actor still occupies the world and would
+			// come back the next time anything iterated meshes.
+			PlacementVisuals.Release(Id, /*bDestroyActors=*/true);
+		}
+	}
+
+	for (const FCigSavePlacement& One : Saved)
+	{
+		SyncPlacementVisuals(One.StableId);
+
+		const FTransform* PreviousTransform = PreviousTransforms.Find(One.StableId);
+		if (!PreviousTransform)
+		{
+			continue;
+		}
+		const FCigPlacementRecord* NewRecord = GM->Placement->FindPlacement(One.StableId);
+		if (!NewRecord || NewRecord->Transform.Equals(*PreviousTransform, 0.01f))
+		{
+			continue;
+		}
+		// A chair belongs to its table. Leaving seat positions where the authored
+		// layout put them would have customers walking to where a table used to be,
+		// and the route audit asking about a chair that is no longer there.
+		for (FCigSeat& Seat : Seats)
+		{
+			if (Seat.PlacementId != One.StableId)
+			{
+				continue;
+			}
+			const FTransform Relative = CigPlacementVisualMath::MakeRelative(
+				*PreviousTransform, FTransform(FRotator(0.f, Seat.Yaw, 0.f), Seat.Pos));
+			const FTransform Moved = CigPlacementVisualMath::Resolve(NewRecord->Transform, Relative);
+			Seat.Pos = Moved.GetLocation();
+			Seat.Yaw = Moved.Rotator().Yaw;
+		}
+	}
+
+	return true;
 }
 
 UStaticMesh* UCigWorldBuilder::PreferDukkan(const TCHAR* DukkanName, UStaticMesh* KenneyFallback) const
@@ -764,11 +949,16 @@ void UCigWorldBuilder::BuildSeatingArea()
 		}
 		TableMesh = PreferDukkan(TEXT("table_061"), TableMesh);
 		TableMesh = PreferPark(TEXT("Props"), TEXT("SM_CafeTable01"), TableMesh); // the cafe table fits best
-		SpawnProp(TableMesh, FVector(X, Y, 0.f), 95.f, 0.f, FLinearColor(0.55f, 0.38f, 0.20f), true);
+
+		// Collected rather than attached here: the record does not exist until
+		// RegisterFixturePlacement below, and the offsets have to be captured
+		// against the transform the authority normalizes it to.
+		TArray<AActor*> TableActors;
+		TableActors.Add(SpawnProp(TableMesh, FVector(X, Y, 0.f), 95.f, 0.f, FLinearColor(0.55f, 0.38f, 0.20f), true));
 
 		// Table setting
-		SpawnProp(PreferDukkan(TEXT("21_Plates_served_with_bowl008"), nullptr),
-			FVector(X, Y, 96.f), 14.f, FMath::FRandRange(0.f, 360.f), FLinearColor(0.9f, 0.88f, 0.85f));
+		TableActors.Add(SpawnProp(PreferDukkan(TEXT("21_Plates_served_with_bowl008"), nullptr),
+			FVector(X, Y, 96.f), 14.f, FMath::FRandRange(0.f, 360.f), FLinearColor(0.9f, 0.88f, 0.85f)));
 
 		// Two chairs, on opposite sides of the table
 		const float SeatOffset = 95.f;
@@ -780,7 +970,7 @@ void UCigWorldBuilder::BuildSeatingArea()
 		{
 			const auto& Slot = Slots[SlotIndex];
 			const FVector SeatPos(X + Slot.DX, Y + Slot.DY, 0.f);
-			SpawnProp(PreferPark(TEXT("Props"), TEXT("SM_CafeChair01"), CigMesh::Furniture(TEXT("chairCushion"))), SeatPos, 90.f, Slot.Yaw + 180.f, FLinearColor(0.4f, 0.28f, 0.15f), false);
+			TableActors.Add(SpawnProp(PreferPark(TEXT("Props"), TEXT("SM_CafeChair01"), CigMesh::Furniture(TEXT("chairCushion"))), SeatPos, 90.f, Slot.Yaw + 180.f, FLinearColor(0.4f, 0.28f, 0.15f), false));
 			FCigSeat Seat;
 			Seat.Pos = FVector(X + Slot.DX, Y + Slot.DY, 0.f);
 			Seat.Yaw = Slot.Yaw; // facing the table
@@ -793,6 +983,13 @@ void UCigWorldBuilder::BuildSeatingArea()
 		// absent, but the authored fallback footprint does not disappear with them.
 		RegisterFixturePlacement(TablePlacementId, ECigPlacementCategory::Seating,
 			FVector(X, Y, 0.f), FVector2D(160.f, 280.f), 0.f, 2, FVector2D(160.f, 320.f));
+
+		// The table, its plate and both chairs are one record. A move has to take
+		// all four, which is the whole reason this join exists.
+		for (AActor* Actor : TableActors)
+		{
+			AttachPlacementVisual(TablePlacementId, Actor);
+		}
 	};
 
 	// Layout along the right wall (Y+ side) and near the entrance
@@ -804,9 +1001,11 @@ void UCigWorldBuilder::BuildSeatingArea()
 	// A small sofa corner (atmosphere)
 	const FVector SofaLocation(-600.f, 1050.f, 0.f);
 	constexpr float SofaYaw = 90.f;
-	SpawnProp(CigMesh::Furniture(TEXT("loungeSofa")), SofaLocation, 90.f, SofaYaw, FLinearColor(0.4f, 0.3f, 0.5f));
-	RegisterFixturePlacement(FName(*FString::Printf(TEXT("fixture.seating.%s"), TEXT("sofa"))),
-		ECigPlacementCategory::Decoration, SofaLocation, FVector2D(90.f, 180.f), SofaYaw);
+	AActor* Sofa = SpawnProp(CigMesh::Furniture(TEXT("loungeSofa")), SofaLocation, 90.f, SofaYaw, FLinearColor(0.4f, 0.3f, 0.5f));
+	const FName SofaId(*FString::Printf(TEXT("fixture.seating.%s"), TEXT("sofa")));
+	RegisterFixturePlacement(SofaId, ECigPlacementCategory::Decoration, SofaLocation,
+		FVector2D(90.f, 180.f), SofaYaw);
+	AttachPlacementVisual(SofaId, Sofa);
 }
 
 int32 UCigWorldBuilder::ReserveSeat()

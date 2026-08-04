@@ -33,6 +33,7 @@
 #include "Cat/CigCatSystem.h"
 #include "Vehicles/CigCar.h"
 #include "Save/CigSaveGame.h"
+#include "Placement/CigPlacementSystem.h"
 #include "Core/CigLog.h"
 #include "Core/CigUnlocks.h"
 #include "Core/CigRandomSubsystem.h"
@@ -276,6 +277,15 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 		Save.RngStateSeed = Rng->StateSeed();
 	}
 
+	// The installed shop layout. Written unconditionally, and the flag says so:
+	// an empty array on its own cannot be told from a save made before layout was
+	// persisted, and the two have to be handled in opposite ways.
+	if (Placement)
+	{
+		Save.InstalledLayout = CigSavePlacement::Capture(Placement->PlacementRecords());
+		Save.bLayoutPersisted = true;
+	}
+
 	Save.Settings.FOV = Settings.FOV;
 	Save.Settings.MouseSensitivity = Settings.MouseSensitivity;
 	Save.Settings.bHeadBob = Settings.bHeadBob;
@@ -304,6 +314,26 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 		}
 		// A 0 means the save predates v3; carry on with the fresh seed produced
 		// in Initialize (see MigrateV2ToV3).
+	}
+
+	// The layout, before anything that depends on where things are.
+	//
+	// Only when the save says it has one. A migrated pre-v13 file has an empty
+	// array that means "unknown", and applying it would clear the authored default
+	// the world builder has just put up - emptying a shop nobody emptied.
+	//
+	// A refused layout is logged and left: the shop keeps the authored default,
+	// which is playable, rather than half of each. The save is not rewritten here
+	// either, so the file the player has is still the file they had.
+	if (Save.bLayoutPersisted && WorldBuilder)
+	{
+		FString Diagnostic;
+		if (!WorldBuilder->ApplyLoadedLayout(Save.InstalledLayout, Diagnostic))
+		{
+			UE_LOG(LogCigSave, Error,
+				TEXT("Kayitli dukkan yerlesimi yuklenemedi, varsayilan yerlesim korundu: %s"),
+				*Diagnostic);
+		}
 	}
 
 	if (Days)

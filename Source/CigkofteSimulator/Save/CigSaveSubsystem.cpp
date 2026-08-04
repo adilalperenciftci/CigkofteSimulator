@@ -83,7 +83,11 @@ void UCigSaveSubsystem::MigrateSave(UCigSaveGame& Save)
 	{
 		MigrateV11ToV12(Save);
 	}
-	// In future: if (Save.SaveVersion < 13) { MigrateV12ToV13(Save); } ...
+	if (Save.SaveVersion < 13)
+	{
+		MigrateV12ToV13(Save);
+	}
+	// In future: if (Save.SaveVersion < 14) { MigrateV13ToV14(Save); } ...
 
 	Save.SaveVersion = CurrentVersion;
 	UE_LOG(LogCigSave, Log, TEXT("Kayıt taşındı: sürüm %d → %d"), From, CurrentVersion);
@@ -200,6 +204,19 @@ void UCigSaveSubsystem::MigrateV11ToV12(UCigSaveGame& Save)
 	}
 	Save.NextReviewId = Save.Reviews.Num() + 1;
 	Save.YanitlanacakYorumId = 0;
+}
+
+void UCigSaveSubsystem::MigrateV12ToV13(UCigSaveGame& Save)
+{
+	// v13 brought the installed shop layout into the save. A v12 file has none,
+	// and the honest conversion is to say so rather than to leave an empty array
+	// that reads as a shop somebody emptied.
+	//
+	// Clearing the array is not redundant with the flag. A v12 file cannot contain
+	// layout records, but a file whose version was edited backwards can, and the
+	// pair has to be consistent: not persisted means nothing to read.
+	Save.InstalledLayout.Reset();
+	Save.bLayoutPersisted = false;
 }
 
 bool UCigSaveSubsystem::SaveNow(ACigkofteGameMode* GM)
