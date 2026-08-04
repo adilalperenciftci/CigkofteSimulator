@@ -82,8 +82,11 @@ FCigLayoutLoadReport CigLayoutLoad::BuildCandidate(
 		if (!Result.bAccepted)
 		{
 			FCigLayoutLoadReport Bad = Fail(ECigLayoutLoadFailure::Rejected, One.StableId,
-				FString::Printf(TEXT("yerlesim reddedildi (%d)"), (int32)Result.Failure));
+				FString::Printf(TEXT("%s reddedildi (kod %d, catisan: %s, bolge: %s)"),
+					*One.StableId.ToString(), (int32)Result.Failure,
+					*Result.ConflictingStableId.ToString(), *Result.ProtectedZoneId.ToString()));
 			Bad.PlacementFailure = Result.Failure;
+			Bad.ConflictingStableId = Result.ConflictingStableId;
 			Bad.RegisteredCount = Report.RegisteredCount;
 			return Bad;
 		}

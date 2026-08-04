@@ -44,6 +44,10 @@ struct FCigLayoutLoadReport
 	FName FailedStableId;
 	ECigSavePlacementFault RecordFault = ECigSavePlacementFault::None;
 	ECigPlacementFailure PlacementFailure = ECigPlacementFailure::None;
+	// The record already on the floor that the refused one ran into. Without it a
+	// rejected layout says only "overlap", and the two placements involved are
+	// exactly what anyone reading the report needs.
+	FName ConflictingStableId;
 	FName ClosedRouteId;
 
 	// How many records were registered before the transaction was abandoned.

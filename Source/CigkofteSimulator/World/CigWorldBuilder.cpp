@@ -6,6 +6,9 @@
 #include "Navigation/CigNavLayout.h"
 // The street's own numbers, and the pedestrian lanes derived from them.
 #include "Navigation/CigPedRegion.h"
+// Restoring a saved layout: the transaction that decides whether it may, and the
+// value type it arrives as.
+#include "Save/CigLayoutLoad.h"
 #include "Events/CigEventSystem.h"
 #include "Customers/CigkofteCustomer.h"
 #include "Vehicles/CigCar.h"
@@ -378,6 +381,117 @@ int32 UCigWorldBuilder::SyncPlacementVisuals(FName StableId)
 		return 0;
 	}
 	return PlacementVisuals.Apply(StableId, Record->Transform);
+}
+
+bool UCigWorldBuilder::ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved, FString& OutDiagnostic)
+{
+	OutDiagnostic.Reset();
+	if (!GM || !GM->Placement)
+	{
+		OutDiagnostic = TEXT("yerlesim sistemi yok");
+		return false;
+	}
+
+	// Seat stands come from the world as it stands now. A saved layout that closes
+	// the way to a chair has to be refused before anything moves, and the chairs
+	// this shop has are the ones to ask about.
+	TArray<FVector2D> SeatStands;
+	SeatStands.Reserve(Seats.Num());
+	for (const FCigSeat& Seat : Seats)
+	{
+		SeatStands.Add(FVector2D(Seat.Pos.X, Seat.Pos.Y));
+	}
+
+	FCigPlacementAuthority Candidate;
+	const FCigLayoutLoadReport Report = CigLayoutLoad::BuildCandidate(Saved,
+		CigPlacementLayout::ShopBounds(), CigLayoutLoad::ShopProtectedZones(), SeatStands, Candidate);
+	if (!Report.bAccepted)
+	{
+		// Nothing has been touched. The authored default is still standing, which
+		// is the state a refused load has to leave behind.
+		OutDiagnostic = FString::Printf(TEXT("%s: %s"),
+			CigLayoutLoad::FailureText(Report.Failure), *Report.Diagnostic);
+		UE_LOG(LogCig, Warning, TEXT("Kayitli yerlesim reddedildi - %s"), *OutDiagnostic);
+		return false;
+	}
+
+	// From here the layout is known good and the shop is brought to match it.
+	TSet<FName> SavedIds;
+	SavedIds.Reserve(Saved.Num());
+	for (const FCigSavePlacement& One : Saved)
+	{
+		SavedIds.Add(One.StableId);
+	}
+
+	// Every installed record comes out before any goes back in, and the transforms
+	// they had are kept so seats can be moved by the delta their table moved by.
+	//
+	// Clearing rather than registering over the top. Re-registering an ID that is
+	// still on the floor is a move, and a move is judged by different rules than
+	// world registration: the service counter stands in the middle of the entrance
+	// by authored design, which registration allows and a player move does not. A
+	// load is restoring authored layout, not accepting an edit, so it must ask the
+	// same question the candidate was asked - and asking it of an empty floor is
+	// what makes "the candidate accepted but the live authority refused"
+	// impossible rather than merely unlikely.
+	TMap<FName, FTransform> PreviousTransforms;
+	TArray<FName> Existing;
+	for (const FCigPlacementRecord& Record : GM->Placement->PlacementRecords())
+	{
+		if (Record.Lifetime == ECigPlacementLifetime::Installed)
+		{
+			Existing.Add(Record.StableId);
+			PreviousTransforms.Add(Record.StableId, Record.Transform);
+		}
+	}
+	// The swap. One assignment rather than a replay of every record, so nothing
+	// downstream sees a shop that is half one layout and half another, and so the
+	// authority cannot answer differently the second time it is asked.
+	GM->Placement->AdoptValidatedLayout(Candidate);
+
+	for (const FName& Id : Existing)
+	{
+		if (!SavedIds.Contains(Id))
+		{
+			// The save does not mention it, so the player removed it. Destroyed
+			// rather than hidden: a hidden actor still occupies the world and would
+			// come back the next time anything iterated meshes.
+			PlacementVisuals.Release(Id, /*bDestroyActors=*/true);
+		}
+	}
+
+	for (const FCigSavePlacement& One : Saved)
+	{
+		SyncPlacementVisuals(One.StableId);
+
+		const FTransform* PreviousTransform = PreviousTransforms.Find(One.StableId);
+		if (!PreviousTransform)
+		{
+			continue;
+		}
+		const FCigPlacementRecord* NewRecord = GM->Placement->FindPlacement(One.StableId);
+		if (!NewRecord || NewRecord->Transform.Equals(*PreviousTransform, 0.01f))
+		{
+			continue;
+		}
+		// A chair belongs to its table. Leaving seat positions where the authored
+		// layout put them would have customers walking to where a table used to be,
+		// and the route audit asking about a chair that is no longer there.
+		for (FCigSeat& Seat : Seats)
+		{
+			if (Seat.PlacementId != One.StableId)
+			{
+				continue;
+			}
+			const FTransform Relative = CigPlacementVisualMath::MakeRelative(
+				*PreviousTransform, FTransform(FRotator(0.f, Seat.Yaw, 0.f), Seat.Pos));
+			const FTransform Moved = CigPlacementVisualMath::Resolve(NewRecord->Transform, Relative);
+			Seat.Pos = Moved.GetLocation();
+			Seat.Yaw = Moved.Rotator().Yaw;
+		}
+	}
+
+	return true;
 }
 
 UStaticMesh* UCigWorldBuilder::PreferDukkan(const TCHAR* DukkanName, UStaticMesh* KenneyFallback) const

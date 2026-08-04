@@ -7,6 +7,7 @@
 // Held by value: the builder owns the join between placement records and the
 // actors that represent them.
 #include "Placement/CigPlacementVisuals.h"
+#include "Save/CigSavePlacement.h"
 #include "CigWorldBuilder.generated.h"
 
 class ACigkofteStation;
@@ -264,6 +265,17 @@ public:
 	// Moves a placement's actors to follow its current record. Returns how many
 	// moved.
 	int32 SyncPlacementVisuals(FName StableId);
+
+	// Replaces the installed layout with a saved one, and moves the shop to match.
+	//
+	// All or nothing. The candidate is validated whole by CigLayoutLoad before
+	// anything here changes, so a refused layout leaves the authored default
+	// standing rather than half of each. Returns false and writes why into
+	// OutDiagnostic when the layout is refused; the shop is untouched in that case.
+	//
+	// Records the save does not mention are records the player removed: their
+	// placement goes, and so do their actors.
+	bool ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved, FString& OutDiagnostic);
 
 private:
 	void RegisterFixturePlacement(FName StableId, ECigPlacementCategory Category,

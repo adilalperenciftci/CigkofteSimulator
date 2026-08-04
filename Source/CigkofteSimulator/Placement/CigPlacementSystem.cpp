@@ -32,6 +32,21 @@ FCigPlacementResult UCigPlacementSystem::RegisterPlacement(const FCigPlacementRe
 	return Result;
 }
 
+void UCigPlacementSystem::AdoptValidatedLayout(const FCigPlacementAuthority& Candidate)
+{
+	Authority = Candidate;
+
+	// One notification for the whole layout. Broadcasting per record would have
+	// navigation bump its revision thirty times for a single load, and every
+	// customer already walking repath against each intermediate shop.
+	FCigPlacementChange Change;
+	Change.StableId = NAME_None;
+	Change.Mutation = ECigPlacementMutation::Moved;
+	Change.Category = ECigPlacementCategory::Unknown;
+	Change.Lifetime = ECigPlacementLifetime::Installed;
+	Bus().PlacementChanged.Broadcast(Change);
+}
+
 FCigPlacementResult UCigPlacementSystem::FindFirstValidPlacement(const FCigPlacementRequest& BaseRequest,
 	const TArray<FTransform>& OrderedCandidates) const
 {

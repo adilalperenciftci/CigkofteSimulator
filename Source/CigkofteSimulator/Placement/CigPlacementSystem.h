@@ -25,6 +25,21 @@ public:
 	bool TryGetPlacementConsequence(FName StableId, FCigPlacementConsequence& OutConsequence) const;
 	bool AddProtectedZone(const FCigProtectedZone& Zone);
 
+	// Replaces the whole record set with a candidate that has already been
+	// validated as a whole.
+	//
+	// This is the swap the transactional load exists to perform, and it is a swap
+	// rather than a replay for a reason found the hard way: re-registering the
+	// saved records one at a time asks the authority a different question than the
+	// candidate was asked, and the answers differed. The authored service counter
+	// stands in the entrance by design - accepted when the shop is built, refused
+	// when the same record is offered to a floor whose history is not the same. A
+	// layout that has been judged good must not be judged again on the way in.
+	//
+	// Publishes exactly one PlacementChanged, because the point of validating the
+	// whole layout first is that nothing downstream has to see it arrive in pieces.
+	void AdoptValidatedLayout(const FCigPlacementAuthority& Candidate);
+
 	int32 PlacementCount() const { return Authority.RecordCount(); }
 	int32 PlacementCountByCategory(ECigPlacementCategory Category) const { return Authority.CountByCategory(Category); }
 	int32 PlacementCountByLifetime(ECigPlacementLifetime Lifetime) const { return Authority.CountByLifetime(Lifetime); }
