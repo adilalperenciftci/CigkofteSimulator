@@ -27,7 +27,16 @@ public:
 	// Version 10: the licence, inspection record and bribe count entered the save.
 	// Version 11: the follower count entered the save.
 	// Version 12: reviews gained stable IDs and the pending reply is held by ID.
-	static constexpr int32 CurrentVersion = 12;
+	// Version 13: the installed shop layout entered the save.
+	//
+	// Version 13 exists for a reason that is not "a field was added". An absent
+	// array reads back empty and would have been harmless; what is not harmless is
+	// that empty would then mean two different things - a save written before
+	// layout was persisted, whose layout is unknown and must fall back to the
+	// authored default, and a v13 save of a shop the player has genuinely emptied.
+	// Load cannot tell those apart from the array, so bLayoutPersisted says which,
+	// and MigrateV12ToV13 is what sets it for every older file.
+	static constexpr int32 CurrentVersion = 13;
 
 	bool HasSave() const;
 	bool SaveNow(ACigkofteGameMode* GM);
@@ -60,4 +69,5 @@ private:
 	static void MigrateV9ToV10(UCigSaveGame& Save);
 	static void MigrateV10ToV11(UCigSaveGame& Save);
 	static void MigrateV11ToV12(UCigSaveGame& Save);
+	static void MigrateV12ToV13(UCigSaveGame& Save);
 };

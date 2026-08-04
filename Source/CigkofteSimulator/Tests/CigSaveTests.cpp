@@ -218,4 +218,114 @@ bool FCigSaveGuardsTest::RunTest(const FString& /*Parameters*/)
 	return true;
 }
 
+// ------------------------------------------------- version 13: the shop layout
+
+namespace
+{
+	FCigSavePlacement KayitliMasa(const TCHAR* Kimlik, float X, float Y)
+	{
+		FCigSavePlacement S;
+		S.StableId = FName(Kimlik);
+		S.Category = (uint8)ECigPlacementCategory::Seating;
+		S.Lifetime = (uint8)ECigPlacementLifetime::Installed;
+		S.Transform = FTransform(FRotator::ZeroRotator, FVector(X, Y, 0.f));
+		S.FootprintSize = FVector2D(160.f, 280.f);
+		S.UseSize = FVector2D(160.f, 320.f);
+		S.FunctionalCapacity = 2;
+		return S;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigSaveV12HasNoLayoutTest,
+	"Cigkofte.SaveMigration.AV12SaveSaysItsLayoutIsUnknownRatherThanEmpty",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigSaveV12HasNoLayoutTest::RunTest(const FString&)
+{
+	// The whole reason version 13 exists. After migration the version stamp says
+	// 13 and the array is empty, and without the flag load could not tell that
+	// from a shop somebody cleared out.
+	UCigSaveGame* S = EskiKayit(12);
+	S->AddToRoot();
+	UCigSaveSubsystem::MigrateSave(*S);
+
+	TestEqual(TEXT("v12 kayit guncel surume tasinmali"), S->SaveVersion, UCigSaveSubsystem::CurrentVersion);
+	TestFalse(TEXT("v12 kaydin yerlesimi kaydedilmis sayilmamali"), S->bLayoutPersisted);
+	TestEqual(TEXT("v12 kaydinda yerlesim kaydi olmamali"), S->InstalledLayout.Num(), 0);
+	S->RemoveFromRoot();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigSaveEditedVersionTest,
+	"Cigkofte.SaveMigration.ALayoutInAFileTooOldToHaveOneIsDropped",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigSaveEditedVersionTest::RunTest(const FString&)
+{
+	// A v12 file cannot contain layout records, but a file whose version was
+	// edited backwards can. The flag and the array have to stay consistent: not
+	// persisted means there is nothing to read.
+	UCigSaveGame* S = EskiKayit(12);
+	S->AddToRoot();
+	S->InstalledLayout.Add(KayitliMasa(TEXT("fixture.seating.table.0"), -300.f, 950.f));
+	S->bLayoutPersisted = true;
+
+	UCigSaveSubsystem::MigrateSave(*S);
+
+	TestFalse(TEXT("Tasinan eski kayit yerlesim iddia etmemeli"), S->bLayoutPersisted);
+	TestEqual(TEXT("Tasinan eski kaydin yerlesimi temizlenmeli"), S->InstalledLayout.Num(), 0);
+	S->RemoveFromRoot();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigSaveV13KeepsLayoutTest,
+	"Cigkofte.SaveMigration.AV13SaveKeepsItsLayoutUntouched",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigSaveV13KeepsLayoutTest::RunTest(const FString&)
+{
+	// Nothing in the chain runs for a file already at the current version, and
+	// this is what proves the new step does not fire on one.
+	UCigSaveGame* S = EskiKayit(13);
+	S->AddToRoot();
+	S->InstalledLayout.Add(KayitliMasa(TEXT("fixture.seating.table.0"), -300.f, 950.f));
+	S->InstalledLayout.Add(KayitliMasa(TEXT("fixture.seating.table.1"), -300.f, -950.f));
+	S->bLayoutPersisted = true;
+
+	UCigSaveSubsystem::MigrateSave(*S);
+
+	TestTrue(TEXT("v13 kaydin yerlesim iddiasi korunmali"), S->bLayoutPersisted);
+	TestEqual(TEXT("v13 kaydin yerlesimi korunmali"), S->InstalledLayout.Num(), 2);
+	TestEqual(TEXT("Kayit kimligi korunmali"), S->InstalledLayout[0].StableId,
+		FName(TEXT("fixture.seating.table.0")));
+	S->RemoveFromRoot();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigSaveEmptyButPersistedTest,
+	"Cigkofte.SaveMigration.AnEmptiedShopIsNotTheSameAsAnUnknownLayout",
+	EAutomationTestFlags_ApplicationContextMask | EAutomationTestFlags::ProductFilter)
+
+bool FCigSaveEmptyButPersistedTest::RunTest(const FString&)
+{
+	// The two states the array cannot distinguish, side by side.
+	UCigSaveGame* Bosaltilmis = EskiKayit(13);
+	Bosaltilmis->AddToRoot();
+	Bosaltilmis->bLayoutPersisted = true;
+	UCigSaveSubsystem::MigrateSave(*Bosaltilmis);
+
+	UCigSaveGame* Bilinmeyen = EskiKayit(12);
+	Bilinmeyen->AddToRoot();
+	UCigSaveSubsystem::MigrateSave(*Bilinmeyen);
+
+	TestEqual(TEXT("Ikisinin de yerlesim dizisi bos"),
+		Bosaltilmis->InstalledLayout.Num(), Bilinmeyen->InstalledLayout.Num());
+	TestNotEqual(TEXT("Ama ikisi ayni sey degil"),
+		Bosaltilmis->bLayoutPersisted, Bilinmeyen->bLayoutPersisted);
+
+	Bosaltilmis->RemoveFromRoot();
+	Bilinmeyen->RemoveFromRoot();
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
