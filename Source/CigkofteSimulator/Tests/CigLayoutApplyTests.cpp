@@ -8,7 +8,9 @@
 
 #include "Misc/AutomationTest.h"
 #include "Save/CigSavePlacement.h"
+#include "Save/CigSaveGame.h"
 #include "Placement/CigPlacementSystem.h"
+#include "Navigation/CigNavSystem.h"
 #include "Tests/CigTestShop.h"
 #include "World/CigWorldBuilder.h"
 
@@ -246,6 +248,135 @@ bool FCigApplyRoundTripTest::RunTest(const FString&)
 		TestTrue(FString::Printf(TEXT("%s ayni yerde olmali"), *Again[i].StableId.ToString()),
 			Again[i].Transform.GetLocation().Equals(Saved[i].Transform.GetLocation(), 1.f));
 	}
+	return true;
+}
+
+// ------------------------------------------------------ the bulk load boundary
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigApplyOneEventTest,
+	"Cigkofte.LayoutApply.AWholeLayoutArrivesAsOneChangeNotThirty",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigApplyOneEventTest::RunTest(const FString&)
+{
+	FCigTestShop Shop;
+	if (!BuildShop(Shop, *this)) { return false; }
+	if (!Shop.GM->Nav)
+	{
+		AddError(TEXT("Navigasyon sistemi yok."));
+		return false;
+	}
+
+	// Ask once so the grid is built and not merely dirty, or the assertion below
+	// would pass on a rebuild that never happened.
+	Shop.GM->Nav->AreRequiredRoutesOpen();
+	const int32 RevisionBefore = Shop.GM->Nav->LayoutRevision();
+	const int32 RebuildsBefore = Shop.GM->Nav->RebuildCount();
+
+	const TArray<FCigSavePlacement> Saved = CaptureLive(Shop);
+	TestTrue(TEXT("Yerlesim yeterince buyuk olmali"), Saved.Num() > 10);
+
+	FString Diagnostic;
+	if (!Shop.GM->WorldBuilder->ApplyLoadedLayout(Saved, Diagnostic))
+	{
+		AddError(FString::Printf(TEXT("Yerlesim kabul edilmedi: %s"), *Diagnostic));
+		return false;
+	}
+
+	// One notification for the whole layout. Per-record broadcasts would bump this
+	// once per placement, and every customer already walking would repath against
+	// each intermediate shop on the way.
+	TestEqual(TEXT("Yerlesim revizyonu bir kez artmali"),
+		Shop.GM->Nav->LayoutRevision(), RevisionBefore + 1);
+
+	// Lazily, too: nothing rebuilds until something asks.
+	TestEqual(TEXT("Yukleme kendi basina yeniden kurmamali"),
+		Shop.GM->Nav->RebuildCount(), RebuildsBefore);
+	TestTrue(TEXT("Yukleme sonrasi grid kirli olmali"), Shop.GM->Nav->IsDirty());
+
+	Shop.GM->Nav->AreRequiredRoutesOpen();
+	TestEqual(TEXT("Ilk sorgu tam bir kez yeniden kurmali"),
+		Shop.GM->Nav->RebuildCount(), RebuildsBefore + 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigSaveLayoutRoundTripTest,
+	"Cigkofte.LayoutApply.SaveThenLoadPutsTheShopBackWhereItWas",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigSaveLayoutRoundTripTest::RunTest(const FString&)
+{
+	FCigTestShop Shop;
+	if (!BuildShop(Shop, *this)) { return false; }
+
+	// Through the real save object, so the capture and apply the game uses are the
+	// ones being measured rather than the helpers underneath them.
+	UCigSaveGame* Save = NewObject<UCigSaveGame>();
+	Save->AddToRoot();
+	Shop.GM->CaptureSave(*Save);
+
+	TestTrue(TEXT("Kaydedilen yerlesim isaretlenmeli"), Save->bLayoutPersisted);
+	TestTrue(TEXT("Kaydedilen yerlesim dolu olmali"), Save->InstalledLayout.Num() > 10);
+
+	// Only installed placements are written, and every one of them is.
+	int32 LiveInstalled = 0;
+	for (const FCigPlacementRecord& Record : Shop.GM->Placement->PlacementRecords())
+	{
+		if (Record.Lifetime == ECigPlacementLifetime::Installed) { ++LiveInstalled; }
+	}
+	TestEqual(TEXT("Kurulu kayitlarin hepsi yazilmali"), Save->InstalledLayout.Num(), LiveInstalled);
+
+	// Move a table in the file, then load it back into the same shop.
+	FCigSavePlacement* Moved = Save->InstalledLayout.FindByPredicate([](const FCigSavePlacement& S)
+	{
+		return S.StableId == FName(TableId);
+	});
+	if (!Moved)
+	{
+		AddError(TEXT("Kaydedilen yerlesimde masa yok."));
+		Save->RemoveFromRoot();
+		return false;
+	}
+	const FVector Target = Moved->Transform.GetLocation() + FVector(0.f, 60.f, 0.f);
+	Moved->Transform.SetLocation(Target);
+
+	Shop.GM->ApplySave(*Save);
+
+	const FCigPlacementRecord* After = Shop.GM->Placement->FindPlacement(FName(TableId));
+	TestTrue(TEXT("Yuklenen yerlesim uygulanmali"),
+		After && After->Transform.GetLocation().Equals(Target, 1.f));
+
+	Save->RemoveFromRoot();
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigSaveUnknownLayoutTest,
+	"Cigkofte.LayoutApply.ASaveWithNoRecordedLayoutLeavesTheAuthoredDefaultAlone",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigSaveUnknownLayoutTest::RunTest(const FString&)
+{
+	FCigTestShop Shop;
+	if (!BuildShop(Shop, *this)) { return false; }
+
+	const int32 BeforeCount = Shop.GM->Placement->PlacementCount();
+
+	// A migrated pre-v13 file: empty array, and it means "unknown" rather than
+	// "empty". Applying it would clear the shop the world builder just put up.
+	UCigSaveGame* Save = NewObject<UCigSaveGame>();
+	Save->AddToRoot();
+	Shop.GM->CaptureSave(*Save);
+	Save->InstalledLayout.Reset();
+	Save->bLayoutPersisted = false;
+
+	Shop.GM->ApplySave(*Save);
+
+	TestEqual(TEXT("Bilinmeyen yerlesim dukkani bosaltmamali"),
+		Shop.GM->Placement->PlacementCount(), BeforeCount);
+	TestTrue(TEXT("Masa hala yerinde olmali"),
+		Shop.GM->Placement->FindPlacement(FName(TableId)) != nullptr);
+
+	Save->RemoveFromRoot();
 	return true;
 }
 
