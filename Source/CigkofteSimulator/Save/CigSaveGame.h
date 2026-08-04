@@ -248,6 +248,16 @@ public:
 	// tell them apart once MigrateV12ToV13 has moved the version forward.
 	UPROPERTY() bool bLayoutPersisted = false;
 
+	// --- Shop identity (version 14) ---
+	// Empty means the shop was never named and shows its default. No companion
+	// flag is needed here, unlike the layout: an empty name is not a state a
+	// player can choose - CigShopIdentity refuses it - so empty has exactly one
+	// meaning.
+	//
+	// Not translated, and deliberately not a text key. A name given in Turkish
+	// stays that name when the interface is switched to English.
+	UPROPERTY() FString ShopName;
+
 	// --- Randomness ---
 	// The session's starting seed (the number quoted in bug reports) and the
 	// stream's current position. Both are written so a load does not replay the

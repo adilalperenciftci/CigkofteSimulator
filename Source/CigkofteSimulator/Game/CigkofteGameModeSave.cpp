@@ -286,6 +286,13 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 		Save.bLayoutPersisted = true;
 	}
 
+	// The shop's name, raw. Stored unresolved so "never named" survives as itself
+	// rather than being written down as whatever the default happens to be today.
+	if (WorldBuilder)
+	{
+		Save.ShopName = WorldBuilder->ShopName;
+	}
+
 	Save.Settings.FOV = Settings.FOV;
 	Save.Settings.MouseSensitivity = Settings.MouseSensitivity;
 	Save.Settings.bHeadBob = Settings.bHeadBob;
@@ -325,6 +332,15 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 	// A refused layout is logged and left: the shop keeps the authored default,
 	// which is playable, rather than half of each. The save is not rewritten here
 	// either, so the file the player has is still the file they had.
+	// The name before the board is repainted. Taken raw and left raw: an empty
+	// name is a shop that was never named, and resolving it here would write the
+	// default in as if the player had chosen it.
+	if (WorldBuilder)
+	{
+		WorldBuilder->ShopName = Save.ShopName;
+		WorldBuilder->RefreshShopSign();
+	}
+
 	if (Save.bLayoutPersisted && WorldBuilder)
 	{
 		FString Diagnostic;

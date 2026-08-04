@@ -8,6 +8,8 @@
 // actors that represent them.
 #include "Placement/CigPlacementVisuals.h"
 #include "Save/CigSavePlacement.h"
+// The shop's name and the rules it has to satisfy.
+#include "Game/CigShopIdentity.h"
 #include "CigWorldBuilder.generated.h"
 
 class ACigkofteStation;
@@ -255,6 +257,12 @@ public:
 	// record has at least one actor - is only checkable from outside.
 	FCigPlacementVisualRegistry PlacementVisuals;
 
+	// Empty means "never named", which Resolve turns into the default. Stored raw
+	// rather than resolved so a save can tell the two apart, the same way the
+	// layout's own flag does.
+	FString ShopName;
+	TWeakObjectPtr<AActor> ShopSignActor;
+
 	// Records Actor as part of StableId, in the frame of the record's *normalized*
 	// transform. Normalized rather than the requested one: the authority snaps
 	// position and rotation, so capturing against the request would bake the snap
@@ -276,6 +284,24 @@ public:
 	// Records the save does not mention are records the player removed: their
 	// placement goes, and so do their actors.
 	bool ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved, FString& OutDiagnostic);
+
+	// --- Shop identity ---
+	//
+	// The name on the shopfront board. Held here because the builder owns the
+	// board; validated and defaulted by CigShopIdentity, which is where the rules
+	// are and where they are tested.
+
+	// What the sign says. Never empty: an unnamed shop shows the default.
+	FString ShopDisplayName() const;
+
+	// Renames the shop and repaints the board. Returns the fault when the name is
+	// refused, in which case nothing changes - a refused rename must not quietly
+	// blank a sign that was fine.
+	ECigShopNameFault SetShopName(const FString& Raw);
+
+	// Puts the current name back on the board. Called after a load, because the
+	// board is built before the save is read.
+	void RefreshShopSign();
 
 private:
 	void RegisterFixturePlacement(FName StableId, ECigPlacementCategory Category,

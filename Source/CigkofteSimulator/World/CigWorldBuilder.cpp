@@ -351,6 +351,38 @@ void UCigWorldBuilder::RegisterFixturePlacement(FName StableId, ECigPlacementCat
 	}
 }
 
+FString UCigWorldBuilder::ShopDisplayName() const
+{
+	return CigShopIdentity::Resolve(ShopName);
+}
+
+ECigShopNameFault UCigWorldBuilder::SetShopName(const FString& Raw)
+{
+	const ECigShopNameFault Fault = CigShopIdentity::Validate(Raw);
+	if (Fault != ECigShopNameFault::None)
+	{
+		// Nothing changes. A refused rename that still cleared the name would
+		// blank a sign that was perfectly good a moment ago.
+		return Fault;
+	}
+	ShopName = CigShopIdentity::Normalize(Raw);
+	RefreshShopSign();
+	return ECigShopNameFault::None;
+}
+
+void UCigWorldBuilder::RefreshShopSign()
+{
+	AActor* Sign = ShopSignActor.Get();
+	if (!IsValid(Sign))
+	{
+		return;
+	}
+	if (UTextRenderComponent* Text = Sign->FindComponentByClass<UTextRenderComponent>())
+	{
+		Text->SetText(FText::FromString(ShopDisplayName()));
+	}
+}
+
 bool UCigWorldBuilder::AttachPlacementVisual(FName StableId, AActor* Actor)
 {
 	if (!GM || !GM->Placement)
@@ -799,7 +831,10 @@ void UCigWorldBuilder::BuildKitchen()
 	// them, while the inside sees the board and nothing else. Putting it at -733
 	// gets this exactly backwards and hides the sign from the customers.
 	SpawnBox(FVector(-710.f, 0.f, 430.f), FVector(0.15f, 6.f, 1.3f), FLinearColor(0.10f, 0.09f, 0.08f));
-	SpawnWorldText(FVector(-720.f, 0.f, 430.f), TEXT("CIGKOFTECI"), 90.f, FColor(255, 140, 40), 180.f);
+	// The name on the board, kept so it can change without rebuilding the shop.
+	// It used to be a literal here, which is why nothing could rename it.
+	ShopSignActor = SpawnWorldText(FVector(-720.f, 0.f, 430.f), ShopDisplayName(), 90.f,
+		FColor(255, 140, 40), 180.f);
 
 	// Two posts holding the canopy up.
 	//
