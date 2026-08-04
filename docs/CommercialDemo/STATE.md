@@ -128,6 +128,38 @@ Stage 3.5 placement persistence starts after those, on
 
 ## Current task
 
+**Stage 3.5: the shop layout persists.** Save version 13. The installed layout is
+captured as authored inputs only — the consequence is derived by policy, so
+storing it would be a second authority — validated as a whole candidate before
+anything swaps, and adopted in one assignment that publishes one event.
+
+Version 13 is not about a new field. An absent array reads back empty, and empty
+would otherwise mean both "written before layout was persisted" and "a shop the
+player emptied"; `bLayoutPersisted` says which, and `MigrateV12ToV13` sets it for
+every older file.
+
+Three things the audit found before any code, two of which changed the plan: there
+is no player-facing build mode yet, so this is the machinery rather than a feature
+players will see; records and meshes were not connected at all, which became step
+1; and a record is self-describing, which is why a full snapshot beats a delta.
+
+The tests earned their place. The visual invariant failed on its first run —
+`fixture.seating.sofa` had been a registered placement since Stage 3.3 with no
+actor attached. Re-registering saved records refused an unchanged layout, because
+the authored service counter stands in the entrance and a move is judged
+differently from a registration; that is why the swap is an assignment. And the
+assignment then dropped delivery crates, which the transient tests caught.
+
+203 automation tests, both packages clean, both self-tests passed,
+`Verify-Release` PASS. The packaged round trip is checked inside the package by
+the `kayit-turu` self-test rather than inferred from the editor suite.
+
+Nobody has moved a table: there is no build mode to move one with, so every run so
+far persists the authored default and the move cases are exercised by editing a
+captured layout in a test.
+
+## Previous task
+
 **Ambient pedestrian containment.** The wander rectangle handed to main-street
 pedestrians was X in [-2250, -1450] and the carriageway is X in [-2150, -1450]:
 the box was the road, and eight pedestrians walked in moving traffic. The street

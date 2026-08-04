@@ -397,6 +397,7 @@ int32 CigReleaseSelfTest::Run(ACigkofteGameMode& GameMode)
 		UCigSaveGame* A = NewObject<UCigSaveGame>(&GameMode);
 		UCigSaveGame* B = NewObject<UCigSaveGame>(&GameMode);
 		bool bOk = A && B;
+		FString Detail;
 		if (bOk)
 		{
 			GameMode.CaptureSave(*A);
@@ -404,8 +405,47 @@ int32 CigReleaseSelfTest::Run(ACigkofteGameMode& GameMode)
 			GameMode.CaptureSave(*B);
 			bOk = A->Day == B->Day && A->Money == B->Money
 				&& A->UrunCarpanlari.Num() == B->UrunCarpanlari.Num();
+			if (!bOk)
+			{
+				Detail = TEXT("capture/apply ayni durumu vermedi");
+			}
 		}
-		Add(TEXT("kayit-turu"), bOk, bOk ? TEXT("") : TEXT("capture/apply ayni durumu vermedi"));
+
+		// The shop layout goes round the same trip. Checked here rather than in a
+		// check of its own so the packaged harness contract does not move: the
+		// automation suite proves the layout rules, and what a package can add is
+		// that they still hold in a build with no editor, no log and no console.
+		if (bOk)
+		{
+			bOk = A->bLayoutPersisted && B->bLayoutPersisted
+				&& A->InstalledLayout.Num() == B->InstalledLayout.Num()
+				&& A->InstalledLayout.Num() > 0;
+			if (!bOk)
+			{
+				Detail = FString::Printf(TEXT("yerlesim turu bozuk: %d -> %d (isaret %d/%d)"),
+					A->InstalledLayout.Num(), B->InstalledLayout.Num(),
+					A->bLayoutPersisted ? 1 : 0, B->bLayoutPersisted ? 1 : 0);
+			}
+		}
+		if (bOk)
+		{
+			// Order and position, not just the count: a layout that came back with
+			// the right number of placements in the wrong places would pass a count.
+			for (int32 i = 0; i < A->InstalledLayout.Num(); ++i)
+			{
+				const FCigSavePlacement& Before = A->InstalledLayout[i];
+				const FCigSavePlacement& After = B->InstalledLayout[i];
+				if (Before.StableId != After.StableId
+					|| !Before.Transform.GetLocation().Equals(After.Transform.GetLocation(), 0.01f))
+				{
+					bOk = false;
+					Detail = FString::Printf(TEXT("yerlesim %d degisti: %s -> %s"),
+						i, *Before.StableId.ToString(), *After.StableId.ToString());
+					break;
+				}
+			}
+		}
+		Add(TEXT("kayit-turu"), bOk, Detail);
 	}
 
 	// 11. A Shipping controller must have neither an instance nor a class from

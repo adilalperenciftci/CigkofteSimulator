@@ -18,7 +18,7 @@
 
 namespace
 {
-	const TCHAR* TableId = TEXT("fixture.seating.table.0");
+	const TCHAR* LayoutTestTableId = TEXT("fixture.seating.table.0");
 
 	bool BuildShop(FCigTestShop& Shop, FAutomationTestBase& Test)
 	{
@@ -53,7 +53,7 @@ bool FCigApplyUnchangedTest::RunTest(const FString&)
 
 	const TArray<FCigSavePlacement> Saved = CaptureLive(Shop);
 	const int32 BeforeCount = Shop.GM->Placement->PlacementCount();
-	const FVector BeforeTable = Shop.GM->Placement->FindPlacement(FName(TableId))->Transform.GetLocation();
+	const FVector BeforeTable = Shop.GM->Placement->FindPlacement(FName(LayoutTestTableId))->Transform.GetLocation();
 	const int32 BeforeSeats = Shop.GM->WorldBuilder->Seats.Num();
 
 	FString Diagnostic;
@@ -63,7 +63,7 @@ bool FCigApplyUnchangedTest::RunTest(const FString&)
 	TestEqual(TEXT("Kayit sayisi degismemeli"), Shop.GM->Placement->PlacementCount(), BeforeCount);
 	TestEqual(TEXT("Koltuk sayisi degismemeli"), Shop.GM->WorldBuilder->Seats.Num(), BeforeSeats);
 	TestTrue(TEXT("Masa yerinde kalmali"),
-		Shop.GM->Placement->FindPlacement(FName(TableId))->Transform.GetLocation().Equals(BeforeTable, 0.01f));
+		Shop.GM->Placement->FindPlacement(FName(LayoutTestTableId))->Transform.GetLocation().Equals(BeforeTable, 0.01f));
 	return true;
 }
 
@@ -76,7 +76,7 @@ bool FCigApplyMovedTableTest::RunTest(const FString&)
 	FCigTestShop Shop;
 	if (!BuildShop(Shop, *this)) { return false; }
 
-	const FCigPlacementRecord* Before = Shop.GM->Placement->FindPlacement(FName(TableId));
+	const FCigPlacementRecord* Before = Shop.GM->Placement->FindPlacement(FName(LayoutTestTableId));
 	if (!Before)
 	{
 		AddError(TEXT("Varsayilan yerlesimde masa yok."));
@@ -89,7 +89,7 @@ bool FCigApplyMovedTableTest::RunTest(const FString&)
 	int32 SeatIndex = INDEX_NONE;
 	for (int32 i = 0; i < Shop.GM->WorldBuilder->Seats.Num(); ++i)
 	{
-		if (Shop.GM->WorldBuilder->Seats[i].PlacementId == FName(TableId))
+		if (Shop.GM->WorldBuilder->Seats[i].PlacementId == FName(LayoutTestTableId))
 		{
 			SeatIndex = i;
 			SeatBefore = Shop.GM->WorldBuilder->Seats[i].Pos;
@@ -109,7 +109,7 @@ bool FCigApplyMovedTableTest::RunTest(const FString&)
 	TArray<FCigSavePlacement> Saved = CaptureLive(Shop);
 	FCigSavePlacement* Moved = Saved.FindByPredicate([](const FCigSavePlacement& S)
 	{
-		return S.StableId == FName(TableId);
+		return S.StableId == FName(LayoutTestTableId);
 	});
 	if (!Moved)
 	{
@@ -126,13 +126,13 @@ bool FCigApplyMovedTableTest::RunTest(const FString&)
 		return false;
 	}
 
-	const FCigPlacementRecord* After = Shop.GM->Placement->FindPlacement(FName(TableId));
+	const FCigPlacementRecord* After = Shop.GM->Placement->FindPlacement(FName(LayoutTestTableId));
 	TestTrue(TEXT("Kayit yeni yere tasinmali"),
 		After && After->Transform.GetLocation().Equals(Target, 1.f));
 
 	// The point of step 1: the record moving is not enough.
 	TestTrue(TEXT("Masanin aktorleri de tasinmali"),
-		Shop.GM->WorldBuilder->PlacementVisuals.VisualCount(FName(TableId)) > 1);
+		Shop.GM->WorldBuilder->PlacementVisuals.VisualCount(FName(LayoutTestTableId)) > 1);
 
 	// And the point of this step: a chair belongs to its table.
 	const FVector SeatAfter = Shop.GM->WorldBuilder->Seats[SeatIndex].Pos;
@@ -189,8 +189,8 @@ bool FCigApplyRefusedLeavesShopAloneTest::RunTest(const FString&)
 	if (!BuildShop(Shop, *this)) { return false; }
 
 	const int32 BeforeCount = Shop.GM->Placement->PlacementCount();
-	const FVector BeforeTable = Shop.GM->Placement->FindPlacement(FName(TableId))->Transform.GetLocation();
-	const int32 BeforeVisuals = Shop.GM->WorldBuilder->PlacementVisuals.VisualCount(FName(TableId));
+	const FVector BeforeTable = Shop.GM->Placement->FindPlacement(FName(LayoutTestTableId))->Transform.GetLocation();
+	const int32 BeforeVisuals = Shop.GM->WorldBuilder->PlacementVisuals.VisualCount(FName(LayoutTestTableId));
 
 	// A layout with a broken record in the middle of it. The whole thing must be
 	// refused, including the records before the bad one.
@@ -209,9 +209,9 @@ bool FCigApplyRefusedLeavesShopAloneTest::RunTest(const FString&)
 
 	TestEqual(TEXT("Kayit sayisi degismemeli"), Shop.GM->Placement->PlacementCount(), BeforeCount);
 	TestTrue(TEXT("Masa yerinde kalmali"),
-		Shop.GM->Placement->FindPlacement(FName(TableId))->Transform.GetLocation().Equals(BeforeTable, 0.01f));
+		Shop.GM->Placement->FindPlacement(FName(LayoutTestTableId))->Transform.GetLocation().Equals(BeforeTable, 0.01f));
 	TestEqual(TEXT("Gorseller de yerinde kalmali"),
-		Shop.GM->WorldBuilder->PlacementVisuals.VisualCount(FName(TableId)), BeforeVisuals);
+		Shop.GM->WorldBuilder->PlacementVisuals.VisualCount(FName(LayoutTestTableId)), BeforeVisuals);
 	return true;
 }
 
@@ -227,7 +227,7 @@ bool FCigApplyRoundTripTest::RunTest(const FString&)
 	TArray<FCigSavePlacement> Saved = CaptureLive(Shop);
 	FCigSavePlacement* Moved = Saved.FindByPredicate([](const FCigSavePlacement& S)
 	{
-		return S.StableId == FName(TableId);
+		return S.StableId == FName(LayoutTestTableId);
 	});
 	Moved->Transform.SetLocation(Moved->Transform.GetLocation() + FVector(0.f, 60.f, 0.f));
 
@@ -329,7 +329,7 @@ bool FCigSaveLayoutRoundTripTest::RunTest(const FString&)
 	// Move a table in the file, then load it back into the same shop.
 	FCigSavePlacement* Moved = Save->InstalledLayout.FindByPredicate([](const FCigSavePlacement& S)
 	{
-		return S.StableId == FName(TableId);
+		return S.StableId == FName(LayoutTestTableId);
 	});
 	if (!Moved)
 	{
@@ -342,7 +342,7 @@ bool FCigSaveLayoutRoundTripTest::RunTest(const FString&)
 
 	Shop.GM->ApplySave(*Save);
 
-	const FCigPlacementRecord* After = Shop.GM->Placement->FindPlacement(FName(TableId));
+	const FCigPlacementRecord* After = Shop.GM->Placement->FindPlacement(FName(LayoutTestTableId));
 	TestTrue(TEXT("Yuklenen yerlesim uygulanmali"),
 		After && After->Transform.GetLocation().Equals(Target, 1.f));
 
@@ -374,7 +374,7 @@ bool FCigSaveUnknownLayoutTest::RunTest(const FString&)
 	TestEqual(TEXT("Bilinmeyen yerlesim dukkani bosaltmamali"),
 		Shop.GM->Placement->PlacementCount(), BeforeCount);
 	TestTrue(TEXT("Masa hala yerinde olmali"),
-		Shop.GM->Placement->FindPlacement(FName(TableId)) != nullptr);
+		Shop.GM->Placement->FindPlacement(FName(LayoutTestTableId)) != nullptr);
 
 	Save->RemoveFromRoot();
 	return true;

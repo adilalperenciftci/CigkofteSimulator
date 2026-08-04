@@ -2,8 +2,25 @@
 
 Branch `feat/stage3-placement-persistence`, from master `44bd304`.
 
-Status: **audit and model decision. No schema change has been made.** The save
-version is still 12 and `UCigSaveGame` is untouched.
+Status: **implemented.** Save version 13; the installed layout is captured,
+validated, applied and round-tripped, in the editor and inside both packages.
+The audit below is kept as written, because two of its three findings were the
+reason the stage took the shape it did.
+
+What changed against the plan, and why:
+
+- **Step 6 turned out to be part of step 5.** The swap had to be an assignment
+  rather than a replay of every record — re-registering asks the authority a
+  different question than the candidate was asked, and the answers differed — and
+  an assignment publishes one event by construction. The bulk boundary came free
+  with the fix and is measured rather than asserted.
+- **Step 5 introduced a defect step 7 found.** An assignment replaces every
+  record, including the transient ones the file does not contain, so a delivery
+  crate would have vanished while the delivery system still believed in it.
+  Transients are now carried into the candidate before it is adopted.
+- **Presentation reconstruction was the right call to make step 1.** The first
+  run of its invariant test failed on `fixture.seating.sofa`: registered as a
+  placement since Stage 3.3 and connected to no actor at all.
 
 ## What was inspected
 

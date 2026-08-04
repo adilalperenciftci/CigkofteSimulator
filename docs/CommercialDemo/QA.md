@@ -1031,3 +1031,88 @@ difference says nothing either way.
 ### Still needs a human
 
 Nobody played either package. The experiment queried paths; it moved nobody.
+
+## 2026-08-04 — Stage 3.5: the shop layout persists
+
+Branch `feat/stage3-placement-persistence`, from master `44bd304`. Design and the
+audit that shaped it: `docs/Architecture/PLACEMENT_PERSISTENCE.md`.
+
+### What the audit found before any code
+
+Three things, and two of them changed the plan:
+
+1. **There is no player-facing build mode.** `MoveExisting` and `BuildMode` appear
+   in the placement layer and its tests and nowhere else. So this stage is the
+   machinery; its visible effect arrives with build mode. Said before writing a
+   schema justified by a feature that does not exist.
+2. **Records and meshes were not connected.** Nothing mapped a `StableId` to an
+   actor, so restoring a moved table would have moved the record — and navigation,
+   validation and seat capacity with it — while the mesh stayed put. That became
+   step 1 rather than a follow-up.
+3. **A record is self-describing**, which is what chose a full snapshot over a
+   delta: no definition table is needed to rebuild one, so there is exactly one
+   failure mode per record instead of tombstones and merge rules.
+
+### Defects found by the tests written for them
+
+- `fixture.seating.sofa` had been a registered placement since Stage 3.3 with no
+  actor attached to it. Found on the first run of the "every installed record has
+  something to look at" invariant: 26 of 27.
+- Re-registering the saved records into the live authority refused an **unchanged**
+  layout with `BlocksEntrance`. The authored service counter stands in the entrance
+  by design, which world registration allows and a move does not. The swap became
+  an assignment.
+- That assignment then dropped delivery crates, because it replaces every record
+  including the transient ones the file does not carry. A defect this branch
+  introduced and its own transient tests caught.
+- Two unity-build name collisions, one of them pre-existing and exposed by the new
+  files shifting the grouping.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 203 automation tests, 25 systems |
+| `Test-SelfTestState.ps1` | 49/49 |
+| `Test-SmokeCookPolicy.ps1` | 7/7 |
+| `Test-CigCookPluginExclusion.ps1` | 18/18 |
+| `Test-CigLocalPlugins.ps1` | 32/32 |
+| `Test-CigPathHelpers.ps1` | 13/13 |
+| Editor build | PASS |
+| Full automation | **203 passed, 0 failed** (170 at the start of this stage) |
+| Runtime data load | 14/14, 0 warnings |
+
+New automation: 14 `Cigkofte.LayoutApply`, 9 `Cigkofte.LayoutLoad`, 6
+`Cigkofte.SavePlacement`, 5 `Cigkofte.PlacementVisual`, 4 `Cigkofte.SaveMigration`.
+
+### Packages
+
+| | Development | Shipping |
+|---|---|---|
+| Files | 71 | 49 |
+| Bytes | 2,341,076,195 | 1,797,823,934 |
+| Runtime EXE SHA-256 | `88D8D091515C2E365E4F42F31A668FFEFB57DF2CAA15C3D1D617BB4BF898600B` | `ECE10158C29777FA25F4CB7A5895A3AE27BEBA057B4BAE1089ED05FD9BB46628` |
+| PDB files | 1 | **0** |
+| Sentry / crashpad / editor tooling | **0** | **0** |
+| Smoke test | 9/9 | 4/4 |
+| Mandatory self-test | **passed** | **passed** |
+| `Verify-Release` | — | **PASS** |
+
+**The packaged round trip is real rather than inferred.** The existing
+`kayit-turu` self-test check — capture, apply, capture, compare — was extended to
+compare the layout as well: both flags set, the same number of placements, and the
+same stable IDs in the same order at the same positions. It reports `PASS` in both
+packages, which is the only evidence available for a Shipping build with no log
+and no console.
+
+Extended rather than added as a twelfth check, deliberately: the packaged harness
+contract in `CigCommon.ps1` and its fixtures in `Test-SelfTestState.ps1` pin the
+check list, and moving it would have meant changing the thing that verifies
+packages in the same commit as the thing being verified.
+
+### Still needs a human
+
+Nobody has moved a table. There is no build mode to move one with, so the layout
+this stage persists is the authored default in every run so far — the move cases
+are exercised by editing the captured layout in a test rather than by playing.
+That is the honest limit of what has been shown.

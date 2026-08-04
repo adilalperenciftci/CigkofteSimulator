@@ -20,8 +20,8 @@
 namespace
 {
 	// The shipped thresholds, squared, as the caller passes them.
-	constexpr float ShowSq = UCigWorldBuilder::LabelShowRange * UCigWorldBuilder::LabelShowRange;
-	constexpr float HideSq = UCigWorldBuilder::LabelHideRange * UCigWorldBuilder::LabelHideRange;
+	constexpr float LabelShowSq = UCigWorldBuilder::LabelShowRange * UCigWorldBuilder::LabelShowRange;
+	constexpr float LabelHideSq = UCigWorldBuilder::LabelHideRange * UCigWorldBuilder::LabelHideRange;
 
 	float Sq(float Distance) { return Distance * Distance; }
 }
@@ -37,17 +37,17 @@ bool FCigLabelBandHoldsItsAnswer::RunTest(const FString&)
 	const float Middle = Sq((UCigWorldBuilder::LabelShowRange + UCigWorldBuilder::LabelHideRange) * 0.5f);
 
 	TestTrue(TEXT("Görünürken bantta görünür kalmalı"),
-		UCigWorldBuilder::LabelShouldShow(true, Middle, ShowSq, HideSq));
+		UCigWorldBuilder::LabelShouldShow(true, Middle, LabelShowSq, LabelHideSq));
 	TestFalse(TEXT("Gizliyken bantta gizli kalmalı"),
-		UCigWorldBuilder::LabelShouldShow(false, Middle, ShowSq, HideSq));
+		UCigWorldBuilder::LabelShouldShow(false, Middle, LabelShowSq, LabelHideSq));
 
 	// The whole band, not just its centre.
 	for (float D = UCigWorldBuilder::LabelShowRange + 1.f; D <= UCigWorldBuilder::LabelHideRange; D += 5.f)
 	{
 		TestTrue(FString::Printf(TEXT("%.0f: görünür kalmalı"), D),
-			UCigWorldBuilder::LabelShouldShow(true, Sq(D), ShowSq, HideSq));
+			UCigWorldBuilder::LabelShouldShow(true, Sq(D), LabelShowSq, LabelHideSq));
 		TestFalse(FString::Printf(TEXT("%.0f: gizli kalmalı"), D),
-			UCigWorldBuilder::LabelShouldShow(false, Sq(D), ShowSq, HideSq));
+			UCigWorldBuilder::LabelShouldShow(false, Sq(D), LabelShowSq, LabelHideSq));
 	}
 	return true;
 }
@@ -66,7 +66,7 @@ bool FCigLabelSwitchesOnce::RunTest(const FString&)
 	float TurnedOnAt = 0.f;
 	for (float D = 1200.f; D >= 0.f; D -= 1.f)
 	{
-		const bool bNext = UCigWorldBuilder::LabelShouldShow(bVisible, Sq(D), ShowSq, HideSq);
+		const bool bNext = UCigWorldBuilder::LabelShouldShow(bVisible, Sq(D), LabelShowSq, LabelHideSq);
 		if (bNext != bVisible)
 		{
 			++Transitions;
@@ -84,7 +84,7 @@ bool FCigLabelSwitchesOnce::RunTest(const FString&)
 	float TurnedOffAt = 0.f;
 	for (float D = 0.f; D <= 1200.f; D += 1.f)
 	{
-		const bool bNext = UCigWorldBuilder::LabelShouldShow(bVisible, Sq(D), ShowSq, HideSq);
+		const bool bNext = UCigWorldBuilder::LabelShouldShow(bVisible, Sq(D), LabelShowSq, LabelHideSq);
 		if (bNext != bVisible)
 		{
 			++Transitions;
@@ -119,8 +119,8 @@ bool FCigLabelNoBandIsTheOldBehaviour::RunTest(const FString&)
 		UCigWorldBuilder::LabelShouldShow(true, Sq(699.f), Single, Single),
 		UCigWorldBuilder::LabelShouldShow(true, Sq(701.f), Single, Single));
 	TestEqual(TEXT("Bantlı: aynı iki örnek aynı cevabı verir"),
-		UCigWorldBuilder::LabelShouldShow(true, Sq(699.f), ShowSq, HideSq),
-		UCigWorldBuilder::LabelShouldShow(true, Sq(701.f), ShowSq, HideSq));
+		UCigWorldBuilder::LabelShouldShow(true, Sq(699.f), LabelShowSq, LabelHideSq),
+		UCigWorldBuilder::LabelShouldShow(true, Sq(701.f), LabelShowSq, LabelHideSq));
 	return true;
 }
 
@@ -215,21 +215,21 @@ bool FCigLabelTriggersKeepIndependentState::RunTest(const FString&)
 	FCigLabelVisibilityState State;
 
 	TestFalse(TEXT("Bantta arkaya dönmek etiketi gizler"),
-		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, ShowSq, HideSq, -1.f));
+		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, LabelShowSq, LabelHideSq, -1.f));
 	TestTrue(TEXT("Bakış değişimi mesafe latch'ini sıfırlamaz"), State.bDistanceVisible);
 	TestFalse(TEXT("Yalnız bakış latch'i gizlidir"), State.bFacingVisible);
 
 	TestTrue(TEXT("Aynı mesafede tekrar öne dönmek etiketi geri getirir"),
-		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, ShowSq, HideSq, 1.f));
+		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, LabelShowSq, LabelHideSq, 1.f));
 
 	State.bDistanceVisible = false;
 	State.bFacingVisible = false;
 	TestFalse(TEXT("Gizli mesafe latch'i öne bakışla açılmaz"),
-		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, ShowSq, HideSq, 1.f));
+		UCigWorldBuilder::UpdateLabelVisibilityState(State, Middle, LabelShowSq, LabelHideSq, 1.f));
 	TestTrue(TEXT("Bakış latch'i mesafeden bağımsız güncellenir"), State.bFacingVisible);
 	TestTrue(TEXT("Gösterme mesafesine girince birleşik sonuç açılır"),
 		UCigWorldBuilder::UpdateLabelVisibilityState(State,
-			Sq(UCigWorldBuilder::LabelShowRange), ShowSq, HideSq, 1.f));
+			Sq(UCigWorldBuilder::LabelShowRange), LabelShowSq, LabelHideSq, 1.f));
 	return true;
 }
 
