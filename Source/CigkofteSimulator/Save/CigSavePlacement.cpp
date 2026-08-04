@@ -2,7 +2,7 @@
 
 namespace
 {
-	bool IsFinite2D(const FVector2D& V)
+	bool IsFiniteSaved2D(const FVector2D& V)
 	{
 		return FMath::IsFinite(V.X) && FMath::IsFinite(V.Y);
 	}
@@ -122,7 +122,7 @@ ECigSavePlacementFault CigSavePlacement::Validate(const FCigSavePlacement& Saved
 	Footprint.CenterOffset = Saved.FootprintOffset;
 	Footprint.ClearanceMargin = Saved.ClearanceMargin;
 	Footprint.FixedYawDegrees = Saved.FixedYawDegrees;
-	if (!IsFinite2D(Saved.FootprintSize) || !Footprint.IsValid())
+	if (!IsFiniteSaved2D(Saved.FootprintSize) || !Footprint.IsValid())
 	{
 		return ECigSavePlacementFault::InvalidFootprint;
 	}
