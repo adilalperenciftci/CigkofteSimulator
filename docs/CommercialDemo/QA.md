@@ -1244,8 +1244,8 @@ modal state being added as another boolean with two true at once.
 | | Development | Shipping |
 |---|---|---|
 | Files | 71 | 49 |
-| Bytes | 2,341,222,747 | 1,797,828,150 |
-| Runtime EXE SHA-256 | `3A51911CCE3A0312D478ED004904B606AA99DADF3590C67DCF95554CE93B03F8` | `6EBDCE10FBDC816D2CD14E0DA66FA469B91FCA751091C157DF77731EC8DEF3AE` |
+| Bytes | 2,341,214,554 | 1,797,828,150 |
+| Runtime EXE SHA-256 | `0D7FB30EE583D4C23C8CCD530E2D1D2B4CDCBF813CF707332466FDF6CA4B8640` | `42386BFC58895F4EBE375981B83A0153CC4DE4FADCEC6FDC7E0962782580A1CD` |
 | PDB files | 1 | **0** |
 | Sentry / crashpad / editor tooling | **0** | **0** |
 | Smoke test | 9/9 | 4/4 |
@@ -1268,3 +1268,29 @@ has to press the keys, and until they do this is unverified rather than done.
 
 Three steps: open the tablet, go to the shop tab, press F2; type a name and watch
 whether the character moves; press Enter and check the board, the cursor and WASD.
+
+### Correction: the gate was in the wrong place
+
+The first version of this branch put the gate in the middle of `PollInput`, below
+the mouse delta and below the WASD block. The decision it made was right and the
+place it was applied was wrong, so typing a shop name still turned the camera and
+walked the player — the exact thing it exists to stop.
+
+The entry above originally listed that as unverified. It was not unverified, it
+was wrong, and reading the function was enough to see it. "Not verified" implied
+somebody had looked and could not tell; nobody had looked.
+
+`84af1c3` moves the gate to the top of `PollInput`, above look, movement and the
+pause handling, and gives Escape to the field while the field has the keyboard —
+otherwise leaving a half-typed name opens the pause menu behind it.
+
+`CigInput::Scope`'s tests could not have caught this. They check what the gate
+decides; nothing checked where the decision was applied. So `check_sources.py` now
+reads `PollInput` and fails when the gate falls after `AddControllerYawInput` or
+`AddMovementInput`. Both failure directions were exercised against the real file
+before committing — removing the gate, and moving it back to where the bug was —
+and each is reported separately.
+
+The package table above was rebuilt from `84af1c3`. The hashes it carried before
+were of a binary containing the defect, which would have made the evidence a
+record of the wrong thing.
