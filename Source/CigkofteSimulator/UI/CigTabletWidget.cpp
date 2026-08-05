@@ -11,6 +11,9 @@
 #include "Components/ScrollBox.h"
 #include "Components/TextBlock.h"
 #include "Components/ProgressBar.h"
+#include "Components/EditableTextBox.h"
+#include "World/CigWorldBuilder.h"
+#include "Game/CigShopIdentity.h"
 
 void UCigTabletWidget::NativeOnInitialized()
 {
@@ -36,6 +39,15 @@ void UCigTabletWidget::BuildTree()
 	TitleText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("TabletTitle"));
 	TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(1.f, 0.85f, 0.35f)));
 	RootBox->AddChildToVerticalBox(TitleText);
+
+	// The shop's name, at the top where a sign would be.
+	ShopNameBox = WidgetTree->ConstructWidget<UEditableTextBox>(
+		UEditableTextBox::StaticClass(), TEXT("TabletShopName"));
+	// The rules refuse anything longer anyway; stopping the keystroke is kinder
+	// than accepting it and rejecting the result.
+	ShopNameBox->SetJustification(ETextJustify::Left);
+	ShopNameBox->OnTextCommitted.AddDynamic(this, &UCigTabletWidget::HandleShopNameCommitted);
+	RootBox->AddChildToVerticalBox(ShopNameBox);
 
 	TabBar = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("TabletTabs"));
 	RootBox->AddChildToVerticalBox(TabBar);
@@ -120,6 +132,42 @@ void UCigTabletWidget::RebuildRows(const TArray<FCigTabletRow>& Rows)
 	}
 }
 
+void UCigTabletWidget::HandleShopNameCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+{
+	ACigkofteGameMode* GM = OwningMode.Get();
+	if (!GM || !GM->WorldBuilder)
+	{
+		return;
+	}
+
+	// Enter or a click away both end the entry; escape puts the old name back
+	// rather than applying whatever was half-typed.
+	if (CommitMethod != ETextCommit::OnCleared)
+	{
+		const ECigShopNameFault Fault = GM->WorldBuilder->SetShopName(Text.ToString());
+		if (Fault != ECigShopNameFault::None)
+		{
+			GM->AddMessage(CigShopIdentity::FaultText(Fault), FLinearColor(1.f, 0.5f, 0.4f));
+		}
+	}
+
+	// Whatever happened, the box shows what the shop is actually called. A refused
+	// name left in the field would read as accepted.
+	if (ShopNameBox)
+	{
+		ShopNameBox->SetText(FText::FromString(GM->WorldBuilder->ShopDisplayName()));
+	}
+	GM->EndTextEntry();
+}
+
+void UCigTabletWidget::FocusShopName()
+{
+	if (ACigkofteGameMode* GM = OwningMode.Get())
+	{
+		GM->BeginTextEntry(ShopNameBox);
+	}
+}
+
 void UCigTabletWidget::RefreshFrom(ACigkofteGameMode* GM)
 {
 	if (!GM)
@@ -127,10 +175,18 @@ void UCigTabletWidget::RefreshFrom(ACigkofteGameMode* GM)
 		return;
 	}
 	BuildTree();
+	OwningMode = GM;
 
 	if (TitleText)
 	{
 		TitleText->SetText(FText::FromString(CigText::Get(TEXT("tablet.title"))));
+	}
+
+	// Not while it is being typed into: a refresh mid-edit would replace the
+	// player's half-written name with what the shop is still called.
+	if (ShopNameBox && !GM->bTextEntryActive && GM->WorldBuilder)
+	{
+		ShopNameBox->SetText(FText::FromString(GM->WorldBuilder->ShopDisplayName()));
 	}
 	RebuildTabBar(GM);
 	RebuildRows(CigTablet::BuildRows(GM, GM->TabletTab));

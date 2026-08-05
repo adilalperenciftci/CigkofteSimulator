@@ -90,15 +90,15 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Shop identity
 
-- **The player cannot rename the shop yet.** The name exists, is validated, is
-  persisted and appears on the board and in the tablet, but nothing in this
-  project ever calls `SetInputMode`: the game is always in game input, including
-  while the tablet is open. An editable field would take no keystrokes at all —
-  it would look usable and do nothing, which is worse than not having one. The
-  rename path (`UCigWorldBuilder::SetShopName`) exists and is tested; what is
-  missing is an input mode to type into, and that is a change to how the tablet
-  takes input rather than a field to add. It affects movement and look and cannot
-  be verified without playing. Open.
+- **The rename has never been used by a person.** F2 on the shop tab is wired to
+  hand the keyboard to a field: `BeginTextEntry` sets the gate that stops the
+  character polling raw keys and switches to `GameAndUI` with the box focused,
+  and commit or closing the tablet gives it back. Automation covers the gate
+  (`CigInput::Scope`) and the name rules, and it covers neither of the things
+  that actually matter here — that F2 moves focus, that typing does not walk the
+  player, that Enter returns input to the game, that the cursor ends up where it
+  should. Those need somebody to press the keys. **This is the first change in the
+  project to call `SetInputMode`, and it is unverified.**
 - **The name is not translated, deliberately.** A name given in Turkish stays that
   name when the interface is switched to English, so the default is a fixed string
   rather than a text key. The consequence is that the default board reads

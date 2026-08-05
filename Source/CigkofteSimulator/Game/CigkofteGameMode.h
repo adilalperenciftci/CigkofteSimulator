@@ -194,6 +194,15 @@ public:
 	// player forward and fire the tablet's number-key shortcuts on every digit.
 	// See CigInput::Scope, which is where the precedence lives.
 	bool bTextEntryActive = false;
+
+	// Hands the keyboard to a field, and takes it back.
+	//
+	// Two things have to happen together and neither is enough alone: the flag,
+	// which is what stops the character polling raw keys, and the input mode,
+	// which is what gets the letters into the widget. Paired here so no caller can
+	// do one and forget the other.
+	void BeginTextEntry(class UWidget* FocusWidget);
+	void EndTextEntry();
 	// The tablet is drawn entirely in UMG (see UI/CigTabletWidget.h). The Canvas
 	// version was removed once every tab had moved - maintaining two separate
 	// draw paths would have cost more than the move gained.

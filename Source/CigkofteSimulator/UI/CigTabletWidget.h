@@ -53,10 +53,29 @@ public:
 	// opening the tablet, switching tabs, making a purchase - not every frame.
 	void RefreshFrom(ACigkofteGameMode* GM);
 
+	// Hands the keyboard to the shop-name field.
+	//
+	// Driven by a key rather than a click, and it has to be: the game runs with
+	// the cursor hidden, so until something calls this there is no way to reach
+	// the field at all.
+	void FocusShopName();
+
 protected:
 	virtual void NativeOnInitialized() override;
 
 private:
+	// The shop's name, editable.
+	//
+	// The only field in the game, and it needs the game to stop reading keys while
+	// it has focus - input is polled from raw key state and does not care about
+	// focus, so without the gate typing a name also walks the player. GameMode
+	// owns that pairing (BeginTextEntry/EndTextEntry); this widget only says when.
+	UFUNCTION() void HandleShopNameCommitted(const FText& Text, ETextCommit::Type CommitMethod);
+
+	UPROPERTY() TObjectPtr<class UEditableTextBox> ShopNameBox;
+	// Set on every refresh, so the committed name reaches the shop that drew it.
+	TWeakObjectPtr<ACigkofteGameMode> OwningMode;
+
 	// The tree built in C++.
 	UPROPERTY() TObjectPtr<UBorder> RootBorder;
 	UPROPERTY() TObjectPtr<UVerticalBox> RootBox;

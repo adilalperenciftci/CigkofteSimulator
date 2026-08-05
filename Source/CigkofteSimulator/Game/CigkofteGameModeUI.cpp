@@ -53,8 +53,62 @@ void ACigkofteGameMode::ToggleTablet()
 	{
 		bSettingsOpen = false;
 	}
+	else
+	{
+		// Closing the tablet takes any field on it with it. Otherwise the flag
+		// would outlive the widget that set it and the game would sit there
+		// refusing every key with nothing on screen to explain why.
+		EndTextEntry();
+	}
 	PlaySound(ECigSound::UIClick);
 	RefreshTabletWidget();
+}
+
+void ACigkofteGameMode::BeginTextEntry(UWidget* FocusWidget)
+{
+	if (bTextEntryActive)
+	{
+		return;
+	}
+	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+	if (!PC)
+	{
+		return;
+	}
+
+	// The flag first, because SetInputMode does not stop the polling. Input here
+	// is read straight off the controller every tick and does not care which
+	// widget has focus; the flag is what CigInput::Scope checks and the character
+	// obeys. The input mode is what gets the letters into the field.
+	bTextEntryActive = true;
+
+	FInputModeGameAndUI Mode;
+	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	Mode.SetHideCursorDuringCapture(false);
+	if (FocusWidget)
+	{
+		Mode.SetWidgetToFocus(FocusWidget->TakeWidget());
+	}
+	PC->SetInputMode(Mode);
+	PC->SetShowMouseCursor(true);
+}
+
+void ACigkofteGameMode::EndTextEntry()
+{
+	if (!bTextEntryActive)
+	{
+		return;
+	}
+	bTextEntryActive = false;
+
+	// Back to game input. Not conditional on the tablet being open: the tablet has
+	// never needed a cursor, and leaving GameAndUI behind would let a stray click
+	// steal focus from a game that is polling keys.
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->SetShowMouseCursor(false);
+	}
 }
 
 void ACigkofteGameMode::RefreshTabletWidget()
