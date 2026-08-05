@@ -492,6 +492,49 @@ SINGLE_CALLER_RULES = [
 ]
 
 
+def check_text_entry_gate() -> None:
+    """Metin girişi kapısı bakıştan ve hareketten ÖNCE gelmeli.
+
+    Girdi bu projede bağlanmıyor, yoklanıyor: karakter her tick'te ham tuş
+    durumunu okuyor ve bu, bir widget odaklandığında durmuyor. Kapı bunun için
+    var. Ama kapı doğru cevabı verse bile yanlış yerde durursa hiçbir işe yaramaz.
+
+    Tam olarak bu oldu: kapının ilk hâli PollInput'un ortasında, fare deltasının
+    ve WASD bloğunun altındaydı. Karar doğruydu, yeri yanlıştı, ve dükkân adı
+    yazarken kamera dönüp karakter yürüyordu. CigInput::Scope testleri bunu
+    göremez, çünkü onlar kararı sınıyor; sırayı kimse sınamıyordu.
+
+    Yorumla söz vermek yerine kural burada sabitleniyor.
+    """
+    path = SOURCE / "CigkofteSimulator" / "Player" / "CigkoftePlayerCharacter.cpp"
+    if not path.is_file():
+        fail("CigkoftePlayerCharacter.cpp yok; metin girişi kapısı doğrulanamadı.")
+        return
+
+    text = path.read_text(encoding="utf-8-sig")
+    start = text.find("::PollInput(")
+    if start < 0:
+        fail("PollInput bulunamadı; metin girişi kapısı doğrulanamadı.")
+        return
+
+    body = text[start:]
+    gate = body.find("bTextEntryActive")
+    if gate < 0:
+        fail("PollInput içinde metin girişi kapısı yok. Alan odaktayken karakter "
+             "hâlâ ham tuş okur: yazmak kamerayı döndürür ve oyuncuyu yürütür.")
+        return
+
+    # Bakış ve hareketin PollInput içindeki ilk geçişleri.
+    for needle, ad in (("AddControllerYawInput", "bakış"), ("AddMovementInput", "hareket")):
+        where = body.find(needle)
+        if where >= 0 and where < gate:
+            fail(f"CigkoftePlayerCharacter.cpp: metin girişi kapısı {ad} "
+                 f"({needle}) satırından SONRA geliyor. Bu sırayla alan odaktayken "
+                 f"yazmak {ad} üretir; kapı PollInput'un başında olmalı.")
+
+    print("  metin girişi: kapı bakış ve hareketin önünde")
+
+
 def check_single_callers() -> None:
     """Some calls are only correct when nothing else makes them.
 
@@ -1006,6 +1049,7 @@ def main() -> int:
     check_dialogue()
     check_text()
     check_decoupling()
+    check_text_entry_gate()
     check_single_callers()
     check_cooked_assets()
     check_repo_files()

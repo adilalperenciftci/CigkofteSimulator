@@ -1200,3 +1200,149 @@ and edit mode the player can actually drive.
 Nobody has seen the board. The tests prove the name is validated, stored, restored
 and put on a `UTextRenderComponent`; whether it reads well at 90 units on a
 shopfront across a street is a thing to look at.
+
+## 2026-08-05 — the keyboard changes hands
+
+Branch `feat/build-mode`, from master `2c65deb`. Plan:
+`docs/Architecture/BUILD_MODE.md`.
+
+### Why this came before build mode itself
+
+Two finished stages have the same gap: Stage 3.5 persists a layout nobody can
+rearrange, Stage 3.6 validates a name nobody can type. Both are machinery with no
+way for a player to reach it, and both need the same thing first.
+
+### The finding that shaped it
+
+Input here is polled, not bound. `CigInput` asks the controller for raw key state
+every tick, and `PC->WasInputKeyJustPressed` keeps returning true whether or not a
+widget has focus. A text field added without a gate gives a rename where typing
+"W" also walks the player forward and every digit fires a tablet shortcut. That is
+why nothing in this project had ever called `SetInputMode` — and why it could not
+simply be called now.
+
+The gate already existed in the right shape: `bTabletOpen` swallows world
+interaction the same way. `ECigInputScope` names the idea and adds the layer above
+it, with text entry outranking the tablet because the field is hosted by it.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 215 automation tests, 25 systems |
+| Harness assertions | 49/49, 7/7, 18/18, 32/32, 13/13 |
+| Editor build | PASS |
+| Full automation | **215 passed, 0 failed** (213 before) |
+| Runtime data load | 14/14, 0 warnings |
+
+New: 2 `Cigkofte.Input.Scope` — the precedence, and that every combination of the
+two flags resolves to exactly one layer. The second guards against a future third
+modal state being added as another boolean with two true at once.
+
+### Packages
+
+| | Development | Shipping |
+|---|---|---|
+| Files | 71 | 49 |
+| Bytes | 2,341,214,554 | 1,797,828,150 |
+| Runtime EXE SHA-256 | `0D7FB30EE583D4C23C8CCD530E2D1D2B4CDCBF813CF707332466FDF6CA4B8640` | `42386BFC58895F4EBE375981B83A0153CC4DE4FADCEC6FDC7E0962782580A1CD` |
+| PDB files | 1 | **0** |
+| Sentry / crashpad / editor tooling | **0** | **0** |
+| Smoke test | 9/9 | 4/4 |
+| Mandatory self-test | **passed** | **passed** |
+| `Verify-Release` | — | **PASS** |
+
+### What the automation does not cover, in plain terms
+
+This is the first change in the project to call `SetInputMode`, and none of the
+things that make it right or wrong are checked by anything above:
+
+- that F2 on the shop tab actually moves focus to the field;
+- that typing does not walk the player or fire tablet shortcuts;
+- that Enter commits, returns input to the game and hides the cursor again;
+- that the mouse ends up where a player expects.
+
+The packages start, self-test and pass their smoke checks, which says the change
+does not break startup. It says nothing about whether the feature works. Somebody
+has to press the keys, and until they do this is unverified rather than done.
+
+Three steps: open the tablet, go to the shop tab, press F2; type a name and watch
+whether the character moves; press Enter and check the board, the cursor and WASD.
+
+### Correction: the gate was in the wrong place
+
+The first version of this branch put the gate in the middle of `PollInput`, below
+the mouse delta and below the WASD block. The decision it made was right and the
+place it was applied was wrong, so typing a shop name still turned the camera and
+walked the player — the exact thing it exists to stop.
+
+The entry above originally listed that as unverified. It was not unverified, it
+was wrong, and reading the function was enough to see it. "Not verified" implied
+somebody had looked and could not tell; nobody had looked.
+
+`84af1c3` moves the gate to the top of `PollInput`, above look, movement and the
+pause handling, and gives Escape to the field while the field has the keyboard —
+otherwise leaving a half-typed name opens the pause menu behind it.
+
+`CigInput::Scope`'s tests could not have caught this. They check what the gate
+decides; nothing checked where the decision was applied. So `check_sources.py` now
+reads `PollInput` and fails when the gate falls after `AddControllerYawInput` or
+`AddMovementInput`. Both failure directions were exercised against the real file
+before committing — removing the gate, and moving it back to where the bug was —
+and each is reported separately.
+
+The package table above was rebuilt from `84af1c3`. The hashes it carried before
+were of a binary containing the defect, which would have made the evidence a
+record of the wrong thing.
+
+## 2026-08-06 — the delivery system gets tests of its own
+
+The August audit found four systems with no test naming them and singled out
+`CigDeliverySystem` as the one that mattered: it creates the transient placements
+a layout load has to carry, and the defect Stage 3.5 introduced there was caught
+by the *placement* tests rather than by anything of delivery's own. A system only
+ever observed through another system's tests is one nobody is watching.
+
+`CigDeliveryTests.cpp` adds six, each pinning a rule delivery owes another system:
+
+| Test | What would otherwise be free to change |
+|---|---|
+| `OrdersAreCappedAndCarryAnAddress` | `MaxOrders`, without which beacons and the HUD grow unbounded |
+| `DeliveringFromTooFarAwayDoesNothing` | returning **false**, which lets the key press fall through to whatever else is under the player |
+| `ArrivingWithAnEmptyShelfConsumesTheInteraction` | returning **true**, because the player did reach the door and was told why nothing happened |
+| `ASuccessfulDeliveryTakesThePackageAndPays` | shelf consumption, payment, the daily counter |
+| `ABulkOrderNeedsTwoPackagesAndTakesBoth` | `NeedPacks = 2`, without which a bulk order accepts half an order |
+| `TheDayEndingClearsOrdersRatherThanCarryingThemOver` | leftover orders standing undeliverable with their beacons up |
+
+The third and second are deliberately a pair: the difference between consuming an
+interaction and declining it is invisible in the code and easy to write backwards.
+
+### These were checked by mutation, not trusted for passing
+
+Forcing `NeedPacks` to 1 and rebuilding makes the bulk test fail and name the four
+assertions that break, with line numbers, while the other five pass.
+
+That run also found a defect in the test rather than in the game. The first
+version re-read `Orders[0]` after a delivery attempt, so under the mutation — the
+one run where the test was doing its job — it indexed an emptied array and took
+the whole suite down with an engine assertion instead of reporting a failure. The
+door position is now captured once, before any attempt. A test that crashes the
+harness on failure is worse than no test, because a crash reads as infrastructure
+trouble rather than as the finding it is.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 221 automation tests, 25 systems |
+| Editor build | PASS |
+| `Cigkofte.Delivery` filter | 6/6 |
+| Mutation (`NeedPacks = 1`) | bulk test **fails cleanly**, suite survives, 5/6 still pass |
+
+The mutation was reverted before validation; `git diff` over `Delivery/` is empty.
+
+### What this does not change
+
+Nothing here is play. Delivery is now correct on its own terms in a harness with
+no renderer and no input device, and no person has driven a package to a door.
+The High-severity item stands untouched: no package has been played by anybody.

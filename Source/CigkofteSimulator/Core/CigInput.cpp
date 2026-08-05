@@ -53,6 +53,19 @@ namespace
 
 namespace CigInput
 {
+	ECigInputScope Scope(bool bTextEntryActive, bool bTabletOpen)
+	{
+		// Text entry first, and deliberately not nested inside the tablet check.
+		// The field is hosted by the tablet, so leaving the tablet polling while
+		// it had focus would fire its number-key shortcuts on every digit typed
+		// into a shop name.
+		if (bTextEntryActive)
+		{
+			return ECigInputScope::TextEntry;
+		}
+		return bTabletOpen ? ECigInputScope::Tablet : ECigInputScope::Gameplay;
+	}
+
 	FString ActionName(ECigAction Action)
 	{
 		return CigText::Get(BindingAt((int32)Action).TextKey);

@@ -33,8 +33,36 @@ enum class ECigAction : uint8
 	COUNT
 };
 
+// Which layer is allowed to read the keyboard this frame.
+//
+// Input here is polled rather than bound: the character asks the controller
+// "was this key just pressed" every tick, and PC->WasInputKeyJustPressed reads
+// raw key state whether or not a widget has focus. So a text field on screen does
+// not stop the game seeing the keys - typing "W" would also walk the player
+// forward - and the only thing that stops it is a gate the polling checks first.
+//
+// The tablet already worked this way (bTabletOpen swallows world interaction);
+// this names the idea and adds the layer above it.
+enum class ECigInputScope : uint8
+{
+	// Walk, look, interact, cook.
+	Gameplay = 0,
+	// The tablet is open: its own keys only, no world interaction.
+	Tablet,
+	// A field has focus. Nothing polls, including the tablet's own keys, because
+	// every one of them is also a letter somebody might be typing.
+	TextEntry
+};
+
 namespace CigInput
 {
+	// Which layer may read input, given what is open.
+	//
+	// Text entry outranks the tablet rather than living inside it: the field is
+	// hosted by the tablet, so if the tablet kept polling while it had focus, its
+	// number keys would fire on every digit typed into a shop name.
+	ECigInputScope Scope(bool bTextEntryActive, bool bTabletOpen);
+
 	// Human-readable action name (shown on the settings screen). From Config/Text.
 	FString ActionName(ECigAction Action);
 

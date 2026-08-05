@@ -1,6 +1,7 @@
 #include "Player/CigkoftePlayerCharacter.h"
 #include "Core/CigInput.h"
 #include "Game/CigkofteGameMode.h"
+#include "UI/CigTabletWidget.h"
 #include "Game/CigDaySystem.h"
 #include "World/CigkofteStation.h"
 #include "World/CigWorldBuilder.h"
@@ -96,6 +97,21 @@ void ACigkoftePlayerCharacter::PollGamepadMove(APlayerController* PC, float& Fwd
 
 void ACigkoftePlayerCharacter::PollTabletInput(APlayerController* PC, ACigkofteGameMode* Mode)
 {
+	// Renaming the shop, on the tab that shows its name.
+	//
+	// A key rather than a click: the game runs with the cursor hidden, so until
+	// something hands the field focus there is no way to reach it at all. F2 is
+	// the rename key everywhere else and is not one of the rebindable gameplay
+	// actions, so it cannot collide with a player's own binding.
+	if (Mode->TabletTab == ECigTabletTab::Dukkan && PC->WasInputKeyJustPressed(EKeys::F2))
+	{
+		if (Mode->TabletWidget)
+		{
+			Mode->TabletWidget->FocusShopName();
+		}
+		return;
+	}
+
 	// Tabs: arrow keys or shoulder buttons
 	if (Pressed(PC, EKeys::Left, EKeys::Gamepad_LeftShoulder))
 	{
@@ -202,6 +218,26 @@ void ACigkoftePlayerCharacter::PollSettingsInput(APlayerController* PC, ACigkoft
 void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 {
 	ACigkofteGameMode* Mode = GM();
+
+	// Nothing else in this function reads input while a field has focus.
+	//
+	// First, and above look and movement rather than below them. The first
+	// attempt at this gate sat further down, past the mouse delta and the WASD
+	// block, so typing a shop name still turned the camera and walked the player -
+	// the exact thing the gate exists to stop, and invisible from the gate's own
+	// tests because they check the decision rather than where it is applied.
+	//
+	// Above the pause handling too: Escape belongs to the field while the field
+	// has the keyboard, or leaving a half-typed name would open the pause menu
+	// behind it.
+	if (Mode && CigInput::Scope(Mode->bTextEntryActive, Mode->bTabletOpen) == ECigInputScope::TextEntry)
+	{
+		if (PC->WasInputKeyJustPressed(EKeys::Escape))
+		{
+			Mode->EndTextEntry();
+		}
+		return;
+	}
 
 	// --- Pause menu (Esc/P/Start; works while paused too) ---
 	if (Mode && (CigInput::WasPressed(PC, ECigAction::Pause) || PC->WasInputKeyJustPressed(EKeys::Escape)
