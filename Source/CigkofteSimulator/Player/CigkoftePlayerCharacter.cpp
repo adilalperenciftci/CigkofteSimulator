@@ -5,6 +5,7 @@
 #include "Game/CigDaySystem.h"
 #include "World/CigkofteStation.h"
 #include "World/CigWorldBuilder.h"
+#include "Placement/CigPlacementSystem.h"
 #include "Orders/CigOrderSystem.h"
 #include "Customers/CigCustomerSystem.h"
 #include "Cat/CigCat.h"
@@ -230,7 +231,7 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 	// Above the pause handling too: Escape belongs to the field while the field
 	// has the keyboard, or leaving a half-typed name would open the pause menu
 	// behind it.
-	if (Mode && CigInput::Scope(Mode->bTextEntryActive, Mode->bTabletOpen) == ECigInputScope::TextEntry)
+	if (Mode && CigInput::Scope(Mode->bTextEntryActive, Mode->bTabletOpen, Mode->bBuildMode) == ECigInputScope::TextEntry)
 	{
 		if (PC->WasInputKeyJustPressed(EKeys::Escape))
 		{
@@ -423,6 +424,21 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 	{
 		PollTabletInput(PC, Mode);
 		return; // no world interaction while the tablet is open
+	}
+
+	// --- Build mode ---
+	//
+	// Placed here, beside the tablet, because it swallows the same things: the
+	// player still walks and looks (both happen above this point) but the shop
+	// stops being a place to cook in. A station is furniture while the mode is on,
+	// and pressing Interact on it must not start kneading.
+	if (PC->WasInputKeyJustPressed(EKeys::B))
+	{
+		Mode->ToggleBuildMode();
+	}
+	if (CigInput::Scope(Mode->bTextEntryActive, Mode->bTabletOpen, Mode->bBuildMode) == ECigInputScope::BuildMode)
+	{
+		return; // selection is resolved in UpdateBuildSelection, not by a key
 	}
 
 	// --- Wrap assembly shortcuts ---
@@ -618,6 +634,19 @@ void ACigkoftePlayerCharacter::UpdateFocus()
 		return;
 	}
 
+	// Build mode looks at the same world and asks a different question. Reaching
+	// it here rather than alongside means the gameplay highlights are already
+	// cleared above: a counter left glowing as "interact with me" while the mode
+	// treats it as furniture would be telling the player two things at once.
+	if (ACigkofteGameMode* BuildMode = GM())
+	{
+		if (BuildMode->bBuildMode)
+		{
+			UpdateBuildSelection();
+			return;
+		}
+	}
+
 	const FVector Start = Camera->GetComponentLocation();
 	const FVector End = Start + Camera->GetForwardVector() * 450.f;
 
@@ -650,6 +679,45 @@ void ACigkoftePlayerCharacter::UpdateFocus()
 			FocusedCrate->SetHighlighted(true);
 		}
 	}
+}
+
+void ACigkoftePlayerCharacter::UpdateBuildSelection()
+{
+	ACigkofteGameMode* Mode = GM();
+	if (!Mode || !Camera)
+	{
+		return;
+	}
+
+	UCigWorldBuilder* WB = Mode->WorldBuilder.Get();
+	UCigPlacementSystem* Placement = Mode->Placement.Get();
+	if (!WB || !Placement)
+	{
+		Mode->BuildSelection = FCigBuildSelection();
+		return;
+	}
+
+	// Further than the interaction trace on purpose. Interaction is about what the
+	// player can touch; this is about what they are pointing at across a room they
+	// are judging as a whole, and making them walk to a table to find out its name
+	// would make laying out a shop a walking exercise.
+	const FVector Start = Camera->GetComponentLocation();
+	const FVector End = Start + Camera->GetForwardVector() * BuildSelectReach;
+
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(CigBuildSelect), false, this);
+	FHitResult Hit;
+	FName Id = NAME_None;
+	if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+	{
+		// One actor in, one placement out. A chair resolves to its table because
+		// that is what the authority holds a record for; the chair was attached to
+		// it when the shop was built and has no separate existence to select.
+		Id = WB->PlacementVisuals.FindByActor(Hit.GetActor());
+	}
+
+	// Resolve runs even when the trace found nothing, so the refusal is a decided
+	// value rather than a stale selection nobody got round to clearing.
+	Mode->BuildSelection = CigBuildSelection::Resolve(Id, Placement->FindPlacement(Id));
 }
 
 void ACigkoftePlayerCharacter::UpdateHeadBob(float DeltaSeconds)

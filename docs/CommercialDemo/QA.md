@@ -1295,6 +1295,91 @@ The package table above was rebuilt from `84af1c3`. The hashes it carried before
 were of a binary containing the defect, which would have made the evidence a
 record of the wrong thing.
 
+## 2026-08-06 — build mode step 4: the shop can be pointed at
+
+The first half of the audit's High item 3. A player can now hold `B`, look at a
+table across the room and be told what it is. They still cannot move it — that is
+steps 5 and 6 — so two finished stages remain unreachable, but the thing they were
+waiting for has started.
+
+### Selection is a question about the authority, not about rendering
+
+Whether something can be moved has one right answer, and it must not depend on
+whether the thing was reached by a trace, by a save being reloaded, or by a test
+with no world. So the decision is a pure function over a placement record and the
+trace stays in the character.
+
+Three refusals rather than one, because a player who gets silence learns nothing:
+
+| Fault | What the player is looking at |
+|---|---|
+| `NotAPlacement` | a wall, the floor, a customer — the common case, and not an error |
+| `Orphaned` | the registry knows the actor, the authority has no record. A defect, and named so it can never read as bad aim |
+| `NotInstalled` | a delivery crate. Real, present, and not the shop's layout |
+
+The last one is a save-contract rule, not a taste decision. `FCigSavePlacement`
+persists only `Installed` records, so a player who rearranged a crate would be
+promising themselves something the evening will not keep.
+
+### The reverse lookup
+
+`FCigPlacementVisualRegistry::FindByActor` is the inverse of `Attach`, and it
+answers for any attached actor rather than only the main one. Looking at a chair
+selects its table, because the table is what the authority holds a record for and
+what a move would move; the chair was attached beside it when the shop was built
+and has no separate existence.
+
+### The third modal layer
+
+`ECigInputScope::BuildMode`, ranked below the tablet and above gameplay. It sits
+beside the tablet gate in `PollInput` rather than above it, because it swallows
+the same things: the player still walks and looks, and the shop stops being a
+place to cook in.
+
+`Cigkofte.Input.Scope.ExactlyOneLayerIsEverActive` was written with the note that
+it guarded against "a future third modal state being added as another boolean and
+two of them being true at once." That state arrived, so the loop grew from four
+combinations to eight rather than the new flag getting a check of its own — a flag
+tested only against the cases somebody thought of is the thing that test exists to
+prevent.
+
+### What the tests found
+
+Two things, neither of which a playthrough would have named clearly.
+
+**Silence cannot be a text key.** The first version routed "looking at nothing"
+through `build.select.none` with an empty value. `CigText` treats a blank as a
+missing translation, falls back to Turkish, finds that blank too, then warns and
+returns something visible — so the empty key would have put a message on screen
+*and* a warning in the log on every frame the player looked at a wall. Silence is
+returned directly now, and the key is gone.
+
+**The transient rule was mutation-checked.** Forcing the lifetime test to `false`
+makes `EachRefusalIsNamedRatherThanCollapsedIntoNo` fail on exactly the two
+assertions that own it, with the other four tests passing. Reverted before
+validation.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 226 automation tests, 25 systems |
+| Editor build | PASS |
+| Full automation | **226 passed, 0 failed** (221 before) |
+| Mutation (transient check disabled) | 1 test fails naming 2 assertions, suite survives |
+| Runtime data load | 14/14, 0 warnings |
+
+The static gate caught the doc count itself: `KNOWN_LIMITATIONS.md` still said 221
+and the run stopped until it was corrected.
+
+### What this does not change
+
+Nothing here has been played, and now four unplayed steps are stacked rather than
+three. `BUILD_MODE.md` says a playtest belongs before step 7; the reach of the
+selection trace (1200uu, against interaction's 450), whether the green and amber
+read at a glance, and whether `B` is a comfortable key are all judgements no test
+in this file can make.
+
 ## 2026-08-06 — the delivery system gets tests of its own
 
 The August audit found four systems with no test naming them and singled out

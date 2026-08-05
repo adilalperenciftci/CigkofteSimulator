@@ -2,7 +2,15 @@
 
 Branch `feat/build-mode`, from master `2c65deb`.
 
-Status: **audit and plan. No code has been written.**
+Status: **steps 1-4 done. Steps 5-8 open.** Steps 1-3 landed in PR #26 (the
+modal gate, `SetInputMode`, and the shop rename that used them); step 4 -
+selection - is `feat/build-mode-selection`.
+
+**Nobody has played any of it.** Steps 1-3 shipped with an explicit playtest
+request that was not carried out before the branch merged, and step 4 adds a
+second mode on top of the first. The plan's own note at the bottom of this file -
+that a playtest belongs before step 7 rather than after - now covers four
+unplayed steps rather than three.
 
 ## Why this is the next thing
 
@@ -80,8 +88,23 @@ The authority work is done. What is missing is a way to drive it.
 3. **Shop rename**, as the smallest real user of steps 1 and 2: one text field,
    already-validated rules, already-tested rename path. It closes the Stage 3.6
    gap and proves the input work with the least new surface.
-4. **Build mode: selection.** Look at a placement, see it highlighted, with its
-   stable ID and category readable.
+4. **Build mode: selection.** Look at a placement, see it named, with its stable
+   ID and category readable. **Done** — `CigBuildSelection` decides, the registry
+   answers "which placement is this actor" in reverse, and the HUD reads it.
+
+   Two things came out of building it that the plan did not anticipate. The first
+   is that refusals need names: a player looking at a delivery crate and getting
+   silence learns nothing, so `NotAPlacement`, `Orphaned` and `NotInstalled` are
+   three answers rather than one. Only `Installed` placements are selectable,
+   because the save persists only those and build mode must not promise to
+   remember a crate that will not survive the evening.
+
+   The second is that "say nothing" cannot be a text key. `CigText` treats a blank
+   value as a missing translation, falls back to Turkish, finds that blank too,
+   then warns and returns something visible — so an empty `build.select.none`
+   would have put both a message on screen and a warning in the log on every frame
+   the player looked at a wall. Silence is returned directly instead. A test
+   caught this rather than a playthrough.
 5. **Build mode: ghost preview.** A candidate transform validated every frame
    through `ValidatePlacement` plus `WouldCloseRequiredRoute`, drawn in the colour
    of its verdict, with the failure named — the authority already returns

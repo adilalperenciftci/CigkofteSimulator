@@ -755,6 +755,16 @@ msg.placement.duplicate,Bu nesne kimliği zaten kayıtlı.,That object identity 
 msg.placement.deliveryfull,Teslimat alanı dolu; kasa için yer aç.,The delivery area is full; clear a spot for the crate.
 msg.placement.classification,Bu nesne bu yerleştirme işlemi için uygun değil.,This object is not valid for this placement operation.
 msg.placement.consequence,Bu nesnenin kullanım alanı tanımı geçersiz.,This object's use-area definition is invalid.
+build.category.unknown,Nesne,Object
+build.category.station,Tezgâh,Station
+build.category.seating,Oturma,Seating
+build.category.storage,Depolama,Storage
+build.category.decoration,Süs,Decoration
+build.select.label,{0} — {1},{0} — {1}
+build.select.orphaned,Bu nesnenin kaydı bulunamadı.,This object has no placement record.
+build.select.transient,Teslimat kasaları taşınamaz.,Delivery crates cannot be rearranged.
+msg.buildmode.on,Yerleşim düzenleme açık. Taşımak için bir nesneye bak.,Layout editing on. Look at an object to select it.
+msg.buildmode.off,Yerleşim düzenleme kapalı.,Layout editing off.
 tablet.shopname,Dükkân adı,Shop name
 tablet.licence,0) Ruhsat ve vergi levhası,0) Licence and tax plate
 tablet.licence.valid,"{0} gün geçerli  ·  yenile {1} TL","valid {0} more days  ·  renew {1} TL"

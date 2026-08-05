@@ -64,6 +64,15 @@ public:
 
 	void Reset();
 
+	// Which placement this actor belongs to, or NAME_None.
+	//
+	// The reverse of Attach, and the question selection asks: the player's trace
+	// hits one actor and build mode needs the record behind it. It answers for any
+	// attached actor rather than only the main one, so looking at a chair selects
+	// the table it was authored beside - the record is what moves, and the chair
+	// has no independent existence in the authority.
+	FName FindByActor(const AActor* Actor) const;
+
 	bool Contains(FName StableId) const;
 	// Live actors only. A count that included destroyed ones would make the
 	// "every record has a visual" invariant pass on nothing.

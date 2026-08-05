@@ -53,7 +53,7 @@ namespace
 
 namespace CigInput
 {
-	ECigInputScope Scope(bool bTextEntryActive, bool bTabletOpen)
+	ECigInputScope Scope(bool bTextEntryActive, bool bTabletOpen, bool bBuildMode)
 	{
 		// Text entry first, and deliberately not nested inside the tablet check.
 		// The field is hosted by the tablet, so leaving the tablet polling while
@@ -63,7 +63,14 @@ namespace CigInput
 		{
 			return ECigInputScope::TextEntry;
 		}
-		return bTabletOpen ? ECigInputScope::Tablet : ECigInputScope::Gameplay;
+		if (bTabletOpen)
+		{
+			return ECigInputScope::Tablet;
+		}
+		// Below the tablet: a panel drawn over the screen owns the keys before a
+		// mode the player is standing inside. The callers keep these two apart, but
+		// the ordering is written down rather than left to them.
+		return bBuildMode ? ECigInputScope::BuildMode : ECigInputScope::Gameplay;
 	}
 
 	FString ActionName(ECigAction Action)

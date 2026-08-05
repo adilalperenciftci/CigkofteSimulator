@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "Core/CigkofteTypes.h"
+#include "Placement/CigBuildSelection.h"
 #include "CigkofteGameMode.generated.h"
 
 class UCigEventBus;
@@ -216,6 +217,23 @@ public:
 	void CycleTabletTab(int32 Dir);
 	void TabletScrollBy(int32 Dir);
 	void TabletKey(int32 Num); // 1-9 and 0
+
+	// --- Build mode: rearranging the shop ---
+	//
+	// The third modal state, and the one two finished stages were waiting for:
+	// Stage 3.5 persists a layout nobody could change and Stage 3.6 stores a name
+	// nobody could type. See CigInput::Scope for where it ranks.
+	bool bBuildMode = false;
+
+	// What the player is looking at, resolved every frame while build mode is on.
+	// Held as a value rather than an actor pointer because the authority's record
+	// is the thing being edited; the actors are only how it is seen.
+	FCigBuildSelection BuildSelection;
+
+	// Enters and leaves. Closes the tablet on the way in rather than trusting the
+	// two never to overlap, and clears the selection on the way out so a stale
+	// highlight cannot outlive the mode.
+	void ToggleBuildMode();
 
 	// --- Settings screen ---
 	bool bSettingsOpen = false;
