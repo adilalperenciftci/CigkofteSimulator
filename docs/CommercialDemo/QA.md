@@ -1200,3 +1200,71 @@ and edit mode the player can actually drive.
 Nobody has seen the board. The tests prove the name is validated, stored, restored
 and put on a `UTextRenderComponent`; whether it reads well at 90 units on a
 shopfront across a street is a thing to look at.
+
+## 2026-08-05 — the keyboard changes hands
+
+Branch `feat/build-mode`, from master `2c65deb`. Plan:
+`docs/Architecture/BUILD_MODE.md`.
+
+### Why this came before build mode itself
+
+Two finished stages have the same gap: Stage 3.5 persists a layout nobody can
+rearrange, Stage 3.6 validates a name nobody can type. Both are machinery with no
+way for a player to reach it, and both need the same thing first.
+
+### The finding that shaped it
+
+Input here is polled, not bound. `CigInput` asks the controller for raw key state
+every tick, and `PC->WasInputKeyJustPressed` keeps returning true whether or not a
+widget has focus. A text field added without a gate gives a rename where typing
+"W" also walks the player forward and every digit fires a tablet shortcut. That is
+why nothing in this project had ever called `SetInputMode` — and why it could not
+simply be called now.
+
+The gate already existed in the right shape: `bTabletOpen` swallows world
+interaction the same way. `ECigInputScope` names the idea and adds the layer above
+it, with text entry outranking the tablet because the field is hosted by it.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 215 automation tests, 25 systems |
+| Harness assertions | 49/49, 7/7, 18/18, 32/32, 13/13 |
+| Editor build | PASS |
+| Full automation | **215 passed, 0 failed** (213 before) |
+| Runtime data load | 14/14, 0 warnings |
+
+New: 2 `Cigkofte.Input.Scope` — the precedence, and that every combination of the
+two flags resolves to exactly one layer. The second guards against a future third
+modal state being added as another boolean with two true at once.
+
+### Packages
+
+| | Development | Shipping |
+|---|---|---|
+| Files | 71 | 49 |
+| Bytes | 2,341,222,747 | 1,797,828,150 |
+| Runtime EXE SHA-256 | `3A51911CCE3A0312D478ED004904B606AA99DADF3590C67DCF95554CE93B03F8` | `6EBDCE10FBDC816D2CD14E0DA66FA469B91FCA751091C157DF77731EC8DEF3AE` |
+| PDB files | 1 | **0** |
+| Sentry / crashpad / editor tooling | **0** | **0** |
+| Smoke test | 9/9 | 4/4 |
+| Mandatory self-test | **passed** | **passed** |
+| `Verify-Release` | — | **PASS** |
+
+### What the automation does not cover, in plain terms
+
+This is the first change in the project to call `SetInputMode`, and none of the
+things that make it right or wrong are checked by anything above:
+
+- that F2 on the shop tab actually moves focus to the field;
+- that typing does not walk the player or fire tablet shortcuts;
+- that Enter commits, returns input to the game and hides the cursor again;
+- that the mouse ends up where a player expects.
+
+The packages start, self-test and pass their smoke checks, which says the change
+does not break startup. It says nothing about whether the feature works. Somebody
+has to press the keys, and until they do this is unverified rather than done.
+
+Three steps: open the tablet, go to the shop tab, press F2; type a name and watch
+whether the character moves; press Enter and check the board, the cursor and WASD.
