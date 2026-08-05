@@ -185,6 +185,15 @@ public:
 
 	// --- Tablet ---
 	bool bTabletOpen = false;
+
+	// A field on screen has focus and is taking letters.
+	//
+	// Needed because input here is polled rather than bound: the character asks
+	// the controller for raw key state every tick, and that does not stop when a
+	// widget takes focus. Without this, typing a shop name would also walk the
+	// player forward and fire the tablet's number-key shortcuts on every digit.
+	// See CigInput::Scope, which is where the precedence lives.
+	bool bTextEntryActive = false;
 	// The tablet is drawn entirely in UMG (see UI/CigTabletWidget.h). The Canvas
 	// version was removed once every tab had moved - maintaining two separate
 	// draw paths would have cost more than the move gained.

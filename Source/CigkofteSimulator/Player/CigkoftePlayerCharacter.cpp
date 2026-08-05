@@ -351,6 +351,18 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 		return;
 	}
 
+	// Nothing below this line reads a key while a field has focus.
+	//
+	// It has to be the first check rather than one more case beside the tablet:
+	// every shortcut under here is polled from raw key state, so F5 would save the
+	// game while somebody typed an F into a shop name. The tablet's own gate comes
+	// later and is left where it is - this is the layer above it.
+	const ECigInputScope InputScope = CigInput::Scope(Mode->bTextEntryActive, Mode->bTabletOpen);
+	if (InputScope == ECigInputScope::TextEntry)
+	{
+		return;
+	}
+
 	// --- Save shortcuts and debug ---
 	if (PC->WasInputKeyJustPressed(EKeys::F5))
 	{
