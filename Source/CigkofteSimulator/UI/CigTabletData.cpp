@@ -1,5 +1,7 @@
 #include "UI/CigTabletData.h"
 #include "UI/CigUIColors.h"
+// The shop's name lives with the board that shows it.
+#include "World/CigWorldBuilder.h"
 #include "Core/CigText.h"
 #include "Core/CigUpgrades.h"
 #include "Core/CigkofteTypes.h"
@@ -142,6 +144,18 @@ namespace CigTablet
 
 		case ECigTabletTab::Dukkan:
 		{
+			// The shop's own name, at the top of its own tab. Read-only for now:
+			// nothing in this project ever calls SetInputMode, so the game is
+			// always in game input and a text field here would take no keys. The
+			// rename path exists (UCigWorldBuilder::SetShopName) and is tested;
+			// what is missing is an input mode to type into, which is a change to
+			// how the whole tablet takes input rather than a field.
+			if (const UCigWorldBuilder* Builder = GM->WorldBuilder.Get())
+			{
+				Rows.Add(MakeRow(CigText::Get(TEXT("tablet.shopname")),
+					Builder->ShopDisplayName(), CigUI::White));
+			}
+
 			// Paperwork first: an expired licence turns the next inspection into a
 			// double fine, which matters more than any upgrade on the list below.
 			if (const UCigInspectionSystem* Den = GM->Inspection.Get())

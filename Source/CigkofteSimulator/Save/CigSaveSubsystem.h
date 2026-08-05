@@ -36,7 +36,13 @@ public:
 	// authored default, and a v13 save of a shop the player has genuinely emptied.
 	// Load cannot tell those apart from the array, so bLayoutPersisted says which,
 	// and MigrateV12ToV13 is what sets it for every older file.
-	static constexpr int32 CurrentVersion = 13;
+	// Version 14: the shop has a name of its own.
+	//
+	// No companion flag this time, and the difference is worth stating: an empty
+	// layout array is a state a player can reach, so it needed one. An empty shop
+	// name is not - CigShopIdentity refuses it - so empty means "never named" and
+	// nothing else.
+	static constexpr int32 CurrentVersion = 14;
 
 	bool HasSave() const;
 	bool SaveNow(ACigkofteGameMode* GM);
@@ -70,4 +76,5 @@ private:
 	static void MigrateV10ToV11(UCigSaveGame& Save);
 	static void MigrateV11ToV12(UCigSaveGame& Save);
 	static void MigrateV12ToV13(UCigSaveGame& Save);
+	static void MigrateV13ToV14(UCigSaveGame& Save);
 };

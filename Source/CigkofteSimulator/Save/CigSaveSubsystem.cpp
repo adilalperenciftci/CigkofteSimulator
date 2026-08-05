@@ -87,7 +87,11 @@ void UCigSaveSubsystem::MigrateSave(UCigSaveGame& Save)
 	{
 		MigrateV12ToV13(Save);
 	}
-	// In future: if (Save.SaveVersion < 14) { MigrateV13ToV14(Save); } ...
+	if (Save.SaveVersion < 14)
+	{
+		MigrateV13ToV14(Save);
+	}
+	// In future: if (Save.SaveVersion < 15) { MigrateV14ToV15(Save); } ...
 
 	Save.SaveVersion = CurrentVersion;
 	UE_LOG(LogCigSave, Log, TEXT("Kayıt taşındı: sürüm %d → %d"), From, CurrentVersion);
@@ -217,6 +221,18 @@ void UCigSaveSubsystem::MigrateV12ToV13(UCigSaveGame& Save)
 	// pair has to be consistent: not persisted means nothing to read.
 	Save.InstalledLayout.Reset();
 	Save.bLayoutPersisted = false;
+}
+
+void UCigSaveSubsystem::MigrateV13ToV14(UCigSaveGame& Save)
+{
+	// v14 gave the shop a name. A v13 shop was never asked for one, and an empty
+	// name is exactly that - CigShopIdentity turns it into the default, which is
+	// the same board the shop had before this version existed.
+	//
+	// No flag and no fabricated name: writing the default in here would turn
+	// "never named" into "named it that", and a later change to the default would
+	// then leave old shops carrying a name nobody chose.
+	Save.ShopName.Reset();
 }
 
 bool UCigSaveSubsystem::SaveNow(ACigkofteGameMode* GM)

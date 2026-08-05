@@ -74,7 +74,7 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 203 automation tests cover pure formulas, tables, data integrity and one
+- The 213 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
@@ -87,6 +87,25 @@ not fixed yet belong in `PLAN.md`, not here.
   than assumed — see the navigation section below. Placement save/load
   persistence is Stage 3.5 and shop identity is Stage 3.6; neither is implemented
   here.
+
+## Shop identity
+
+- **The player cannot rename the shop yet.** The name exists, is validated, is
+  persisted and appears on the board and in the tablet, but nothing in this
+  project ever calls `SetInputMode`: the game is always in game input, including
+  while the tablet is open. An editable field would take no keystrokes at all —
+  it would look usable and do nothing, which is worse than not having one. The
+  rename path (`UCigWorldBuilder::SetShopName`) exists and is tested; what is
+  missing is an input mode to type into, and that is a change to how the tablet
+  takes input rather than a field to add. It affects movement and look and cannot
+  be verified without playing. Open.
+- **The name is not translated, deliberately.** A name given in Turkish stays that
+  name when the interface is switched to English, so the default is a fixed string
+  rather than a text key. The consequence is that the default board reads
+  `CIGKOFTECI` in both languages.
+- **Length is counted in UTF-16 code units, not graphemes.** `ğ` costs one and an
+  emoji costs two. That is the same measure the text renderer and the save field
+  use, so it is consistent rather than correct.
 
 ## Packaging
 

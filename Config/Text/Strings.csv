@@ -755,6 +755,7 @@ msg.placement.duplicate,Bu nesne kimliği zaten kayıtlı.,That object identity 
 msg.placement.deliveryfull,Teslimat alanı dolu; kasa için yer aç.,The delivery area is full; clear a spot for the crate.
 msg.placement.classification,Bu nesne bu yerleştirme işlemi için uygun değil.,This object is not valid for this placement operation.
 msg.placement.consequence,Bu nesnenin kullanım alanı tanımı geçersiz.,This object's use-area definition is invalid.
+tablet.shopname,Dükkân adı,Shop name
 tablet.licence,0) Ruhsat ve vergi levhası,0) Licence and tax plate
 tablet.licence.valid,"{0} gün geçerli  ·  yenile {1} TL","valid {0} more days  ·  renew {1} TL"
 tablet.licence.expired,"SÜRESİ DOLDU  ·  yenile {0} TL","EXPIRED  ·  renew {0} TL"
