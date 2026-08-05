@@ -1116,3 +1116,87 @@ Nobody has moved a table. There is no build mode to move one with, so the layout
 this stage persists is the authored default in every run so far — the move cases
 are exercised by editing the captured layout in a test rather than by playing.
 That is the honest limit of what has been shown.
+
+## 2026-08-05 — Stage 3.6: the shop has a name
+
+Branch `feat/stage3-shop-identity`, from master `1638031`.
+
+### What was there before
+
+A literal in the middle of the world builder:
+`SpawnWorldText(..., TEXT("CIGKOFTECI"), ...)` on the shopfront board — not routed
+through `CigText`, owned by nothing, saved by nothing. `YeniTabela` turned out to
+be an upgrade that changes the customer arrival rate, and "signage" elsewhere in
+the source means station labels. There was no shop name to find.
+
+### Decisions worth stating
+
+- **A name is not translated.** If a Turkish player names their shop and switches
+  the interface to English, the board must still say what they called it. So the
+  default is a fixed string rather than a text key, and the language setting has
+  no opinion about it. `CigText` is deliberately not involved.
+- **Inner spacing is left alone.** `Cig  Kofte` is a name somebody chose;
+  collapsing it is rewriting it. Only the ends are trimmed, because a leading
+  space is a slip.
+- **The character fault is reported ahead of the length fault.** A name that is
+  both too long and contains a pasted newline would otherwise send the player to
+  shorten something whose real problem is the paste.
+- **Version 14 needs no companion flag, unlike 13.** An empty layout array is a
+  state a player can reach, so it needed one. An empty name is not — the rules
+  refuse it — so empty means "never named" and nothing else.
+- **The migration clears rather than fills.** Writing the default in would turn
+  "never named" into "named it that", and a later change to the default would
+  leave old shops carrying a name nobody chose. The name is stored raw on both
+  sides for the same reason.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 213 automation tests, 25 systems |
+| Harness assertions | 49/49, 7/7, 18/18, 32/32, 13/13 |
+| Editor build | PASS |
+| Full automation | **213 passed, 0 failed** (203 before) |
+| Runtime data load | 14/14, 0 warnings |
+
+New: 10 `Cigkofte.ShopIdentity` — 6 pure name rules, 4 through a real shop and a
+real save. Turkish names are in the accepted list explicitly: if
+`ÇİĞKÖFTECİ ŞÜKRÜ` were refused the shop could not be named in its own language.
+
+### Packages
+
+| | Development | Shipping |
+|---|---|---|
+| Files | 71 | 49 |
+| Bytes | 2,341,132,940 | 1,797,829,477 |
+| Runtime EXE SHA-256 | `95CC1F6E00221CA19E0112AC23C31DE657D7B94C1C7EF4306FB837F67FF5C675` | `1DC3F8CEF56EC55C2263A361D2B8D2D246B9A6F27ADA8553F25577D9ACA6D021` |
+| PDB files | 1 | **0** |
+| Sentry / crashpad / editor tooling | **0** | **0** |
+| Smoke test | 9/9 | 4/4 |
+| `kayit-surumu` | **PASS** (1 → 14, target 14) | **PASS** (1 → 14, target 14) |
+| `kayit-turu` | **PASS** | **PASS** |
+| `Verify-Release` | — | **PASS** |
+
+The migration chain is exercised end to end inside both packages: a version 1 save
+reaches 14 through every step. `kayit-turu` still carries the layout round trip
+added in Stage 3.5.
+
+### The gap this stage does not close
+
+**The player cannot rename the shop.** Nothing in this project calls
+`SetInputMode`, so the game is always in game input — including while the tablet
+is open — and an editable field would take no keystrokes. It would look usable and
+do nothing, which is worse than not having one. The rename path exists and is
+tested; the missing piece is an input mode to type into, which changes how the
+tablet takes input, affects movement and look, and cannot be verified without
+playing.
+
+This is the same shape as the Stage 3.5 gap: the machinery is there and the way
+for a player to reach it is not. Both close with the same piece of work — a build
+and edit mode the player can actually drive.
+
+### Still needs a human
+
+Nobody has seen the board. The tests prove the name is validated, stored, restored
+and put on a `UTextRenderComponent`; whether it reads well at 90 units on a
+shopfront across a street is a thing to look at.

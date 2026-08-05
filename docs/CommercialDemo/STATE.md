@@ -128,6 +128,33 @@ Stage 3.5 placement persistence starts after those, on
 
 ## Current task
 
+**Stage 3.6: the shop has a name.** Save version 14. The sign was a literal in the
+middle of the world builder, not routed through `CigText`, owned by nothing and
+saved by nothing; it now comes from an identity the shop owns, is validated,
+persists, and appears in the tablet as well as on the board.
+
+A name is not translated — a name given in Turkish stays that name when the
+interface is switched — so the default is a fixed string rather than a text key.
+Inner spacing is the player's; only the ends are trimmed. The character fault is
+reported ahead of the length fault, because a name that is both would otherwise
+send the player to shorten something whose real problem is a pasted newline.
+
+Version 14 needs no companion flag, unlike 13: an empty layout is a state a player
+can reach, an empty name is not. The migration clears rather than fills, so "never
+named" does not quietly become "named it that".
+
+213 automation tests, both packages clean, both self-tests passed, `Verify-Release`
+PASS. The migration chain runs end to end inside both packages: version 1 reaches
+14.
+
+**What this stage does not close:** the player cannot rename the shop. Nothing in
+this project calls `SetInputMode`, so the game is always in game input and an
+editable field would take no keystrokes. Same shape as the Stage 3.5 gap — the
+machinery exists, the way for a player to reach it does not — and both close with
+the same work: a build and edit mode the player can drive.
+
+## Previous task
+
 **Stage 3.5: the shop layout persists.** Save version 13. The installed layout is
 captured as authored inputs only — the consequence is derived by policy, so
 storing it would be a second authority — validated as a whole candidate before
