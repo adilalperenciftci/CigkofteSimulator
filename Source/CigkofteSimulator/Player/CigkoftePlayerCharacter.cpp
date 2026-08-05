@@ -219,6 +219,26 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 {
 	ACigkofteGameMode* Mode = GM();
 
+	// Nothing else in this function reads input while a field has focus.
+	//
+	// First, and above look and movement rather than below them. The first
+	// attempt at this gate sat further down, past the mouse delta and the WASD
+	// block, so typing a shop name still turned the camera and walked the player -
+	// the exact thing the gate exists to stop, and invisible from the gate's own
+	// tests because they check the decision rather than where it is applied.
+	//
+	// Above the pause handling too: Escape belongs to the field while the field
+	// has the keyboard, or leaving a half-typed name would open the pause menu
+	// behind it.
+	if (Mode && CigInput::Scope(Mode->bTextEntryActive, Mode->bTabletOpen) == ECigInputScope::TextEntry)
+	{
+		if (PC->WasInputKeyJustPressed(EKeys::Escape))
+		{
+			Mode->EndTextEntry();
+		}
+		return;
+	}
+
 	// --- Pause menu (Esc/P/Start; works while paused too) ---
 	if (Mode && (CigInput::WasPressed(PC, ECigAction::Pause) || PC->WasInputKeyJustPressed(EKeys::Escape)
 		|| Pressed(PC, EKeys::Invalid, EKeys::Gamepad_Special_Right)))
@@ -363,18 +383,6 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 	}
 
 	if (!Mode)
-	{
-		return;
-	}
-
-	// Nothing below this line reads a key while a field has focus.
-	//
-	// It has to be the first check rather than one more case beside the tablet:
-	// every shortcut under here is polled from raw key state, so F5 would save the
-	// game while somebody typed an F into a shop name. The tablet's own gate comes
-	// later and is left where it is - this is the layer above it.
-	const ECigInputScope InputScope = CigInput::Scope(Mode->bTextEntryActive, Mode->bTabletOpen);
-	if (InputScope == ECigInputScope::TextEntry)
 	{
 		return;
 	}
