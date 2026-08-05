@@ -1294,3 +1294,55 @@ and each is reported separately.
 The package table above was rebuilt from `84af1c3`. The hashes it carried before
 were of a binary containing the defect, which would have made the evidence a
 record of the wrong thing.
+
+## 2026-08-06 — the delivery system gets tests of its own
+
+The August audit found four systems with no test naming them and singled out
+`CigDeliverySystem` as the one that mattered: it creates the transient placements
+a layout load has to carry, and the defect Stage 3.5 introduced there was caught
+by the *placement* tests rather than by anything of delivery's own. A system only
+ever observed through another system's tests is one nobody is watching.
+
+`CigDeliveryTests.cpp` adds six, each pinning a rule delivery owes another system:
+
+| Test | What would otherwise be free to change |
+|---|---|
+| `OrdersAreCappedAndCarryAnAddress` | `MaxOrders`, without which beacons and the HUD grow unbounded |
+| `DeliveringFromTooFarAwayDoesNothing` | returning **false**, which lets the key press fall through to whatever else is under the player |
+| `ArrivingWithAnEmptyShelfConsumesTheInteraction` | returning **true**, because the player did reach the door and was told why nothing happened |
+| `ASuccessfulDeliveryTakesThePackageAndPays` | shelf consumption, payment, the daily counter |
+| `ABulkOrderNeedsTwoPackagesAndTakesBoth` | `NeedPacks = 2`, without which a bulk order accepts half an order |
+| `TheDayEndingClearsOrdersRatherThanCarryingThemOver` | leftover orders standing undeliverable with their beacons up |
+
+The third and second are deliberately a pair: the difference between consuming an
+interaction and declining it is invisible in the code and easy to write backwards.
+
+### These were checked by mutation, not trusted for passing
+
+Forcing `NeedPacks` to 1 and rebuilding makes the bulk test fail and name the four
+assertions that break, with line numbers, while the other five pass.
+
+That run also found a defect in the test rather than in the game. The first
+version re-read `Orders[0]` after a delivery attempt, so under the mutation — the
+one run where the test was doing its job — it indexed an emptied array and took
+the whole suite down with an engine assertion instead of reporting a failure. The
+door position is now captured once, before any attempt. A test that crashes the
+harness on failure is worse than no test, because a crash reads as infrastructure
+trouble rather than as the finding it is.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 221 automation tests, 25 systems |
+| Editor build | PASS |
+| `Cigkofte.Delivery` filter | 6/6 |
+| Mutation (`NeedPacks = 1`) | bulk test **fails cleanly**, suite survives, 5/6 still pass |
+
+The mutation was reverted before validation; `git diff` over `Delivery/` is empty.
+
+### What this does not change
+
+Nothing here is play. Delivery is now correct on its own terms in a harness with
+no renderer and no input device, and no person has driven a package to a door.
+The High-severity item stands untouched: no package has been played by anybody.
