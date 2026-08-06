@@ -1295,6 +1295,80 @@ The package table above was rebuilt from `84af1c3`. The hashes it carried before
 were of a binary containing the defect, which would have made the evidence a
 record of the wrong thing.
 
+## 2026-08-06 — build mode step 6: the furniture actually moves
+
+The player can rearrange the shop. It holds for the session; surviving a save is
+step 8. Stage 3.5 built the machinery to persist a layout nobody could change —
+this is the first commit where a person can change one.
+
+### Cancel cost nothing, and that was step 5's doing
+
+The plan expected cancel to restore the previous transform from the visual
+registry. That is what it would have cost if the ghost had been the real
+furniture. Because step 5 made the ghost separate geometry, nothing moves until
+commit — so cancel is just letting go, and the half of this step that looked like
+work was already paid for.
+
+### What a move drags behind it
+
+A record is only half a placement. The actors are found through the visual
+registry, and the **seats** are what customers walk to. Forgetting the seats does
+not crash anything; it produces a shop where people walk to where a table used to
+be, and a route audit asking about a chair that is no longer there.
+
+The saved-layout path already knew this. Rather than write it twice,
+`UCigWorldBuilder::FollowPlacement` now owns it and `ApplyLoadedLayout` was moved
+onto it. Two implementations of "what follows a table" would mean fixing one and
+silently not the other.
+
+**The mutation proved the sharing is real.** Resolving seats against the previous
+transform instead of the new one — a wrong-variable bug, not a deleted line — fails
+**two** tests across two features:
+
+| Test | Feature |
+|---|---|
+| `Cigkofte.BuildMode.MovingATableTakesItsChairsWithIt` | this branch |
+| `Cigkofte.LayoutApply.AMovedTableTakesItsMeshesAndItsSeatsWithIt` | Stage 3.5 |
+
+Separate implementations would have failed one and left the other quiet. That
+silence is the thing the shared function exists to prevent.
+
+The first mutation attempt — an early `return` above the seat loop — did not
+compile: unreachable code is an error in this project. The replacement is a better
+question anyway, because seats are still *counted* as moved while not moving, so
+only the position assertions fail.
+
+### A commit refuses what the ghost refused
+
+`CommitBuildMove` checks the verdict before asking the authority. Asking and hoping
+would let a red preview commit if the two ever disagreed, and the player would
+learn to ignore the colour. If the authority *does* refuse something the preview
+accepted, that is a disagreement rather than a player mistake: it is logged, the
+move stays picked up, and the verdict is asked again.
+
+### Weak assertion, caught and replaced
+
+The first version of the record-count check compared `PlacementCount()` against
+`PlacementRecords().Num()` — the same number by construction. It would have passed
+against any bug at all. It now counts before the move, and checks functional
+capacity too, so a move that quietly re-derived seating would be visible.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 235 automation tests, 25 systems |
+| Editor build | PASS |
+| `Cigkofte.BuildMode` filter | 14/14 |
+| Mutation (seats resolved against the old transform) | **2 tests fail across 2 features**, suite survives |
+
+### What this does not change
+
+Six steps, none played. This is the one that starts changing the shop rather than
+drawing over it, and everything about whether it is *usable* — whether `X` is
+findable, whether the ghost tells you enough to aim with, whether a table you moved
+looks right where it landed — is untested and untestable here.
+
 ## 2026-08-06 — build mode step 5: the ghost, and which authority gets to say no
 
 Picking up a placement now shows a coloured box where it would land. Committing is

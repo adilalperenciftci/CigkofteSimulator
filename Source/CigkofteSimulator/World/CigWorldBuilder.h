@@ -282,6 +282,15 @@ public:
 	// moved.
 	int32 SyncPlacementVisuals(FName StableId);
 
+	// Everything that follows a placement when it moves: its actors, and the seats
+	// that belong to it. Returns how many seats were moved.
+	//
+	// One function rather than two call sites doing the same work, because the
+	// consequence of forgetting the seats is invisible until a customer walks to
+	// where a table used to be. The saved-layout path found that first; a player
+	// moving a table in build mode asks exactly the same question.
+	int32 FollowPlacement(FName StableId, const FTransform& PreviousTransform);
+
 	// Replaces the installed layout with a saved one, and moves the shop to match.
 	//
 	// All or nothing. The candidate is validated whole by CigLayoutLoad before

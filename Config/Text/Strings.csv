@@ -765,6 +765,7 @@ build.select.orphaned,Bu nesnenin kaydı bulunamadı.,This object has no placeme
 build.select.transient,Teslimat kasaları taşınamaz.,Delivery crates cannot be rearranged.
 build.verdict.ok,Buraya konabilir.,This spot works.
 build.verdict.route,Buraya konursa {0} yolu kapanır.,Placing it here would close the {0} route.
+msg.buildmode.moved,Yerleşim taşındı.,The object was moved.
 msg.buildmode.on,Yerleşim düzenleme açık. Taşımak için bir nesneye bak.,Layout editing on. Look at an object to select it.
 msg.buildmode.off,Yerleşim düzenleme kapalı.,Layout editing off.
 tablet.shopname,Dükkân adı,Shop name

@@ -2,12 +2,16 @@
 
 Branch `feat/build-mode`, from master `2c65deb`.
 
-Status: **steps 1-5 done. Steps 6-8 open.** Steps 1-3 landed in PR #26 (the modal
+Status: **steps 1-6 done. Steps 7-8 open.** Steps 1-3 landed in PR #26 (the modal
 gate, `SetInputMode`, and the shop rename that used them); step 4, selection, in
-PR #27; step 5, the ghost preview, on `feat/build-mode-ghost`.
+PR #27; step 5, the ghost, in PR #28; step 6, commit and cancel, on
+`feat/build-mode-commit`.
 
-Nothing is committed to the layout yet. The record is untouched until step 6, so
-letting go of a ghost is not an undo — there is nothing to undo.
+**The player can now move the shop's furniture and it stays moved for the
+session.** It does not survive a save yet — that is step 8.
+
+This is where the plan said to stop. Six steps have been built and none has been
+played.
 
 **Nobody has played any of it.** Steps 1-3 shipped with an explicit playtest
 request that was not carried out before the branch merged, and step 4 adds a
@@ -135,9 +139,29 @@ The authority work is done. What is missing is a way to drive it.
    candidate. The authority snaps position and rotation, and a preview a few
    centimetres from where committing lands is the sort of difference nobody
    notices until a table will not fit and the ghost said it would.
-6. **Commit and cancel.** Commit goes through `RegisterPlacement` with
-   `MoveExisting` and `IgnoreStableId`; cancel restores the previous transform
-   from the visual registry.
+6. **Commit and cancel.** **Done.** Commit goes through `RegisterPlacement` with
+   `MoveExisting` and `IgnoreStableId`, and refuses when the verdict is not
+   accepted — the ghost has been saying no, and a commit that went ahead anyway
+   would make every red preview a suggestion.
+
+   **Cancel turned out to need nothing.** The plan expected it to restore the
+   previous transform from the visual registry, which is what it would have cost
+   if the ghost had been the real furniture. Because step 5 made the ghost separate
+   geometry, nothing is moved until commit, so cancel is just letting go. The step
+   that looked like half the work was free.
+
+   What was not free is what a move drags behind it. A record is only half a
+   placement: the actors are found through the visual registry, and the *seats* are
+   what customers walk to. `UCigWorldBuilder::FollowPlacement` now owns both, and
+   the saved-layout path was moved onto it rather than left with its own copy —
+   two implementations of "what follows a table" would mean fixing one and
+   silently not the other, and the symptom is not a crash but customers walking to
+   where a table used to be.
+
+   Escape is not the cancel key. It is handled far above build mode in `PollInput`
+   for the pause menu and never reaches here, so cancel is `X`. Whether anybody
+   finds `X` is a playtest question; leaving cancel unbound would have been worse
+   than binding it badly.
 7. **Remove and restore**, using the same paths Stage 3.5's load already exercises.
 8. **Round-trip through the save**, which is where Stage 3.5 stops being
    theoretical: move a table in build mode, save, reload, and see it where it was

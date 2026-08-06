@@ -438,23 +438,21 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 	}
 	if (CigInput::Scope(Mode->bTextEntryActive, Mode->bTabletOpen, Mode->bBuildMode) == ECigInputScope::BuildMode)
 	{
-		// Interact picks up what is selected, and puts it down again. Nothing is
-		// committed either way yet - the record is untouched until step 6 - so
-		// putting down is not an undo, it is just letting go of a ghost.
+		// Interact picks up what is selected, and puts it down where the ghost is.
+		// The same key for both because it is the same gesture from the player's
+		// side - reach out, let go - and because a commit key they had to find
+		// separately would be a key they could fail to find while holding a table.
 		if (CigInput::WasPressed(PC, ECigAction::Interact))
 		{
 			if (Mode->bBuildPositioning)
 			{
-				Mode->EndBuildMove();
+				Mode->CommitBuildMove();
 			}
 			else
 			{
 				Mode->BeginBuildMove();
 			}
 		}
-		// Escape lets go without leaving the mode. It is handled above this point
-		// for the pause menu, so it never reaches here while positioning - which is
-		// a gap a playtest will find before any test does.
 		if (Mode->bBuildPositioning)
 		{
 			if (PC->WasInputKeyJustPressed(EKeys::R))
@@ -463,6 +461,16 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 				// second key to go back would be a key for impatience rather than
 				// for reach.
 				Mode->RotateBuildCandidate(1);
+			}
+			// Cancel. Escape would be the obvious key and is not available: it is
+			// handled far above this point for the pause menu and never reaches
+			// here. Whether X is a key anybody finds is a question for a playtest,
+			// but leaving cancel unbound would be worse than binding it badly -
+			// there would be no way to put a table down unmoved.
+			if (PC->WasInputKeyJustPressed(EKeys::X)
+				|| PC->WasInputKeyJustPressed(EKeys::Gamepad_FaceButton_Right))
+			{
+				Mode->EndBuildMove();
 			}
 		}
 		return;
