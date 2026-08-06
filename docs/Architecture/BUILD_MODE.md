@@ -2,9 +2,12 @@
 
 Branch `feat/build-mode`, from master `2c65deb`.
 
-Status: **steps 1-4 done. Steps 5-8 open.** Steps 1-3 landed in PR #26 (the
-modal gate, `SetInputMode`, and the shop rename that used them); step 4 -
-selection - is `feat/build-mode-selection`.
+Status: **steps 1-5 done. Steps 6-8 open.** Steps 1-3 landed in PR #26 (the modal
+gate, `SetInputMode`, and the shop rename that used them); step 4, selection, in
+PR #27; step 5, the ghost preview, on `feat/build-mode-ghost`.
+
+Nothing is committed to the layout yet. The record is untouched until step 6, so
+letting go of a ghost is not an undo — there is nothing to undo.
 
 **Nobody has played any of it.** Steps 1-3 shipped with an explicit playtest
 request that was not carried out before the branch merged, and step 4 adds a
@@ -105,10 +108,33 @@ The authority work is done. What is missing is a way to drive it.
    would have put both a message on screen and a warning in the log on every frame
    the player looked at a wall. Silence is returned directly instead. A test
    caught this rather than a playthrough.
-5. **Build mode: ghost preview.** A candidate transform validated every frame
-   through `ValidatePlacement` plus `WouldCloseRequiredRoute`, drawn in the colour
-   of its verdict, with the failure named — the authority already returns
-   `ECigPlacementFailure` and the conflicting stable ID.
+5. **Build mode: ghost preview.** A candidate transform validated through
+   `ValidatePlacement` plus `WouldCloseRequiredRoute`, drawn in the colour of its
+   verdict, with the failure named. **Done** — `CigBuildVerdict`.
+
+   Three things the plan left open, decided here:
+
+   **The order the two authorities are asked in.** A candidate can fail both at
+   once — a slab across the doorway overlaps the entrance zone *and* closes the
+   entrance route — and only one of those answers tells the player where to move
+   their hands. So validation outranks the grid: a refused placement keeps its own
+   reason, and the grid is consulted only when the rectangles were happy. This is
+   also the cheaper order, but that is not why it was chosen.
+
+   **"Every frame" turned out to be wrong.** `WouldCloseRequiredRoute` rebuilds a
+   hypothetical grid, and re-running that while the player stands still is a cost
+   with no answer attached. The verdict is recomputed when the candidate actually
+   changes — position beyond the authority's own snap, or a rotation.
+
+   **The real furniture does not move.** The ghost is separate geometry sized from
+   the *footprint* rather than the mesh, because floor space is what the player is
+   fighting for and the footprint is what the authority judges. That is also what
+   lets step 5 stand alone: leaving the mode mid-move loses nothing but a box.
+
+   The ghost is drawn at the verdict's `NormalizedTransform`, not the raw
+   candidate. The authority snaps position and rotation, and a preview a few
+   centimetres from where committing lands is the sort of difference nobody
+   notices until a table will not fit and the ghost said it would.
 6. **Commit and cancel.** Commit goes through `RegisterPlacement` with
    `MoveExisting` and `IgnoreStableId`; cancel restores the previous transform
    from the visual registry.

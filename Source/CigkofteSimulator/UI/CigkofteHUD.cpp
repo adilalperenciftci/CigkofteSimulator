@@ -1,6 +1,7 @@
 #include "UI/CigkofteHUD.h"
 #include "Core/CigText.h"
 #include "Placement/CigBuildSelection.h"
+#include "Placement/CigBuildVerdict.h"
 #include "Core/CigInput.h"
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigDaySystem.h"
@@ -841,6 +842,16 @@ void ACigkofteHUD::DrawPrompt(ACigkofteGameMode* GM)
 	// player the shop is both a kitchen and a floor plan at once.
 	if (GM->bBuildMode)
 	{
+		// While positioning, the verdict replaces the selection line. The player
+		// already knows what they picked up; what they need now is whether where
+		// they are pointing would be allowed.
+		if (GM->bBuildPositioning)
+		{
+			ShadowCenterText(CigBuildVerdict::Describe(GM->BuildVerdict), PromptY, FontBody, HeadScale,
+				CigBuildVerdict::Tint(GM->BuildVerdict));
+			return;
+		}
+
 		const FString Line = CigBuildSelection::Describe(GM->BuildSelection);
 		if (!Line.IsEmpty())
 		{

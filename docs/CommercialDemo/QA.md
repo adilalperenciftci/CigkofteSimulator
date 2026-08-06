@@ -1295,6 +1295,73 @@ The package table above was rebuilt from `84af1c3`. The hashes it carried before
 were of a binary containing the defect, which would have made the evidence a
 record of the wrong thing.
 
+## 2026-08-06 — build mode step 5: the ghost, and which authority gets to say no
+
+Picking up a placement now shows a coloured box where it would land. Committing is
+step 6, so the record is still untouched: letting go is not an undo, because
+nothing was done.
+
+### Two authorities, and the order matters more than the cost
+
+The placement authority reasons about rectangles — does this overlap a sofa, leave
+the shop, block the entrance zone. The navigation grid reasons about width: a
+candidate can pass every rectangle rule and still leave a gap narrower than a
+customer, which no rectangle test can see.
+
+A candidate can fail **both at once**. A slab across the doorway overlaps the
+entrance zone and closes the entrance route, and of those two true answers only
+one tells the player where to move their hands. So validation outranks the grid,
+and the grid is consulted only when the rectangles were happy. That is also the
+cheaper order, but it is not why it was chosen — and `Combine` is where the choice
+lives, so it can be tested without a shop.
+
+### Three things the plan got wrong, found by building it
+
+**"Validated every frame" is wrong.** `WouldCloseRequiredRoute` rebuilds a
+hypothetical grid. Re-running that while the player stands still is a cost with no
+answer attached, so the verdict is recomputed when the candidate actually changes:
+a position move beyond the authority's own snap, or a rotation.
+
+**The floor point cannot come from a trace.** A trace hits whatever furniture
+stands between the player and the point they mean, so pointing past a table would
+put the ghost *on* the table. It is an analytic intersection with the shop's floor
+plane instead, and looking at or above the horizon has no answer rather than a
+point behind the player.
+
+**The ghost is the footprint, not the mesh.** Floor space is what the player is
+fighting for and the footprint is what the authority actually judges. It is drawn
+at the verdict's `NormalizedTransform` rather than the raw candidate, because the
+authority snaps both position and rotation — a preview a few centimetres off is
+the kind of difference nobody notices until a table will not fit and the ghost
+said it would.
+
+### What the tests found
+
+The real-shop tests failed first, correctly: a bare `FCigTestShop` has no placement
+records, because the authored layout is registered while the **world** is built.
+Fixed in the tests, not in the shop.
+
+**The ordering was mutation-checked.** Swapping the two blocks in `Combine` fails
+`ARefusedPlacementKeepsItsOwnReasonRatherThanTheRouteOne` on all four of its
+assertions — including that a verdict does not quietly carry a route it was not
+going to report — while the other ten pass. Reverted before validation.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 232 automation tests, 25 systems |
+| Editor build | PASS |
+| `Cigkofte.BuildMode` filter | 11/11 |
+| Mutation (verdict order swapped) | 1 test fails naming 4 assertions, suite survives |
+
+### What this does not change
+
+Still unplayed, and now five stacked steps rather than four. Everything step 5 adds
+is a thing you look at: whether green and red read at a glance, whether the ghost
+at 90cm reads as an object rather than a stain, whether pointing at the floor to
+place something feels like placing it. None of that is in this file.
+
 ## 2026-08-06 — build mode step 4: the shop can be pointed at
 
 The first half of the audit's High item 3. A player can now hold `B`, look at a

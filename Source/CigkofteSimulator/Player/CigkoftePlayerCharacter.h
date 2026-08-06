@@ -60,6 +60,9 @@ private:
 	// The result is a value on the game mode rather than a pointer here, because
 	// what build mode edits is the authority's record, not the actor that shows it.
 	void UpdateBuildSelection();
+	// Where the player's look meets the shop floor. False when there is no such
+	// point - looking at the horizon, or further than the mode reaches.
+	bool LookAtFloor(FVector& OutFloorPoint) const;
 	// How far build mode's selection trace reaches. Longer than the 450 the
 	// interaction trace uses: laying out a room means pointing across it.
 	static constexpr float BuildSelectReach = 1200.f;

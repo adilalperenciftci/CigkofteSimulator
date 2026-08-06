@@ -4,6 +4,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Core/CigkofteTypes.h"
 #include "Placement/CigBuildSelection.h"
+#include "Placement/CigBuildVerdict.h"
 #include "CigkofteGameMode.generated.h"
 
 class UCigEventBus;
@@ -234,6 +235,36 @@ public:
 	// two never to overlap, and clears the selection on the way out so a stale
 	// highlight cannot outlive the mode.
 	void ToggleBuildMode();
+
+	// --- Build mode: positioning a selected placement ---
+	//
+	// The real furniture does not move while this is going on. What moves is a
+	// ghost, and the record is only touched when a commit happens - which is step
+	// 6 and is not written yet. That means leaving the mode mid-move loses nothing
+	// but the ghost, which is the property that lets step 5 stand on its own.
+	bool bBuildPositioning = false;
+	FName BuildMovingId;
+	FTransform BuildCandidate = FTransform::Identity;
+	FCigBuildVerdict BuildVerdict;
+	UPROPERTY() TObjectPtr<class AStaticMeshActor> BuildGhost;
+	// Tall enough to read as an object standing on the floor rather than as a
+	// stain on it, short enough to see over while judging the room.
+	static constexpr float BuildGhostHeight = 90.f;
+
+	// Picks up the current selection, if it is one that can be picked up.
+	bool BeginBuildMove();
+	// Puts it down without committing. Nothing was changed, so nothing is undone.
+	void EndBuildMove();
+	// Moves the candidate to a point on the floor and re-judges it.
+	void SetBuildCandidateLocation(const FVector& FloorPoint);
+	// Quarter turns, because that is the rotation policy the authority normalizes
+	// to for everything the player can move.
+	void RotateBuildCandidate(int32 QuarterTurns);
+	// Asks both authorities and redraws the ghost. Called whenever the candidate
+	// changes rather than every tick: the hypothetical grid is rebuilt inside
+	// WouldCloseRequiredRoute, and that is not a per-frame cost worth paying while
+	// the player stands still.
+	void EvaluateBuildCandidate();
 
 	// --- Settings screen ---
 	bool bSettingsOpen = false;

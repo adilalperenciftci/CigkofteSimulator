@@ -438,7 +438,34 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 	}
 	if (CigInput::Scope(Mode->bTextEntryActive, Mode->bTabletOpen, Mode->bBuildMode) == ECigInputScope::BuildMode)
 	{
-		return; // selection is resolved in UpdateBuildSelection, not by a key
+		// Interact picks up what is selected, and puts it down again. Nothing is
+		// committed either way yet - the record is untouched until step 6 - so
+		// putting down is not an undo, it is just letting go of a ghost.
+		if (CigInput::WasPressed(PC, ECigAction::Interact))
+		{
+			if (Mode->bBuildPositioning)
+			{
+				Mode->EndBuildMove();
+			}
+			else
+			{
+				Mode->BeginBuildMove();
+			}
+		}
+		// Escape lets go without leaving the mode. It is handled above this point
+		// for the pause menu, so it never reaches here while positioning - which is
+		// a gap a playtest will find before any test does.
+		if (Mode->bBuildPositioning)
+		{
+			if (PC->WasInputKeyJustPressed(EKeys::R))
+			{
+				// One direction only. Quarter turns wrap after four presses, so a
+				// second key to go back would be a key for impatience rather than
+				// for reach.
+				Mode->RotateBuildCandidate(1);
+			}
+		}
+		return;
 	}
 
 	// --- Wrap assembly shortcuts ---
@@ -681,6 +708,41 @@ void ACigkoftePlayerCharacter::UpdateFocus()
 	}
 }
 
+bool ACigkoftePlayerCharacter::LookAtFloor(FVector& OutFloorPoint) const
+{
+	if (!Camera)
+	{
+		return false;
+	}
+
+	// Analytic against the shop's own floor plane rather than a trace. A trace
+	// would hit whatever furniture stands between the player and the point they
+	// mean, so pointing at the far side of a table would put the ghost on the
+	// table rather than on the floor beyond it - and the floor is what the
+	// authority measures against.
+	const FVector Start = Camera->GetComponentLocation();
+	const FVector Dir = Camera->GetForwardVector();
+	const float FloorZ = CigPlacementLayout::ShopBounds().FloorZ;
+
+	// Looking at or above the horizon has no answer. Refusing is better than
+	// returning a point behind the player, which is what the intersection would
+	// give for an upward ray.
+	if (Dir.Z > -0.05f)
+	{
+		return false;
+	}
+
+	const float Distance = (FloorZ - Start.Z) / Dir.Z;
+	if (Distance <= 0.f || Distance > BuildSelectReach)
+	{
+		return false;
+	}
+
+	OutFloorPoint = Start + Dir * Distance;
+	OutFloorPoint.Z = FloorZ;
+	return true;
+}
+
 void ACigkoftePlayerCharacter::UpdateBuildSelection()
 {
 	ACigkofteGameMode* Mode = GM();
@@ -694,6 +756,20 @@ void ACigkoftePlayerCharacter::UpdateBuildSelection()
 	if (!WB || !Placement)
 	{
 		Mode->BuildSelection = FCigBuildSelection();
+		return;
+	}
+
+	// While something is being positioned the trace answers a different question:
+	// not "what am I looking at" but "where on the floor am I pointing". Resolving
+	// selection as well would let the ghost's own box change what is selected
+	// underneath it.
+	if (Mode->bBuildPositioning)
+	{
+		FVector FloorPoint;
+		if (LookAtFloor(FloorPoint))
+		{
+			Mode->SetBuildCandidateLocation(FloorPoint);
+		}
 		return;
 	}
 
