@@ -7,8 +7,8 @@ This argument has been got wrong twice, both times silently, and both failures
 looked identical from outside: packaging still failed with the same cook error.
 
 The first attempt joined the plugin names with "+". The engine splits
-DisablePlugins= on "," and found nothing named
-"AllToolsets+ModelContextProtocol", so it disabled nothing and said nothing.
+DisablePlugins= on "," and found nothing named by the "+"-joined string, so it
+disabled nothing and said nothing.
 
 The second attempt was written into Package-Windows.ps1 while the run that
 mattered went through PackageDemo.ps1, which carries its own UAT argument list.
@@ -47,14 +47,28 @@ Assert-CigEqual 'UAT parametresi additionalcookeroptions olmali' $true `
 Assert-CigEqual 'cook argumani DisablePlugins tasimali' $true `
     ($arg.Contains('-DisablePlugins='))
 
-# The whole point of the first failure.
+# The whole point of the first failure. Checked as a property of the joined
+# argument rather than against one hard-coded pair, so adding or removing a
+# toolset does not require editing the assertion that guards the separator.
 Assert-CigEqual 'eklenti adlari virgulle ayrilmali' $true `
-    ($arg.Contains('AllToolsets,ModelContextProtocol'))
+    ($arg.Contains(($plugins -join ',')))
 Assert-CigEqual 'arti isareti ayirici olarak kullanilmamali' $false `
     ($arg.Contains('+'))
 
-Assert-CigEqual 'AllToolsets cook disi birakilmali' $true ($plugins -contains 'AllToolsets')
-Assert-CigEqual 'ModelContextProtocol cook disi birakilmali' $true ($plugins -contains 'ModelContextProtocol')
+foreach ($tool in @('EditorToolset', 'SlateInspectorToolset', 'ModelContextProtocol')) {
+    Assert-CigEqual "$tool cook disi birakilmali" $true ($plugins -contains $tool)
+}
+
+# The umbrella must not come back. It enables all 21 engine toolsets, one of
+# which (GameFeaturesToolset) depends on GameFeatures - the dependency that made
+# the editor ask to add a GameFeatureData asset-manager rule, which breaks the
+# cook. Naming the two toolsets this project uses keeps that out of the graph.
+Assert-CigEqual 'AllToolsets semsiyesi .uproject icinde olmamali' $false `
+    (((Get-Content -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'CigkofteSimulator.uproject') -Raw `
+        | ConvertFrom-Json).Plugins | Where-Object { $_.Name -eq 'AllToolsets' }) -ne $null)
+Assert-CigEqual 'GameFeaturesToolset acik olmamali' $false `
+    (((Get-Content -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'CigkofteSimulator.uproject') -Raw `
+        | ConvertFrom-Json).Plugins | Where-Object { $_.Name -eq 'GameFeaturesToolset' }) -ne $null)
 
 # A gameplay plugin appearing here would silently ship a broken game rather than
 # a failed build, which is the worse direction.
@@ -79,7 +93,7 @@ foreach ($entryPoint in @('PackageDemo.ps1', 'Package-Windows.ps1')) {
 # the user's explicit decision, and a fix that quietly disabled it in the
 # .uproject would pass every packaging test while removing the editor's MCP.
 $descriptor = Get-Content -LiteralPath (Join-Path $root 'CigkofteSimulator.uproject') -Raw | ConvertFrom-Json
-foreach ($required in @('ModelContextProtocol', 'AllToolsets')) {
+foreach ($required in @('ModelContextProtocol', 'EditorToolset', 'SlateInspectorToolset')) {
     $entry = $descriptor.Plugins | Where-Object { $_.Name -eq $required }
     Assert-CigEqual "$required .uproject icinde bulunmali" $true ($null -ne $entry)
     if ($entry) {

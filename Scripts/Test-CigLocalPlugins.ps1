@@ -105,7 +105,7 @@ Assert-CigEqual 'politikada olmak etkin birakmayi mesrulastirmaz' $true ($null -
 Assert-CigEqual 'politikada kayitli eklenti local-declared sayilmali' 'local-declared' $finding[0].Classification
 
 # An editor-only allow list keeps a plugin out of the game without disabling it,
-# which is how ModelContextProtocol and AllToolsets are handled.
+# which is how ModelContextProtocol and the editor toolsets are handled.
 $finding = Get-CigLocalPluginFindings `
     -Inventory @(New-TestPlugin -Name 'Telemetry') `
     -ProjectDescriptor (New-TestProject -Plugins @(

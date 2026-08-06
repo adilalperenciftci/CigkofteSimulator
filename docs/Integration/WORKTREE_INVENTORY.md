@@ -76,7 +76,9 @@ This is where the only genuinely unrecovered material is.
 Modified: `CigkofteSimulator.uproject`. It adds two plugins:
 
 - `ModelContextProtocol`, constrained with `"TargetAllowList": ["Editor"]`
-- `AllToolsets`
+- `EditorToolset` and `SlateInspectorToolset`, the same way. These replaced the
+  `AllToolsets` umbrella, which enabled all 21 engine toolsets and dragged
+  `GameFeaturesToolset` → `GameFeatures` into the graph.
 
 The allow-list matters and should be preserved. `STATE.md` already records that
 a locally enabled editor plugin whose modules load by default gets compiled into
@@ -193,7 +195,7 @@ No worktree may be removed yet.
 
 `stash@{0}` is `WIP on feat/commercial-demo-overhaul: 4af66e0`. Its base commit
 is an ancestor of master. Its content is a **third** hand-made variant of the
-same `.uproject` plugin change: `ModelContextProtocol` and `AllToolsets` enabled
+same `.uproject` plugin change: `ModelContextProtocol` and the editor toolsets enabled
 with no target allow-list, and the trailing newline dropped.
 
 Nothing in it is unique and the version now on master is strictly better. It is
