@@ -550,36 +550,53 @@ bool UCigWorldBuilder::ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved,
 
 	for (const FCigSavePlacement& One : Saved)
 	{
-		SyncPlacementVisuals(One.StableId);
-
-		const FTransform* PreviousTransform = PreviousTransforms.Find(One.StableId);
-		if (!PreviousTransform)
+		if (const FTransform* PreviousTransform = PreviousTransforms.Find(One.StableId))
 		{
-			continue;
+			FollowPlacement(One.StableId, *PreviousTransform);
 		}
-		const FCigPlacementRecord* NewRecord = GM->Placement->FindPlacement(One.StableId);
-		if (!NewRecord || NewRecord->Transform.Equals(*PreviousTransform, 0.01f))
+		else
 		{
-			continue;
-		}
-		// A chair belongs to its table. Leaving seat positions where the authored
-		// layout put them would have customers walking to where a table used to be,
-		// and the route audit asking about a chair that is no longer there.
-		for (FCigSeat& Seat : Seats)
-		{
-			if (Seat.PlacementId != One.StableId)
-			{
-				continue;
-			}
-			const FTransform Relative = CigPlacementVisualMath::MakeRelative(
-				*PreviousTransform, FTransform(FRotator(0.f, Seat.Yaw, 0.f), Seat.Pos));
-			const FTransform Moved = CigPlacementVisualMath::Resolve(NewRecord->Transform, Relative);
-			Seat.Pos = Moved.GetLocation();
-			Seat.Yaw = Moved.Rotator().Yaw;
+			// No previous transform means it was not standing here before, so there
+			// is nothing for the seats to have moved by.
+			SyncPlacementVisuals(One.StableId);
 		}
 	}
 
 	return true;
+}
+
+int32 UCigWorldBuilder::FollowPlacement(FName StableId, const FTransform& PreviousTransform)
+{
+	SyncPlacementVisuals(StableId);
+
+	if (!GM || !GM->Placement)
+	{
+		return 0;
+	}
+	const FCigPlacementRecord* NewRecord = GM->Placement->FindPlacement(StableId);
+	if (!NewRecord || NewRecord->Transform.Equals(PreviousTransform, 0.01f))
+	{
+		return 0;
+	}
+
+	// A chair belongs to its table. Leaving seat positions where they were would
+	// have customers walking to where a table used to be, and the route audit
+	// asking about a chair that is no longer there.
+	int32 Moved = 0;
+	for (FCigSeat& Seat : Seats)
+	{
+		if (Seat.PlacementId != StableId)
+		{
+			continue;
+		}
+		const FTransform Relative = CigPlacementVisualMath::MakeRelative(
+			PreviousTransform, FTransform(FRotator(0.f, Seat.Yaw, 0.f), Seat.Pos));
+		const FTransform Landed = CigPlacementVisualMath::Resolve(NewRecord->Transform, Relative);
+		Seat.Pos = Landed.GetLocation();
+		Seat.Yaw = Landed.Rotator().Yaw;
+		++Moved;
+	}
+	return Moved;
 }
 
 UStaticMesh* UCigWorldBuilder::PreferDukkan(const TCHAR* DukkanName, UStaticMesh* KenneyFallback) const

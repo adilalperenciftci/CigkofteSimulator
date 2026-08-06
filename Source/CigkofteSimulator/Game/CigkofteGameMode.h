@@ -255,6 +255,12 @@ public:
 	bool BeginBuildMove();
 	// Puts it down without committing. Nothing was changed, so nothing is undone.
 	void EndBuildMove();
+	// Writes the move into the authority and brings the shop to match it.
+	//
+	// Refuses when the verdict is not accepted, rather than asking the authority
+	// and hoping: the ghost has been telling the player no, and a commit that went
+	// ahead anyway would make the preview a suggestion.
+	bool CommitBuildMove();
 	// Moves the candidate to a point on the floor and re-judges it.
 	void SetBuildCandidateLocation(const FVector& FloorPoint);
 	// Quarter turns, because that is the rotation policy the authority normalizes

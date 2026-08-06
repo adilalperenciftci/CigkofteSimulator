@@ -130,6 +130,60 @@ void ACigkofteGameMode::EndBuildMove()
 	}
 }
 
+bool ACigkofteGameMode::CommitBuildMove()
+{
+	if (!bBuildPositioning || !Placement)
+	{
+		return false;
+	}
+
+	// The ghost has been saying no. Committing anyway would make every red preview
+	// a suggestion, and the player would learn to ignore the colour.
+	if (!BuildVerdict.IsAccepted())
+	{
+		AddMessage(CigBuildVerdict::Describe(BuildVerdict), FLinearColor(1.f, 0.4f, 0.35f));
+		PlaySound(ECigSound::Failure);
+		return false;
+	}
+
+	const FCigPlacementRecord* Record = Placement->FindPlacement(BuildMovingId);
+	if (!Record)
+	{
+		EndBuildMove();
+		return false;
+	}
+
+	// Captured before the register, because afterwards the record holds the new
+	// one and the seats would have nothing to be moved relative to.
+	const FTransform Previous = Record->Transform;
+	const FCigPlacementRequest Request = CigBuildVerdict::MakeMoveRequest(*Record, BuildCandidate);
+	const FCigPlacementResult Result = Placement->RegisterPlacement(Request);
+
+	if (!Result.bAccepted)
+	{
+		// The authority refused what the preview said it would take. That is a
+		// disagreement between the two, not a player mistake, so the move stays
+		// picked up and the verdict is asked again rather than silently dropped.
+		UE_LOG(LogCig, Warning, TEXT("Insa kipi: onay reddedildi (%s) - onizleme ile otorite ayristi"),
+			*UCigPlacementSystem::FailureText(Result.Failure));
+		EvaluateBuildCandidate();
+		PlaySound(ECigSound::Failure);
+		return false;
+	}
+
+	// The record moved; everything that belongs to it has to follow. Forgetting
+	// this is invisible until a customer walks to where the table used to be.
+	if (WorldBuilder)
+	{
+		WorldBuilder->FollowPlacement(BuildMovingId, Previous);
+	}
+
+	AddMessage(CigText::Get(TEXT("msg.buildmode.moved")), FLinearColor(0.6f, 1.f, 0.65f));
+	PlaySound(ECigSound::Cash);
+	EndBuildMove();
+	return true;
+}
+
 void ACigkofteGameMode::SetBuildCandidateLocation(const FVector& FloorPoint)
 {
 	if (!bBuildPositioning)
