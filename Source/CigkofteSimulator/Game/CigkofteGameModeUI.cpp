@@ -64,6 +64,31 @@ void ACigkofteGameMode::ToggleTablet()
 	RefreshTabletWidget();
 }
 
+void ACigkofteGameMode::ToggleBuildMode()
+{
+	bBuildMode = !bBuildMode;
+	if (bBuildMode)
+	{
+		// Both panels close on the way in. CigInput::Scope ranks build mode below
+		// them anyway, so leaving one open would silently swallow build mode's own
+		// keys - the player would be in the mode and it would not answer.
+		if (bTabletOpen)
+		{
+			ToggleTablet();
+		}
+		bSettingsOpen = false;
+	}
+	else
+	{
+		// A selection that outlived the mode would leave a highlight on the floor
+		// with nothing listening to it.
+		BuildSelection = FCigBuildSelection();
+	}
+	AddMessage(CigText::Get(bBuildMode ? TEXT("msg.buildmode.on") : TEXT("msg.buildmode.off")),
+		FLinearColor(0.6f, 0.85f, 1.f));
+	PlaySound(ECigSound::UIClick);
+}
+
 void ACigkofteGameMode::BeginTextEntry(UWidget* FocusWidget)
 {
 	if (bTextEntryActive)

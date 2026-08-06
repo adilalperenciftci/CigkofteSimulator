@@ -18,21 +18,21 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigInputScopeTest,
 bool FCigInputScopeTest::RunTest(const FString&)
 {
 	TestTrue(TEXT("Hicbir sey acik degilse oynanis"),
-		CigInput::Scope(false, false) == ECigInputScope::Gameplay);
+		CigInput::Scope(false, false, false) == ECigInputScope::Gameplay);
 
 	TestTrue(TEXT("Tablet acikken tablet"),
-		CigInput::Scope(false, true) == ECigInputScope::Tablet);
+		CigInput::Scope(false, true, false) == ECigInputScope::Tablet);
 
 	// The case the whole gate exists for. The field is hosted by the tablet, so
 	// if the tablet kept polling while the field had focus, its number-key
 	// shortcuts would fire on every digit typed into a shop name.
 	TestTrue(TEXT("Metin girisi tabletin onunde gelmeli"),
-		CigInput::Scope(true, true) == ECigInputScope::TextEntry);
+		CigInput::Scope(true, true, false) == ECigInputScope::TextEntry);
 
 	// And it does not depend on the tablet being open. A field could be hosted
 	// anywhere later; the gate must not quietly assume where it is.
 	TestTrue(TEXT("Metin girisi tabletsiz de gecerli olmali"),
-		CigInput::Scope(true, false) == ECigInputScope::TextEntry);
+		CigInput::Scope(true, false, false) == ECigInputScope::TextEntry);
 	return true;
 }
 
@@ -45,20 +45,27 @@ bool FCigInputScopeExclusiveTest::RunTest(const FString&)
 	// Every combination resolves to one scope and never to something in between.
 	// The failure this guards against is a future third modal state being added
 	// as another boolean and two of them being true at once.
-	for (int32 i = 0; i < 4; ++i)
+	//
+	// That third state arrived: build mode. The loop grew from four combinations
+	// to eight rather than the new flag getting a check of its own, because what
+	// is being pinned is the property of the whole set - and a flag tested only
+	// against the cases somebody thought of is exactly what this was written to
+	// prevent.
+	for (int32 i = 0; i < 8; ++i)
 	{
 		const bool bText = (i & 1) != 0;
 		const bool bTablet = (i & 2) != 0;
-		const ECigInputScope S = CigInput::Scope(bText, bTablet);
+		const bool bBuild = (i & 4) != 0;
+		const ECigInputScope S = CigInput::Scope(bText, bTablet, bBuild);
 
-		TestTrue(FString::Printf(TEXT("metin=%d tablet=%d tanimli bir kapsam vermeli"), bText, bTablet),
+		TestTrue(FString::Printf(TEXT("metin=%d tablet=%d insa=%d tanimli bir kapsam vermeli"), bText, bTablet, bBuild),
 			S == ECigInputScope::Gameplay || S == ECigInputScope::Tablet
-				|| S == ECigInputScope::TextEntry);
+				|| S == ECigInputScope::BuildMode || S == ECigInputScope::TextEntry);
 
 		// Gameplay is only reachable when nothing is open, which is the property
 		// that stops the world taking keys behind an open panel.
-		TestEqual(FString::Printf(TEXT("metin=%d tablet=%d oynanis yalniz hicbir sey acik degilken"), bText, bTablet),
-			S == ECigInputScope::Gameplay, !bText && !bTablet);
+		TestEqual(FString::Printf(TEXT("metin=%d tablet=%d insa=%d oynanis yalniz hicbir sey acik degilken"), bText, bTablet, bBuild),
+			S == ECigInputScope::Gameplay, !bText && !bTablet && !bBuild);
 	}
 	return true;
 }

@@ -56,6 +56,13 @@ private:
 	void PollGamepadLook(APlayerController* PC, float Sens);
 	void PollGamepadMove(APlayerController* PC, float& Fwd, float& Right);
 	void UpdateFocus();
+	// Build mode's answer to UpdateFocus: which placement is under the crosshair.
+	// The result is a value on the game mode rather than a pointer here, because
+	// what build mode edits is the authority's record, not the actor that shows it.
+	void UpdateBuildSelection();
+	// How far build mode's selection trace reaches. Longer than the 450 the
+	// interaction trace uses: laying out a room means pointing across it.
+	static constexpr float BuildSelectReach = 1200.f;
 	void UpdateHeadBob(float DeltaSeconds);
 	void UpdateEnergy(float DeltaSeconds);
 

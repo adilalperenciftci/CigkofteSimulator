@@ -49,6 +49,10 @@ enum class ECigInputScope : uint8
 	Gameplay = 0,
 	// The tablet is open: its own keys only, no world interaction.
 	Tablet,
+	// Rearranging the shop: walk and look still, but the world's own interactions
+	// are off and the keys belong to selection. A station is furniture here, not a
+	// thing to cook at, and pressing E on it must not start kneading.
+	BuildMode,
 	// A field has focus. Nothing polls, including the tablet's own keys, because
 	// every one of them is also a letter somebody might be typing.
 	TextEntry
@@ -61,7 +65,12 @@ namespace CigInput
 	// Text entry outranks the tablet rather than living inside it: the field is
 	// hosted by the tablet, so if the tablet kept polling while it had focus, its
 	// number keys would fire on every digit typed into a shop name.
-	ECigInputScope Scope(bool bTextEntryActive, bool bTabletOpen);
+	//
+	// Build mode sits below the tablet and above gameplay. The two panels should
+	// never be open together - entering one leaves the other - but the ordering is
+	// still total rather than assumed, because "these cannot both happen" is a
+	// claim about the callers and this function should hold without trusting them.
+	ECigInputScope Scope(bool bTextEntryActive, bool bTabletOpen, bool bBuildMode);
 
 	// Human-readable action name (shown on the settings screen). From Config/Text.
 	FString ActionName(ECigAction Action);

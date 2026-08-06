@@ -1,5 +1,6 @@
 #include "UI/CigkofteHUD.h"
 #include "Core/CigText.h"
+#include "Placement/CigBuildSelection.h"
 #include "Core/CigInput.h"
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigDaySystem.h"
@@ -833,6 +834,27 @@ void ACigkofteHUD::DrawPrompt(ACigkofteGameMode* GM)
 	}
 
 	const float PromptY = ScreenSize.Y * 0.5f + SX(36.f);
+
+	// Build mode replaces the interaction prompt rather than sitting beside it.
+	// The character has already stopped resolving gameplay focus while the mode is
+	// on, so there is nothing to sit beside - and two prompts would be telling the
+	// player the shop is both a kitchen and a floor plan at once.
+	if (GM->bBuildMode)
+	{
+		const FString Line = CigBuildSelection::Describe(GM->BuildSelection);
+		if (!Line.IsEmpty())
+		{
+			// Green when it can be moved, amber when the refusal has something to
+			// say. Looking at a wall says nothing at all, which is why the empty
+			// string is a normal answer here rather than a missing one.
+			const FLinearColor Tint = GM->BuildSelection.IsValid()
+				? FLinearColor(0.65f, 1.f, 0.7f)
+				: FLinearColor(1.f, 0.8f, 0.45f);
+			ShadowCenterText(Line, PromptY, FontBody, HeadScale, Tint);
+		}
+		return;
+	}
+
 	if (PC->bDriving)
 	{
 		ShadowCenterText(CigText::Get(TEXT("hud.deliverprompt")), ScreenSize.Y - SX(120.f), FontBody, BodyScale, GInfo);

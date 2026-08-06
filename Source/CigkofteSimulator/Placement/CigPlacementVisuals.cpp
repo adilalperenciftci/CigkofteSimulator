@@ -95,6 +95,28 @@ void FCigPlacementVisualRegistry::Reset()
 	Visuals.Reset();
 }
 
+FName FCigPlacementVisualRegistry::FindByActor(const AActor* Actor) const
+{
+	// A destroyed actor must not match a stale entry: Apply and VisualCount both
+	// drop dead entries lazily, so an id can still hold one when this is asked.
+	if (!IsValid(Actor))
+	{
+		return NAME_None;
+	}
+
+	for (const TPair<FName, TArray<FCigPlacementVisual>>& Pair : Visuals)
+	{
+		for (const FCigPlacementVisual& Visual : Pair.Value)
+		{
+			if (Visual.Actor.Get() == Actor)
+			{
+				return Pair.Key;
+			}
+		}
+	}
+	return NAME_None;
+}
+
 bool FCigPlacementVisualRegistry::Contains(FName StableId) const
 {
 	return Visuals.Contains(StableId);
