@@ -323,7 +323,12 @@ public:
 	//
 	// Records the save does not mention are records the player removed: their
 	// placement goes, and so do their actors.
-	bool ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved, FString& OutDiagnostic);
+	// Ids in StoredIds are the back room: mentioned by the save but deliberately
+	// not on the floor. They are put away rather than destroyed, which is the
+	// difference between a table the player is not using and one they no longer
+	// have. Defaulted empty so a load with no back room reads as it always did.
+	bool ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved, FString& OutDiagnostic,
+		const TArray<FName>& StoredIds = TArray<FName>());
 
 	// --- Shop identity ---
 	//

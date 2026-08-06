@@ -435,7 +435,8 @@ int32 UCigWorldBuilder::SyncPlacementVisuals(FName StableId)
 	return PlacementVisuals.Apply(StableId, Record->Transform);
 }
 
-bool UCigWorldBuilder::ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved, FString& OutDiagnostic)
+bool UCigWorldBuilder::ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved, FString& OutDiagnostic,
+	const TArray<FName>& StoredIds)
 {
 	OutDiagnostic.Reset();
 	if (!GM || !GM->Placement)
@@ -539,13 +540,23 @@ bool UCigWorldBuilder::ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved,
 
 	for (const FName& Id : Existing)
 	{
-		if (!SavedIds.Contains(Id))
+		if (SavedIds.Contains(Id))
 		{
-			// The save does not mention it, so the player removed it. Destroyed
-			// rather than hidden: a hidden actor still occupies the world and would
-			// come back the next time anything iterated meshes.
-			PlacementVisuals.Release(Id, /*bDestroyActors=*/true);
+			continue;
 		}
+		if (StoredIds.Contains(Id))
+		{
+			// Put away rather than gone. Destroying it would make the back room a
+			// place things go to die: the save says the player has this table and
+			// simply is not using it, and restoring one has to be able to show it
+			// again without respawning a mesh only BuildWorld can make.
+			StorePlacementVisuals(Id);
+			continue;
+		}
+		// The save does not mention it at all, so it is genuinely gone. Destroyed
+		// rather than hidden: a hidden actor still occupies the world and would
+		// come back the next time anything iterated meshes.
+		PlacementVisuals.Release(Id, /*bDestroyActors=*/true);
 	}
 
 	for (const FCigSavePlacement& One : Saved)

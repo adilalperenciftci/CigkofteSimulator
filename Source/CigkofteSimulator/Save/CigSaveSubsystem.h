@@ -42,7 +42,13 @@ public:
 	// layout array is a state a player can reach, so it needed one. An empty shop
 	// name is not - CigShopIdentity refuses it - so empty means "never named" and
 	// nothing else.
-	static constexpr int32 CurrentVersion = 14;
+	// Version 15: the back room - placements the player took off the floor.
+	//
+	// Also without a flag, and for the same reason as the name rather than the
+	// layout: an empty back room means nothing is stored, a save written before
+	// this field reads back empty, and both of those are the same true statement.
+	// The layout needed a flag because "empty" there could also mean "unknown".
+	static constexpr int32 CurrentVersion = 15;
 
 	bool HasSave() const;
 	bool SaveNow(ACigkofteGameMode* GM);
@@ -77,4 +83,5 @@ private:
 	static void MigrateV11ToV12(UCigSaveGame& Save);
 	static void MigrateV12ToV13(UCigSaveGame& Save);
 	static void MigrateV13ToV14(UCigSaveGame& Save);
+	static void MigrateV14ToV15(UCigSaveGame& Save);
 };

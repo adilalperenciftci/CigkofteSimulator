@@ -2,16 +2,18 @@
 
 Branch `feat/build-mode`, from master `2c65deb`.
 
-Status: **steps 1-7 done. Step 8 open.** Steps 1-3 landed in PR #26 (the modal
-gate, `SetInputMode`, and the shop rename that used them); step 4, selection, in
-PR #27; step 5, the ghost, in PR #28; step 6, commit and cancel, in PR #29;
-step 7, remove and restore, on `feat/build-mode-remove`.
+Status: **all eight steps done.** Steps 1-3 in PR #26 (the modal gate,
+`SetInputMode`, and the shop rename that used them); step 4, selection, in PR #27;
+step 5, the ghost, in PR #28; step 6, commit and cancel, in PR #29; step 7, remove
+and restore, in PR #30; step 8, the save round trip, on `feat/build-mode-save`.
 
-**The player can move, remove and restore the shop's furniture, and it holds for
-the session.** Surviving a save is step 8.
+**The player can move, remove and restore the shop's furniture, and it survives a
+save.** That closes Stage 3 and makes Stage 3.5 and 3.6 reachable for the first
+time.
 
-The plan said a playtest belonged before step 7. It did not happen, and step 7
-was built anyway on request. Seven steps, none played.
+**None of it has been played.** The plan asked for a playtest before step 7; it
+did not happen, and steps 7 and 8 were built anyway on request. Eight steps of
+input-driven, visual work verified entirely by automation.
 
 **Nobody has played any of it.** Steps 1-3 shipped with an explicit playtest
 request that was not carried out before the branch merged, and step 4 adds a
@@ -190,9 +192,29 @@ The authority work is done. What is missing is a way to drive it.
    id is not on the floor, so there is no record of its own to ignore — and it is
    judged again, because the shop it returns to is not the shop it left. A refused
    restore keeps the thing in storage rather than dropping it.
-8. **Round-trip through the save**, which is where Stage 3.5 stops being
-   theoretical: move a table in build mode, save, reload, and see it where it was
-   left.
+8. **Round-trip through the save.** **Done**, and it found something.
+
+   The round trip itself was mostly already built — Stage 3.5 wrote and read the
+   layout. What it had never been given was a layout a *player* made: every test
+   before this moved a table by calling the authority directly, because until step
+   6 no player could move one. These go through `BeginBuildMove` →
+   `SetBuildCandidateLocation` → `CommitBuildMove` → save → load into a shop built
+   from scratch.
+
+   **Step 7 shipped a trap, and step 8 is where it showed.** A stored placement is
+   not in the authority, so `Capture` did not write it, so removing something and
+   saving destroyed it — permanently, in a game with nowhere to buy furniture. Save
+   version **15** adds `StoredLayout`.
+
+   That forced a second decision in the load path. `ApplyLoadedLayout` destroys
+   the actors of any id the save does not mention, which was right when "not
+   mentioned" had one meaning. Now there are two: *gone* and *owned but not in
+   use*. Stored ids are passed in and put away rather than destroyed.
+
+   No companion flag, unlike `bLayoutPersisted`. An empty layout array could mean
+   "unknown" or "the player emptied the shop", so it needed one. An empty back room
+   means nothing is stored, and a save predating the field reads back empty — the
+   same true statement, so nothing has to disambiguate it.
 
 Step 3 is the first one that produces something a player can use, and it is
 deliberately small: the rules and the rename are written and tested already, so it

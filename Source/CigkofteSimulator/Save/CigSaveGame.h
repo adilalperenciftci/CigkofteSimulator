@@ -258,6 +258,18 @@ public:
 	// stays that name when the interface is switched to English.
 	UPROPERTY() FString ShopName;
 
+	// --- The back room (version 15) ---
+	//
+	// Placements the player took off the floor in build mode. Persisted because
+	// the alternative is a trap: removal would be permanent the moment the game
+	// saved, and this project has no shop to buy furniture back from, so a table
+	// put away for a minute would be gone for good.
+	//
+	// No companion flag, unlike InstalledLayout. An empty back room has one
+	// meaning - nothing is stored - and a save that predates this field reads back
+	// empty, which is the same thing and is true of it.
+	UPROPERTY() TArray<FCigSavePlacement> StoredLayout;
+
 	// --- Randomness ---
 	// The session's starting seed (the number quoted in bug reports) and the
 	// stream's current position. Both are written so a load does not replay the
