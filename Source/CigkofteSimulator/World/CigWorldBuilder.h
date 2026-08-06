@@ -60,6 +60,14 @@ public:
 	AStaticMeshActor* SpawnBox(const FVector& Loc, const FVector& Scale, const FLinearColor& Color, UStaticMesh* Mesh = nullptr,
 		UMaterialInterface* MaterialOverride = nullptr);
 
+	// Recolours a box SpawnBox made. Kept here because the dynamic material and
+	// its "Color" parameter are this function's invention, and a caller reaching
+	// for them itself would be the second place that knows.
+	//
+	// Does nothing to a box given a MaterialOverride: that one deliberately has no
+	// MID, and silently creating one would undo the surface it was given.
+	bool TintBox(AStaticMeshActor* Actor, const FLinearColor& Color);
+
 	// Surfaces from ModularBuildingSet, or null without the pack. Loaded once in
 	// OnInit; a missing one just leaves the painted box it replaces.
 	UPROPERTY() TObjectPtr<UMaterialInterface> WallTileMaterial;

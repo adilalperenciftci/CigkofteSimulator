@@ -763,6 +763,8 @@ build.category.decoration,Süs,Decoration
 build.select.label,{0} — {1},{0} — {1}
 build.select.orphaned,Bu nesnenin kaydı bulunamadı.,This object has no placement record.
 build.select.transient,Teslimat kasaları taşınamaz.,Delivery crates cannot be rearranged.
+build.verdict.ok,Buraya konabilir.,This spot works.
+build.verdict.route,Buraya konursa {0} yolu kapanır.,Placing it here would close the {0} route.
 msg.buildmode.on,Yerleşim düzenleme açık. Taşımak için bir nesneye bak.,Layout editing on. Look at an object to select it.
 msg.buildmode.off,Yerleşim düzenleme kapalı.,Layout editing off.
 tablet.shopname,Dükkân adı,Shop name

@@ -32,6 +32,9 @@
 #include "Hygiene/CigHygieneSystem.h"
 #include "Staff/CigStaffSystem.h"
 #include "Cat/CigCatSystem.h"
+#include "Placement/CigPlacementSystem.h"
+#include "Navigation/CigNavSystem.h"
+#include "Engine/StaticMeshActor.h"
 #include "Vehicles/CigCar.h"
 #include "Audio/CigAudioSubsystem.h"
 #include "Core/CigLog.h"
@@ -81,12 +84,159 @@ void ACigkofteGameMode::ToggleBuildMode()
 	else
 	{
 		// A selection that outlived the mode would leave a highlight on the floor
-		// with nothing listening to it.
+		// with nothing listening to it, and a ghost that outlived it would leave a
+		// coloured box standing in the shop.
+		EndBuildMove();
 		BuildSelection = FCigBuildSelection();
 	}
 	AddMessage(CigText::Get(bBuildMode ? TEXT("msg.buildmode.on") : TEXT("msg.buildmode.off")),
 		FLinearColor(0.6f, 0.85f, 1.f));
 	PlaySound(ECigSound::UIClick);
+}
+
+bool ACigkofteGameMode::BeginBuildMove()
+{
+	if (!bBuildMode || bBuildPositioning || !BuildSelection.IsValid() || !Placement)
+	{
+		return false;
+	}
+
+	const FCigPlacementRecord* Record = Placement->FindPlacement(BuildSelection.StableId);
+	if (!Record)
+	{
+		return false;
+	}
+
+	bBuildPositioning = true;
+	BuildMovingId = Record->StableId;
+	// Starting from where it already stands means the first thing the player sees
+	// is a green ghost exactly over the table: the mode says "this is what you have
+	// picked up" before it says anything about where it could go.
+	BuildCandidate = Record->Transform;
+	EvaluateBuildCandidate();
+	PlaySound(ECigSound::UIClick);
+	return true;
+}
+
+void ACigkofteGameMode::EndBuildMove()
+{
+	bBuildPositioning = false;
+	BuildMovingId = NAME_None;
+	BuildVerdict = FCigBuildVerdict();
+	if (BuildGhost)
+	{
+		BuildGhost->Destroy();
+		BuildGhost = nullptr;
+	}
+}
+
+void ACigkofteGameMode::SetBuildCandidateLocation(const FVector& FloorPoint)
+{
+	if (!bBuildPositioning)
+	{
+		return;
+	}
+
+	// Only the floor plane moves. Height is the authority's business - it refuses
+	// anything off the floor - and letting the player's aim carry Z would make
+	// every candidate fail InvalidFloor for a reason they could not see.
+	FVector Location = FloorPoint;
+	Location.Z = BuildCandidate.GetLocation().Z;
+
+	if (Location.Equals(BuildCandidate.GetLocation(), 1.f))
+	{
+		return; // below the authority's own snap, so nothing would change
+	}
+
+	BuildCandidate.SetLocation(Location);
+	EvaluateBuildCandidate();
+}
+
+void ACigkofteGameMode::RotateBuildCandidate(int32 QuarterTurns)
+{
+	if (!bBuildPositioning || QuarterTurns == 0)
+	{
+		return;
+	}
+
+	FRotator Rotation = BuildCandidate.GetRotation().Rotator();
+	Rotation.Yaw += 90.f * QuarterTurns;
+	BuildCandidate.SetRotation(Rotation.Quaternion());
+	EvaluateBuildCandidate();
+	PlaySound(ECigSound::UIClick);
+}
+
+void ACigkofteGameMode::EvaluateBuildCandidate()
+{
+	if (!bBuildPositioning || !Placement)
+	{
+		return;
+	}
+
+	const FCigPlacementRecord* Record = Placement->FindPlacement(BuildMovingId);
+	if (!Record)
+	{
+		// The record went away underneath a move in progress. Nothing was changed,
+		// so putting it down is the whole of the recovery.
+		EndBuildMove();
+		return;
+	}
+
+	const FCigPlacementRequest Request = CigBuildVerdict::MakeMoveRequest(*Record, BuildCandidate);
+	const FCigPlacementResult Validation = Placement->ValidatePlacement(Request);
+
+	// The grid is only asked when the rectangles were happy. Two reasons, and the
+	// cheaper one is not the important one: rebuilding a hypothetical grid costs
+	// more than rectangle tests, but the reason that matters is that a refused
+	// candidate already has a better answer to give.
+	bool bClosesRoute = false;
+	FName ClosedRoute = NAME_None;
+	if (Validation.bAccepted && Nav)
+	{
+		FCigPlacementRecord Candidate;
+		if (CigBuildVerdict::MakeCandidateRecord(Request, Validation.NormalizedTransform, Candidate))
+		{
+			bClosesRoute = Nav->WouldCloseRequiredRoute(Candidate, ClosedRoute);
+		}
+	}
+
+	BuildVerdict = CigBuildVerdict::Combine(Validation, bClosesRoute, ClosedRoute);
+
+	// --- The ghost ---
+	if (!WorldBuilder)
+	{
+		return;
+	}
+
+	const FCigPlacementFootprint& Footprint = Record->Footprint;
+	// SpawnBox works in units of a 100cm cube. The ghost is deliberately the
+	// footprint rather than the mesh: what the player is fighting for is floor
+	// space, and the footprint is the thing the authority actually judges.
+	const FVector Scale(
+		FMath::Max(Footprint.Size.X, 1.f) / 100.f,
+		FMath::Max(Footprint.Size.Y, 1.f) / 100.f,
+		BuildGhostHeight / 100.f);
+
+	const FTransform& Where = BuildVerdict.NormalizedTransform;
+	const FVector Centre = Where.GetLocation()
+		+ Where.GetRotation().RotateVector(FVector(Footprint.CenterOffset.X, Footprint.CenterOffset.Y, 0.f))
+		+ FVector(0.f, 0.f, BuildGhostHeight * 0.5f);
+
+	if (!BuildGhost)
+	{
+		BuildGhost = WorldBuilder->SpawnBox(Centre, Scale, CigBuildVerdict::Tint(BuildVerdict));
+		if (BuildGhost)
+		{
+			// A preview must not be something the world can collide with, or the
+			// player could be pushed by their own intention.
+			BuildGhost->SetActorEnableCollision(false);
+		}
+	}
+	else
+	{
+		BuildGhost->SetActorTransform(FTransform(Where.GetRotation(), Centre, Scale));
+		WorldBuilder->TintBox(BuildGhost, CigBuildVerdict::Tint(BuildVerdict));
+	}
 }
 
 void ACigkofteGameMode::BeginTextEntry(UWidget* FocusWidget)

@@ -184,6 +184,26 @@ AStaticMeshActor* UCigWorldBuilder::SpawnBox(const FVector& Loc, const FVector& 
 	return A;
 }
 
+bool UCigWorldBuilder::TintBox(AStaticMeshActor* Actor, const FLinearColor& Color)
+{
+	if (!IsValid(Actor))
+	{
+		return false;
+	}
+	UStaticMeshComponent* C = Actor->GetStaticMeshComponent();
+	if (!C)
+	{
+		return false;
+	}
+	UMaterialInstanceDynamic* MID = Cast<UMaterialInstanceDynamic>(C->GetMaterial(0));
+	if (!MID)
+	{
+		return false;
+	}
+	MID->SetVectorParameterValue(TEXT("Color"), Color);
+	return true;
+}
+
 AStaticMeshActor* UCigWorldBuilder::SpawnProp(UStaticMesh* Mesh, const FVector& Loc, float TargetHeight, float Yaw,
 	const FLinearColor& FallbackColor, bool bCollision)
 {
