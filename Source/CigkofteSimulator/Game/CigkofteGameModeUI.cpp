@@ -33,6 +33,7 @@
 #include "Staff/CigStaffSystem.h"
 #include "Cat/CigCatSystem.h"
 #include "Placement/CigPlacementSystem.h"
+#include "Placement/CigBuildRemoval.h"
 #include "Navigation/CigNavSystem.h"
 #include "Engine/StaticMeshActor.h"
 #include "Vehicles/CigCar.h"
@@ -181,6 +182,91 @@ bool ACigkofteGameMode::CommitBuildMove()
 	AddMessage(CigText::Get(TEXT("msg.buildmode.moved")), FLinearColor(0.6f, 1.f, 0.65f));
 	PlaySound(ECigSound::Cash);
 	EndBuildMove();
+	return true;
+}
+
+bool ACigkofteGameMode::RemoveBuildSelection()
+{
+	if (!bBuildMode || bBuildPositioning || !Placement || !WorldBuilder)
+	{
+		return false;
+	}
+
+	const FCigPlacementRecord* Record = Placement->FindPlacement(BuildSelection.StableId);
+	const int32 CategoryCapacity = Record
+		? Placement->FunctionalCapacityByCategory(Record->Category)
+		: 0;
+
+	const FCigBuildRemovalVerdict Verdict = CigBuildRemoval::Judge(Record, CategoryCapacity);
+	if (!Verdict.IsAllowed())
+	{
+		AddMessage(CigBuildRemoval::Describe(Verdict), FLinearColor(1.f, 0.4f, 0.35f));
+		PlaySound(ECigSound::Failure);
+		return false;
+	}
+
+	// Copied before the authority forgets it. This copy is the whole of what
+	// putting it back has to work from.
+	const FCigPlacementRecord Stored = *Record;
+
+	if (!Placement->RemovePlacement(Stored.StableId))
+	{
+		return false;
+	}
+	WorldBuilder->StorePlacementVisuals(Stored.StableId);
+	BuildStored.Add(Stored);
+
+	// The selection named something that is no longer on the floor.
+	BuildSelection = FCigBuildSelection();
+
+	AddMessage(CigText::Format(TEXT("msg.buildmode.stored"), BuildStored.Num()),
+		FLinearColor(0.9f, 0.85f, 0.5f));
+	PlaySound(ECigSound::UIClick);
+	return true;
+}
+
+bool ACigkofteGameMode::RestoreLastStored()
+{
+	if (!bBuildMode || bBuildPositioning || !Placement || !WorldBuilder)
+	{
+		return false;
+	}
+	if (BuildStored.Num() == 0)
+	{
+		AddMessage(CigText::Get(TEXT("msg.buildmode.storeempty")), FLinearColor(1.f, 0.8f, 0.45f));
+		return false;
+	}
+
+	const FCigPlacementRecord Stored = BuildStored.Last();
+
+	// Registered as a build-mode placement rather than a move: the id is not on
+	// the floor, so there is no old record of its own for it to ignore. Judged
+	// again on the way in, because the shop it is returning to is not the shop it
+	// left - the player may have put something else where it stood.
+	FCigPlacementRequest Request;
+	Request.StableId = Stored.StableId;
+	Request.Category = Stored.Category;
+	Request.Lifetime = Stored.Lifetime;
+	Request.Footprint = Stored.Footprint;
+	Request.UseSpec = Stored.UseSpec;
+	Request.CandidateTransform = Stored.Transform;
+	Request.Context = ECigPlacementContext::BuildMode;
+
+	const FCigPlacementResult Result = Placement->RegisterPlacement(Request);
+	if (!Result.bAccepted)
+	{
+		// It stays in storage. Refusing to put it back is a real answer - the
+		// floor has changed - and dropping it would lose the thing entirely.
+		AddMessage(UCigPlacementSystem::FailureText(Result.Failure), FLinearColor(1.f, 0.4f, 0.35f));
+		PlaySound(ECigSound::Failure);
+		return false;
+	}
+
+	BuildStored.Pop();
+	WorldBuilder->RestorePlacementVisuals(Stored.StableId);
+
+	AddMessage(CigText::Get(TEXT("msg.buildmode.restored")), FLinearColor(0.6f, 1.f, 0.65f));
+	PlaySound(ECigSound::Cash);
 	return true;
 }
 

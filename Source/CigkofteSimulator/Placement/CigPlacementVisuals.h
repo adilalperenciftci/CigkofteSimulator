@@ -62,6 +62,15 @@ public:
 	// authored default layout wholesale.
 	int32 Release(FName StableId, bool bDestroyActors = false);
 
+	// Hides or shows a placement's actors without forgetting them.
+	//
+	// Release(bDestroyActors=true) is what a load does, because a load's removal
+	// is final. A player taking a table off the floor has not destroyed it - the
+	// table is in the back room - and destroying it would mean putting it back
+	// required respawning meshes only BuildWorld knows how to make. Returns how
+	// many live actors were affected.
+	int32 SetHidden(FName StableId, bool bHidden);
+
 	void Reset();
 
 	// Which placement this actor belongs to, or NAME_None.

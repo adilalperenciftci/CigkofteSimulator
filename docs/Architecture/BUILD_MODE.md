@@ -2,16 +2,16 @@
 
 Branch `feat/build-mode`, from master `2c65deb`.
 
-Status: **steps 1-6 done. Steps 7-8 open.** Steps 1-3 landed in PR #26 (the modal
+Status: **steps 1-7 done. Step 8 open.** Steps 1-3 landed in PR #26 (the modal
 gate, `SetInputMode`, and the shop rename that used them); step 4, selection, in
-PR #27; step 5, the ghost, in PR #28; step 6, commit and cancel, on
-`feat/build-mode-commit`.
+PR #27; step 5, the ghost, in PR #28; step 6, commit and cancel, in PR #29;
+step 7, remove and restore, on `feat/build-mode-remove`.
 
-**The player can now move the shop's furniture and it stays moved for the
-session.** It does not survive a save yet — that is step 8.
+**The player can move, remove and restore the shop's furniture, and it holds for
+the session.** Surviving a save is step 8.
 
-This is where the plan said to stop. Six steps have been built and none has been
-played.
+The plan said a playtest belonged before step 7. It did not happen, and step 7
+was built anyway on request. Seven steps, none played.
 
 **Nobody has played any of it.** Steps 1-3 shipped with an explicit playtest
 request that was not carried out before the branch merged, and step 4 adds a
@@ -162,7 +162,34 @@ The authority work is done. What is missing is a way to drive it.
    for the pause menu and never reaches here, so cancel is `X`. Whether anybody
    finds `X` is a playtest question; leaving cancel unbound would have been worse
    than binding it badly.
-7. **Remove and restore**, using the same paths Stage 3.5's load already exercises.
+7. **Remove and restore.** **Done**, and not by the route the plan expected.
+
+   The plan said "using the same paths Stage 3.5's load already exercises." The
+   load path *destroys* actors, because a load's removal is final. A player taking
+   a table off the floor has not destroyed it — the table is in the back room —
+   and destroying it would mean putting it back required respawning meshes only
+   `BuildWorld` knows how to make. So removal **stores**: actors hidden and
+   uncollidable, record kept whole, seats lifted out.
+
+   **Not everything can be removed**, and the rule is about capability rather than
+   taste: a category carrying functional capacity must keep some. One of two
+   tables, yes; the last one, no. The boundary is the *capacity* the record
+   carries, not the count of records — a single table seating four is still the
+   last of its function.
+
+   **Seats leave the world rather than being flagged.** A flag would be a second
+   meaning for a seat to have, and everything reading `Seats` — the customer
+   system, the route audit, capacity — would have to learn it. Taken out, a stored
+   chair is simply not there.
+
+   Removal never asks the navigation grid, because taking an obstacle away only
+   ever opens floor. That claim justifies skipping a check, so it is tested rather
+   than assumed: everything removable is removed and the routes are still open.
+
+   Restore re-registers with `BuildMode` context rather than `MoveExisting` — the
+   id is not on the floor, so there is no record of its own to ignore — and it is
+   judged again, because the shop it returns to is not the shop it left. A refused
+   restore keeps the thing in storage rather than dropping it.
 8. **Round-trip through the save**, which is where Stage 3.5 stops being
    theoretical: move a table in build mode, save, reload, and see it where it was
    left.

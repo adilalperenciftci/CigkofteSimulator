@@ -453,6 +453,19 @@ void ACigkoftePlayerCharacter::PollInput(APlayerController* PC)
 				Mode->BeginBuildMove();
 			}
 		}
+		// Taking things off the floor and putting them back. Only while nothing is
+		// picked up: removing what you are holding would be two gestures at once.
+		if (!Mode->bBuildPositioning)
+		{
+			if (PC->WasInputKeyJustPressed(EKeys::Delete))
+			{
+				Mode->RemoveBuildSelection();
+			}
+			if (PC->WasInputKeyJustPressed(EKeys::Z))
+			{
+				Mode->RestoreLastStored();
+			}
+		}
 		if (Mode->bBuildPositioning)
 		{
 			if (PC->WasInputKeyJustPressed(EKeys::R))
