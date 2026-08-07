@@ -253,7 +253,7 @@ which is what it was written for.
 
 **Packaging restored.** It had been impossible since PR #11 enabled the editor
 MCP plugins, and Stage 3.4 could not produce package evidence because of it.
-Both configurations build again with `ModelContextProtocol` and `AllToolsets`
+Both configurations build again with `ModelContextProtocol` and the editor toolsets
 still enabled in the committed `.uproject`, which was the constraint.
 
 `TargetAllowList: ["Editor"]` keeps a plugin out of the shipped game but not out

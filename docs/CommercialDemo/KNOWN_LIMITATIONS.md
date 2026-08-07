@@ -129,7 +129,7 @@ not fixed yet belong in `PLAN.md`, not here.
   pass `-nodebuginfo`, so it carries a PDB. `Package-Windows.ps1` does unless
   `-IncludeSymbols` is given, which is why Shipping has none.
 - **Editor tooling is excluded from the cook by a command-line argument, not by
-  the project descriptor.** `ModelContextProtocol` and `AllToolsets` remain
+  the project descriptor.** `ModelContextProtocol`, `EditorToolset` and `SlateInspectorToolset` remain
   enabled in the committed `.uproject` on purpose. Packaging outside
   `PackageDemo.ps1` and `Package-Windows.ps1` — a raw `RunUAT` invocation, or a
   future Steam staging script — will hit the original cook failure unless it also

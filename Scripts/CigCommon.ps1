@@ -36,20 +36,27 @@ function Write-CigStep {
 
 # Editor development plugins that must not be loaded by the cook.
 #
-# ModelContextProtocol and AllToolsets carry "TargetAllowList": ["Editor"], which
-# is correct and keeps them out of the shipped game. It does not keep them out of
-# the *cook*, because the cook commandlet is itself an editor. AllToolsets
-# depends on GameFeaturesToolset, which depends on GameFeatures, which demands an
-# asset-manager rule for GameFeatureData; the cook reports its absence as an
-# error and UAT fails the run with Error_UnknownCookFailure.
+# These carry "TargetAllowList": ["Editor"], which is correct and keeps them out
+# of the shipped game. It does not keep them out of the *cook*, because the cook
+# commandlet is itself an editor.
 #
+# This list used to name AllToolsets, the umbrella plugin that enables all 21
+# engine toolsets at once. One of those - GameFeaturesToolset - depends on
+# GameFeatures, which demands an asset-manager rule for GameFeatureData; the cook
+# reported its absence as an error and UAT failed with Error_UnknownCookFailure.
 # Declaring that rule is the wrong fix, and Config/DefaultGame.ini says why at
 # length: the type's class does not load for the Game target, so the asset
-# manager ensures on it rather than shrugging. Tools/check_sources.py rejects it
-# statically. Both directions fail while the plugin is in the cook, so the plugin
-# is taken out of the cook rather than out of the project. The editor keeps its
-# tooling; the cook never loads it.
-$script:CigCookDisabledPlugins = @('AllToolsets', 'ModelContextProtocol')
+# manager ensures on it rather than shrugging.
+#
+# The project now enables the two toolsets it actually uses instead of the
+# umbrella, so GameFeatures is no longer in the dependency graph at all and the
+# editor no longer asks to add that rule. The cook exclusion stays regardless:
+# these are editor development tools, and a cook that loads them is staging
+# tooling into a game build whether or not it fails.
+#
+# Any toolset can be added back by name in the .uproject and here. The one that
+# must not come back is GameFeaturesToolset - directly or through AllToolsets.
+$script:CigCookDisabledPlugins = @('EditorToolset', 'SlateInspectorToolset', 'ModelContextProtocol')
 
 function Get-CigCookPluginExclusionArg {
     <#

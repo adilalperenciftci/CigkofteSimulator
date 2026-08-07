@@ -30,7 +30,14 @@
 			]
 		},
 		{
-			"Name": "AllToolsets",
+			"Name": "EditorToolset",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "SlateInspectorToolset",
 			"Enabled": true,
 			"TargetAllowList": [
 				"Editor"
