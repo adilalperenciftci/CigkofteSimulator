@@ -1412,7 +1412,59 @@ is no screen for that.
 
 Seven steps, none played — and the plan asked for a playtest before this one.
 A Development package was built from master `8265dce` and has not been launched;
-its record is on `docs/package-2026-08-06`, which is not merged.
+its record is the next entry down.
+
+## 2026-08-06 — a package to play, built from master `8265dce`
+
+**Superseded.** This package predates build-mode steps 7 and 8 and the toolset
+change, so it does not contain remove/restore, the save round trip, or save
+version 15. Kept as the record of what was built and measured; a package for the
+finished build mode has to be built again from master.
+
+Built so somebody can hold the six unplayed build-mode steps. Development rather
+than Shipping on purpose: the log, the console and the stats are kept, so if
+something is wrong the reason is visible.
+
+| | Development |
+|---|---|
+| Output | `Build\WindowsDemo\` |
+| Runtime EXE | `CigkofteSimulator\Binaries\Win64\CigkofteSimulator.exe` |
+| Runtime EXE SHA-256 | `BC0A3969D5DE34AFD17E9229AFDD89B87E40424AEFE8EFBE268E342B0E479998` |
+| Launcher shim SHA-256 | `87A5DCFDEEF4EB2F02C0A6BC5FE123C835A0E56093486092DBD7843AC0E68006` |
+| Files | 71 |
+| Bytes | 2,341,600,833 |
+| PDB files | 1 (expected — `PackageDemo.ps1` does not pass `-nodebuginfo`) |
+| Sentry / crashpad / editor tooling | **0** |
+| Cooked packages | 2,981 of 2,988 (7 skipped by platform) |
+| Smoke test | **9/9** |
+| Mandatory self-test | **passed** |
+
+Two executables ship and they are not interchangeable: a 171 KB launcher shim at
+the archive root and the 341 MB runtime binary under `Binaries\Win64`. The runtime
+one is the artefact this record is about; the shim's hash is given only so the
+pair can be told apart.
+
+### What to do with it
+
+Run the root `CigkofteSimulator.exe`. Two things have been waiting on a person:
+
+**Build mode** (six steps, none played) — `B` to enter · look at a table ·
+**Interact** to pick it up · mouse to position · `R` to rotate a quarter turn ·
+**Interact** to commit · `X` to cancel. Escape is *not* cancel; it opens the pause
+menu, which is a known gap rather than a surprise.
+
+**The shop rename** (unplayed since PR #26) — tablet → shop tab → **F2** → type →
+**Enter**.
+
+What no test in this repository can answer: whether green and red read at a
+glance, whether a 90cm ghost reads as an object rather than a stain on the floor,
+whether `X` is findable, whether a moved table looks right where it landed and
+whether its chairs came with it *visibly*, and whether committing with the same
+key you picked up with fires by accident.
+
+**This package has not been played either.** It was built, self-tested and
+smoke-tested; nobody has launched it. That is the same High-severity item it has
+always been, and producing an artefact does not close it.
 
 ## 2026-08-06 — build mode step 6: the furniture actually moves
 
