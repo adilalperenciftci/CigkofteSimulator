@@ -1295,6 +1295,65 @@ The package table above was rebuilt from `84af1c3`. The hashes it carried before
 were of a binary containing the defect, which would have made the evidence a
 record of the wrong thing.
 
+## 2026-08-06 — build mode step 8: the round trip, and the trap it found
+
+Stage 3 is closed. A player can rearrange the shop and it survives a save.
+
+### The round trip was mostly built. What it had never been given was a player
+
+Stage 3.5 wrote and read the layout, and every test of it moved a table by calling
+the authority directly — because until step 6 no player could move one. These go
+through build mode's own operations end to end: `BeginBuildMove` →
+`SetBuildCandidateLocation` → `CommitBuildMove` → save → load into a shop built
+from scratch, and the table is where it was left rather than where the authored
+default puts it.
+
+### Step 7 shipped a trap, and this is where it showed
+
+A stored placement is not in the authority, so `Capture` never wrote it, so
+**removing something and saving destroyed it** — permanently, in a game with
+nowhere to buy furniture back from. A table put away for a minute was gone.
+
+Save version **15** adds `StoredLayout`. That forced a second decision in the load
+path: `ApplyLoadedLayout` destroys the actors of any id the save does not mention,
+which was right while "not mentioned" had one meaning. It now has two — *gone*,
+and *owned but not in use* — so stored ids are passed in and put away instead.
+
+No companion flag, unlike `bLayoutPersisted`. An empty layout array could mean
+"unknown" or "the player emptied the shop", so it needed one; an empty back room
+means nothing is stored, and a save predating the field reads back empty, which is
+the same true statement.
+
+### The mutation
+
+Dropping `StoredLayout` from the capture — which is exactly the behaviour step 7
+shipped with — fails `SomethingPutAwayIsStillOwnedAfterALoad` on four assertions
+in sequence: not written, empty after load, no visuals kept, cannot be put back.
+The whole chain is covered rather than its first link. Reverted before validation.
+
+### A test that was wrong, and the rule it confirmed
+
+The store round trip first failed at restore-after-load, and the game was right:
+`RestoreLastStored` requires build mode. A loaded game does not put the player's
+furniture back by itself, because where it goes is their decision. Fixed in the
+test.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 242 automation tests, 25 systems |
+| Editor build | PASS |
+| `Cigkofte.BuildMode` filter | 21/21 |
+| Save version | 14 → **15**, migration chain v1→v15 |
+| Mutation (back room not written) | 1 test fails naming 4 assertions, suite survives |
+
+### What this does not change
+
+Eight steps, none played. Stage 3 is closed by automation alone, and every step
+after 3 was input-driven and visual. The Development package on
+`docs/package-2026-08-06` predates steps 7 and 8 and has not been launched.
+
 ## 2026-08-06 — build mode step 7: taking things off the floor
 
 Removal is not a kind of move. Moving is always reversible — the shop is a

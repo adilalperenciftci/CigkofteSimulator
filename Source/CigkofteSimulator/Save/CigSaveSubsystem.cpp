@@ -91,7 +91,11 @@ void UCigSaveSubsystem::MigrateSave(UCigSaveGame& Save)
 	{
 		MigrateV13ToV14(Save);
 	}
-	// In future: if (Save.SaveVersion < 15) { MigrateV14ToV15(Save); } ...
+	if (Save.SaveVersion < 15)
+	{
+		MigrateV14ToV15(Save);
+	}
+	// In future: if (Save.SaveVersion < 16) { MigrateV15ToV16(Save); } ...
 
 	Save.SaveVersion = CurrentVersion;
 	UE_LOG(LogCigSave, Log, TEXT("Kayıt taşındı: sürüm %d → %d"), From, CurrentVersion);
@@ -233,6 +237,16 @@ void UCigSaveSubsystem::MigrateV13ToV14(UCigSaveGame& Save)
 	// "never named" into "named it that", and a later change to the default would
 	// then leave old shops carrying a name nobody chose.
 	Save.ShopName.Reset();
+}
+
+void UCigSaveSubsystem::MigrateV14ToV15(UCigSaveGame& Save)
+{
+	// v15 gave the shop a back room. Nobody could take anything off the floor
+	// before build mode existed, so a v14 shop has nothing stored - and unlike the
+	// layout, an empty back room needs no flag to say so, because "nothing was put
+	// away" and "this file predates putting things away" are the same statement
+	// and both are true of it.
+	Save.StoredLayout.Reset();
 }
 
 bool UCigSaveSubsystem::SaveNow(ACigkofteGameMode* GM)

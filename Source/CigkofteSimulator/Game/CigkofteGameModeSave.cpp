@@ -286,6 +286,12 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 		Save.bLayoutPersisted = true;
 	}
 
+	// The back room. Written through the same capture as the floor, because a
+	// stored table is the same kind of thing as a standing one - it is simply not
+	// standing. Without this, removing something and saving would destroy it, and
+	// there is nowhere in this game to buy furniture back from.
+	Save.StoredLayout = CigSavePlacement::Capture(BuildStored);
+
 	// The shop's name, raw. Stored unresolved so "never named" survives as itself
 	// rather than being written down as whatever the default happens to be today.
 	if (WorldBuilder)
@@ -341,10 +347,39 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 		WorldBuilder->RefreshShopSign();
 	}
 
+	// The back room is rebuilt before the floor, so the layout pass knows which
+	// ids are put away rather than gone. Without that it would destroy their
+	// actors - correctly, by its own rules, since they are not in the layout - and
+	// a stored table could never be brought back.
+	BuildStored.Reset();
+	TArray<FName> StoredIds;
+	StoredIds.Reserve(Save.StoredLayout.Num());
+	for (const FCigSavePlacement& One : Save.StoredLayout)
+	{
+		// Validated on the way in like everything else. A stored record is not
+		// standing anywhere, so it cannot overlap or block, but it can still be
+		// malformed - and a malformed one restored later would be refused with no
+		// explanation of when it went wrong.
+		if (CigSavePlacement::Validate(One) != ECigSavePlacementFault::None)
+		{
+			UE_LOG(LogCigSave, Warning, TEXT("Depodaki yerlesim kaydi gecersiz, atlandi: %s"),
+				*One.StableId.ToString());
+			continue;
+		}
+		const FCigPlacementRequest Request = CigSavePlacement::ToRequest(One);
+		FCigPlacementRecord Record;
+		if (!CigBuildVerdict::MakeCandidateRecord(Request, Request.CandidateTransform, Record))
+		{
+			continue;
+		}
+		BuildStored.Add(Record);
+		StoredIds.Add(Record.StableId);
+	}
+
 	if (Save.bLayoutPersisted && WorldBuilder)
 	{
 		FString Diagnostic;
-		if (!WorldBuilder->ApplyLoadedLayout(Save.InstalledLayout, Diagnostic))
+		if (!WorldBuilder->ApplyLoadedLayout(Save.InstalledLayout, Diagnostic, StoredIds))
 		{
 			UE_LOG(LogCigSave, Error,
 				TEXT("Kayitli dukkan yerlesimi yuklenemedi, varsayilan yerlesim korundu: %s"),
