@@ -266,6 +266,21 @@ public:
 	// Quarter turns, because that is the rotation policy the authority normalizes
 	// to for everything the player can move.
 	void RotateBuildCandidate(int32 QuarterTurns);
+	// --- Build mode: the back room ---
+	//
+	// Records of placements the player has taken off the floor, oldest first. The
+	// record is kept whole so putting one back reproduces the layout rather than
+	// re-deriving one that only resembles it. Their seats and meshes stay with the
+	// world builder, which is where world state belongs.
+	TArray<FCigPlacementRecord> BuildStored;
+
+	// Takes the current selection off the floor, if the rules allow it.
+	bool RemoveBuildSelection();
+	// Puts the most recently stored one back where it came from. Last in, first
+	// out, because that is what a player undoing a mistake expects; anything else
+	// would need a way to say which one, and there is no screen for that yet.
+	bool RestoreLastStored();
+
 	// Asks both authorities and redraws the ghost. Called whenever the candidate
 	// changes rather than every tick: the hypothetical grid is rebuilt inside
 	// WouldCloseRequiredRoute, and that is not a per-frame cost worth paying while

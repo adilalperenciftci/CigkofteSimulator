@@ -90,6 +90,33 @@ int32 FCigPlacementVisualRegistry::Release(FName StableId, bool bDestroyActors)
 	return Affected;
 }
 
+int32 FCigPlacementVisualRegistry::SetHidden(FName StableId, bool bHidden)
+{
+	TArray<FCigPlacementVisual>* List = Visuals.Find(StableId);
+	if (!List)
+	{
+		return 0;
+	}
+
+	int32 Affected = 0;
+	for (int32 Index = List->Num() - 1; Index >= 0; --Index)
+	{
+		AActor* Actor = (*List)[Index].Actor.Get();
+		if (!IsValid(Actor))
+		{
+			List->RemoveAt(Index);
+			continue;
+		}
+		Actor->SetActorHiddenInGame(bHidden);
+		// Collision goes with visibility. A hidden table the player could still
+		// walk into would be worse than a visible one, because there would be
+		// nothing on screen to explain why they stopped.
+		Actor->SetActorEnableCollision(!bHidden);
+		++Affected;
+	}
+	return Affected;
+}
+
 void FCigPlacementVisualRegistry::Reset()
 {
 	Visuals.Reset();

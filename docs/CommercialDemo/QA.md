@@ -1295,6 +1295,66 @@ The package table above was rebuilt from `84af1c3`. The hashes it carried before
 were of a binary containing the defect, which would have made the evidence a
 record of the wrong thing.
 
+## 2026-08-06 — build mode step 7: taking things off the floor
+
+Removal is not a kind of move. Moving is always reversible — the shop is a
+different shape and that is all. Removing takes capability away, and a player who
+removes their only preparation station has broken the shop from inside a mode that
+exists to improve it.
+
+### Three decisions the plan did not make
+
+**Removal stores rather than destroys.** The plan said to use "the same paths
+Stage 3.5's load already exercises", and the load path destroys actors — correctly,
+because a load's removal is final. A player's is not: the table is in the back
+room. Destroying it would mean restore had to respawn meshes only `BuildWorld`
+knows how to make.
+
+**Not everything can be removed.** A category carrying functional capacity must
+keep some. One of two tables, yes; the last one, no. The boundary is the capacity
+the *record* carries rather than the count of records, so a single table seating
+four is still the last of its function.
+
+**Seats leave the world rather than being flagged.** A flag would be a second
+meaning for a seat to have, and everything reading `Seats` — the customer system,
+the route audit, capacity — would have to learn it. Taken out, a stored chair is
+simply not there, and nobody walks to it.
+
+### An assumption tested rather than assumed
+
+Removal never asks the navigation grid, because taking an obstacle away only ever
+opens floor. That claim is what justifies skipping a check, so
+`RemovingSomethingCannotCloseARoute` removes everything removable from the
+authored shop and asserts the routes are still open.
+
+### The mutation
+
+Moving the boundary from `<= 0` to `< 0` — the shape an off-by-one actually takes,
+invisible in review — fails `TheLastOfAFunctionCannotBeRemoved` on exactly the
+three assertions that own it, including the four-seat table, while the other 17
+pass. Reverted before validation.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 239 automation tests, 25 systems |
+| Editor build | PASS |
+| `Cigkofte.BuildMode` filter | 18/18 |
+| Mutation (removal boundary shifted by one) | 1 test fails naming 3 assertions, suite survives |
+
+### Controls
+
+`Delete` removes what is selected · `Z` puts the most recently stored one back.
+Last in, first out, because anything else needs a way to say *which* one and there
+is no screen for that.
+
+### What this does not change
+
+Seven steps, none played — and the plan asked for a playtest before this one.
+A Development package was built from master `8265dce` and has not been launched;
+its record is on `docs/package-2026-08-06`, which is not merged.
+
 ## 2026-08-06 — build mode step 6: the furniture actually moves
 
 The player can rearrange the shop. It holds for the session; surviving a save is

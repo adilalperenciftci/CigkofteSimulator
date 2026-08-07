@@ -565,6 +565,52 @@ bool UCigWorldBuilder::ApplyLoadedLayout(const TArray<FCigSavePlacement>& Saved,
 	return true;
 }
 
+int32 UCigWorldBuilder::StorePlacementVisuals(FName StableId)
+{
+	if (StableId.IsNone() || StoredSeats.Contains(StableId))
+	{
+		return 0;
+	}
+
+	// Seats come out of the world entirely rather than being marked unusable.
+	// A flag would be a second meaning for a seat to have, and every reader of
+	// Seats would have to learn it. Taken out, they are simply not there.
+	TArray<FCigSeat> Taken;
+	for (int32 Index = Seats.Num() - 1; Index >= 0; --Index)
+	{
+		if (Seats[Index].PlacementId == StableId)
+		{
+			Taken.Add(Seats[Index]);
+			Seats.RemoveAt(Index);
+		}
+	}
+	// Removed back to front, so put the authored order back.
+	Algo::Reverse(Taken);
+	StoredSeats.Add(StableId, MoveTemp(Taken));
+
+	return PlacementVisuals.SetHidden(StableId, /*bHidden=*/true);
+}
+
+int32 UCigWorldBuilder::RestorePlacementVisuals(FName StableId)
+{
+	if (StableId.IsNone())
+	{
+		return 0;
+	}
+
+	TArray<FCigSeat> Restored;
+	if (StoredSeats.RemoveAndCopyValue(StableId, Restored))
+	{
+		Seats.Append(Restored);
+	}
+
+	const int32 Shown = PlacementVisuals.SetHidden(StableId, /*bHidden=*/false);
+	// The record may have been re-registered somewhere other than where it was
+	// stored from, so the meshes are put where the authority now says.
+	SyncPlacementVisuals(StableId);
+	return Shown;
+}
+
 int32 UCigWorldBuilder::FollowPlacement(FName StableId, const FTransform& PreviousTransform)
 {
 	SyncPlacementVisuals(StableId);

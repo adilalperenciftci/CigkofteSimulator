@@ -236,6 +236,12 @@ public:
 	};
 	TArray<FCigSeat> Seats;
 
+	// Seats belonging to placements the player has taken off the floor. Not part
+	// of Seats on purpose: everything that reads Seats - the customer system, the
+	// route audit, capacity - would otherwise need to learn a second meaning for
+	// a seat, and a stored chair is simply not there.
+	TMap<FName, TArray<FCigSeat>> StoredSeats;
+
 	// Note: not a UPROPERTY because the key is a non-UENUM enum; the stations
 	// live in the level, so there is no GC risk.
 	TMap<ECigStation, TWeakObjectPtr<ACigkofteStation>> Stations;
@@ -290,6 +296,23 @@ public:
 	// where a table used to be. The saved-layout path found that first; a player
 	// moving a table in build mode asks exactly the same question.
 	int32 FollowPlacement(FName StableId, const FTransform& PreviousTransform);
+
+	// Takes a placement off the floor without destroying it: actors hidden and
+	// uncollidable, seats lifted out of the world so nobody walks to a chair that
+	// is in the back room.
+	//
+	// The seats are kept here rather than handed to the caller. They are world
+	// state, they are held exactly as they were - re-deriving them on restore
+	// would quietly change a layout the player never touched - and keeping them
+	// inside means the seat type never has to cross into the game mode.
+	int32 StorePlacementVisuals(FName StableId);
+
+	// The reverse. Seats go back as they were, actors become visible again, and
+	// the meshes follow whatever transform the record now holds - which may not be
+	// where it was stored from.
+	int32 RestorePlacementVisuals(FName StableId);
+
+	bool HasStoredPlacement(FName StableId) const { return StoredSeats.Contains(StableId); }
 
 	// Replaces the installed layout with a saved one, and moves the shop to match.
 	//

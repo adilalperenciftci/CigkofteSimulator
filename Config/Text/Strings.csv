@@ -765,6 +765,11 @@ build.select.orphaned,Bu nesnenin kaydı bulunamadı.,This object has no placeme
 build.select.transient,Teslimat kasaları taşınamaz.,Delivery crates cannot be rearranged.
 build.verdict.ok,Buraya konabilir.,This spot works.
 build.verdict.route,Buraya konursa {0} yolu kapanır.,Placing it here would close the {0} route.
+build.remove.ok,Kaldırılabilir.,Can be removed.
+build.remove.lastofkind,Son {0} kaldırılamaz.,The last {0} cannot be removed.
+msg.buildmode.stored,Depoya kaldırıldı. Depoda {0} nesne var.,Moved to storage. {0} object(s) stored.
+msg.buildmode.restored,Nesne geri kondu.,The object was put back.
+msg.buildmode.storeempty,Depo boş.,Storage is empty.
 msg.buildmode.moved,Yerleşim taşındı.,The object was moved.
 msg.buildmode.on,Yerleşim düzenleme açık. Taşımak için bir nesneye bak.,Layout editing on. Look at an object to select it.
 msg.buildmode.off,Yerleşim düzenleme kapalı.,Layout editing off.
