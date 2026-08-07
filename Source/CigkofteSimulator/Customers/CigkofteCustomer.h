@@ -48,6 +48,18 @@ public:
 	void Leave(bool bAngry, const FVector& ExitPos);
 	void SetPatienceColor(float Frac01);
 
+	// Puts the resolved pose on the body: a lean and a fidget whose amplitude is
+	// the readout's urgency.
+	//
+	// A second channel for urgency, deliberately not a colour. The label tint
+	// this sits beside is small text and one hue - unreadable from where the
+	// player actually stands, and invisible to anyone who cannot separate red
+	// from green. A silhouette that leans and shifts survives both.
+	//
+	// The decision of *which* pose lives in CigCustomerReadout, where it can be
+	// tested without a world. This only draws it.
+	void ApplyPose(float DeltaSeconds);
+
 	// After serving, sends them to a table; on arrival they sit and start eating.
 	void GoToSeat(const FVector& SeatPos, float SeatYaw);
 	bool IsSeated() const { return bSeated; }
@@ -132,6 +144,14 @@ public:
 	UPROPERTY() TObjectPtr<UTextRenderComponent> TraitText;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> BodyMID;
 	UPROPERTY() TObjectPtr<UMaterialInstanceDynamic> HeadMID;
+
+	// Pose state. The phase is per-customer and seeded from the visual seed, so a
+	// queue of impatient people does not fidget in lockstep - which would read as
+	// a machine rather than as a row of annoyed customers.
+	float PosePhase = 0.f;
+	// Eased rather than snapped, so a body settles into a pose instead of
+	// jumping between bands on the frame patience crosses a threshold.
+	float PoseUrgencyEased = 0.f;
 
 	// Which working animation the apprentice should be playing, or none to fall
 	// back to idle and walking. Set by the staff system from the job it has been

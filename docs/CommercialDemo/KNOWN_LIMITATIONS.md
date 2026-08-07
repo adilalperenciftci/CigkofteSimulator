@@ -64,6 +64,19 @@ not fixed yet belong in `PLAN.md`, not here.
 - `CarEngine` is mapped to a metal one-shot and `CatMeow` is unmapped. Both are
   documented in `ASSETS.md` rather than disguised with pitch shifting.
 
+- **Nobody has watched a customer get impatient.** Stage 4.1 gives urgency a
+  second channel that is a shape rather than a colour — a lean that grows with
+  the patience bands, plus a sway — because the label tint it sits beside is
+  small text in one hue: unreadable from where the player actually stands, and
+  invisible to anyone who cannot separate red from green. `CigCustomerReadout`
+  decides the pose and is tested without a world, so what *is* verified is the
+  precedence: leaving outranks everything, a seated or not-yet-arrived customer
+  never plays urgency, and the bands hand over at full strength.
+  What no test here can answer is whether 14° of lean reads at queue distance,
+  whether the sway looks like impatience or like a wobble, and whether a row of
+  five customers reads as five people rather than one animation. The numbers were
+  chosen by reasoning about silhouettes, not by looking.
+
 - **The focus highlight is invisible on most stations.** `SetHighlighted` tints
   `Top`, the coloured primitive tub. With the prop pack installed that component
   is hidden on every station except the five ingredient ones, so on the rest the
@@ -74,7 +87,7 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 242 automation tests cover pure formulas, tables, data integrity and one
+- The 245 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
