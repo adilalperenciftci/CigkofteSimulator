@@ -1295,6 +1295,70 @@ The package table above was rebuilt from `84af1c3`. The hashes it carried before
 were of a binary containing the defect, which would have made the evidence a
 record of the wrong thing.
 
+## 2026-08-07 — Stage 4.1: urgency gets a shape
+
+A customer's patience had exactly one channel: the colour of the floating order
+label, lerped green to red. Three problems, and the third is why this was worth
+doing.
+
+It shares a channel with the order — the same text carries what they want and how
+long they have. It is colour alone, so a player who cannot separate red from green
+has no signal at all, on the loop the whole queue is built around. And it is small
+text, so from where the player actually stands — at a station, cooking — the queue
+is a row of bodies and none of them is saying anything.
+
+Urgency now also has a **shape**: a forward lean that grows through the patience
+bands, plus a sway. It reads at silhouette distance and survives any colour vision.
+No new assets — the existing components are rotated.
+
+### The decision is the precedence, not the animation
+
+`CigCustomerReadout::Resolve` is pure and tested without a world, because the
+interesting part is what wins when two things are true at once:
+
+| Situation | Reads as | Why |
+|---|---|---|
+| Leaving **and** out of patience | Leaving | They are walking out; a straining body sends the player chasing a lost sale |
+| Seated with a low patience value | Seated | `UCigCustomerSystem` only counts patience down **for the queue**, so that number is a stopped clock |
+| Walking in with a low value | Approaching | Same reason — the clock has not started until `bArrived` |
+| Ambient passer-by | Ambient | Scenery; every other field on them is meaningless |
+
+That patience only ticks for arrived queue members was measured in
+`CigCustomerSystem.cpp`, not assumed. The bands hand over at full strength, so a
+body does not get calmer just as the situation gets worse.
+
+### Two things caught while wiring it
+
+**`bShowOrder` was removed from the readout.** It was there for one revision. The
+order label's visibility already has six owners — `Leave`, `GoToSeat`,
+`Deactivate`, `InitAmbient`, `ApplyOrderVisuals` and the staff system — each
+writing at a moment that means something. A seventh writer running every tick
+would have outranked all of them, and the first symptom would have been a pooled
+customer's label reappearing after `Deactivate` turned it off. The pose is a
+property this module can own outright, which is what makes it a good place for a
+decision.
+
+**The pose is applied to both bodies.** With `Content/Characters` installed the
+primitive `Body` is hidden and `SkelBody` is what you see. Posing only the
+primitive would have made the whole feature invisible to anyone playing with the
+real art — the same trap the station focus highlight fell into.
+
+### Gates
+
+| Check | Result |
+|---|---|
+| `python Tools/check_sources.py` | clean — 245 automation tests, 25 systems |
+| Editor build | PASS |
+| `Cigkofte.Customers` filter | 3/3 |
+| Mutation (`bLeaving` guard narrowed to `&& !bArrived`) | 1 test fails naming 4 assertions — a leaving customer read urgency **1.0** |
+
+### What this does not change
+
+Nobody has watched a customer get impatient. Whether 14° of lean reads at queue
+distance, whether the sway looks like impatience or a wobble, and whether five
+customers read as five people rather than one animation are all judgements no test
+here can make. The numbers came from reasoning about silhouettes, not from looking.
+
 ## 2026-08-06 — build mode step 8: the round trip, and the trap it found
 
 Stage 3 is closed. A player can rearrange the shop and it survives a save.

@@ -1,4 +1,5 @@
 #include "Customers/CigkofteCustomer.h"
+#include "Customers/CigCustomerReadout.h"
 #include "Core/CigText.h"
 #include "Game/CigkofteGameMode.h"
 #include "Navigation/CigNavSystem.h"
@@ -520,6 +521,56 @@ void ACigkofteCustomer::GoToSeat(const FVector& SeatPos, float InSeatYaw)
 	TraitText->SetVisibility(false);
 }
 
+void ACigkofteCustomer::ApplyPose(float DeltaSeconds)
+{
+	FCigCustomerReadoutInput In;
+	In.PatienceFrac = MaxPatience > 0.f ? (Patience / MaxPatience) : 0.f;
+	In.bAmbient = bAmbient;
+	In.bLeaving = bLeaving;
+	In.bSeated = bSeated;
+	In.bArrived = bArrived;
+
+	const FCigCustomerReadout R = CigCustomerReadout::Resolve(In);
+
+	// Eased rather than assigned. Patience crossing a band boundary is a step
+	// change in the readout, and a body that snapped would read as a glitch
+	// instead of somebody shifting their weight.
+	PoseUrgencyEased = FMath::FInterpTo(PoseUrgencyEased, R.Urgency, DeltaSeconds, 3.f);
+
+	// Both bodies, because only one of them is ever visible and which one depends
+	// on whether Content/Characters is installed - which is not in the repository.
+	// Posing only the primitive would make this feature invisible to anyone
+	// playing with the real art, which is the same trap the station focus
+	// highlight fell into (see KNOWN_LIMITATIONS.md). The hidden one's rotation
+	// costs nothing.
+	auto PoseBoth = [this](const FRotator& R)
+	{
+		if (Body) { Body->SetRelativeRotation(R); }
+		if (SkelBody) { SkelBody->SetRelativeRotation(R); }
+	};
+
+	if (PoseUrgencyEased <= KINDA_SMALL_NUMBER)
+	{
+		// Nothing to say. Put the body upright rather than leaving it wherever
+		// the last urgent frame happened to stop.
+		PoseBoth(FRotator::ZeroRotator);
+		return;
+	}
+
+	// Phase is offset per customer so a queue does not fidget in unison, which
+	// would read as one machine rather than as several annoyed people. IdleSeed
+	// already exists for exactly this and is deliberately off the deterministic
+	// stream, because it touches no game state.
+	PosePhase += DeltaSeconds * (2.f + 4.f * PoseUrgencyEased);
+
+	// The lean is the part that survives to silhouette distance; the sway only
+	// becomes visible up close. Between them the urgency has a shape, which is
+	// the whole point - the label's colour already had the hue.
+	const float Lean = 14.f * PoseUrgencyEased;
+	const float Sway = 5.f * PoseUrgencyEased * FMath::Sin(PosePhase + IdleSeed);
+	PoseBoth(FRotator(Lean, 0.f, Sway));
+}
+
 void ACigkofteCustomer::SetPatienceColor(float Frac01)
 {
 	const FLinearColor Full = bVIP ? FLinearColor(1.f, 0.85f, 0.1f) : FLinearColor::Green;
@@ -805,6 +856,12 @@ void ACigkofteCustomer::ApplyWalkAnim(bool bWalking, float DeltaSeconds)
 void ACigkofteCustomer::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+	// What the body is saying. Every frame and for every customer including
+	// ambient ones, because the readout's answer for them is "stand up straight"
+	// and a pose left over from a previous life in the pool would otherwise
+	// follow a recycled body onto the street.
+	ApplyPose(DeltaSeconds);
 
 	// The shop may have moved under a route that is already being walked. One
 	// integer compare per customer is what makes checking this cheaper than
