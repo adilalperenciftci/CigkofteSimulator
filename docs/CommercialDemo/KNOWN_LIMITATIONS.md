@@ -97,9 +97,29 @@ not fixed yet belong in `PLAN.md`, not here.
   assume the parameters of; an overlay material would be a new asset. Left as a
   limitation rather than guessed at.
 
+## Hygiene and rivals
+
+- **The cleaning hint is Turkish only.** `UCigHygieneSystem::WorstProblem`
+  returns hard-coded strings — `TEXT("Ellerini yıka (Lavabo)")` and its five
+  siblings — rather than going through `CigText`. They are not `LOCTEXT`, so the
+  static localization check does not see them, and the HUD shows Turkish with the
+  interface set to English. Found while writing the system's first tests;
+  recorded rather than fixed, because moving six strings into `Config/Text` is a
+  string-table change with its own review rather than part of adding coverage.
+
+- **A rule the tests now make visible: closing the weakest rival hurts.**
+  `PlayerPullMult` divides the rivals' strength by how many are open, so it is an
+  average rather than a total. Driving the failing shop on the street out of
+  business raises the average of the ones left, and the player's pull *drops*.
+  `Cigkofte.Rivals.ClosingTheWeakestRivalMakesThingsWorseForThePlayer` pins it in
+  both directions — losing the strongest rival helps, which is what makes it an
+  average and not a one-way bug. Whether it reads as "the survivors are the tough
+  ones" or as punishing the player for winning is a design decision; the test
+  exists so whoever makes it can see the behaviour, not to assert it is right.
+
 ## Coverage
 
-- The 249 automation tests cover pure formulas, tables, data integrity and one
+- The 255 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
