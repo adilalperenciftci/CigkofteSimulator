@@ -204,9 +204,19 @@ own radius. What that is and is not:
 - **Only the main street has pedestrian lanes.** The two pavements outside the
   shop are modelled, because they are two straight strips whose furniture stands
   on known lines. The six districts are not: each still gets one rectangle around
-  its centre, and a pedestrian inside it can walk through a market stall whose
-  collision is off. Containment and blocked-step recovery apply there; a route
-  does not. Modelling district interiors is open.
+  its centre, and a pedestrian inside it has no route around the stalls — only
+  containment and blocked-step recovery. Modelling district interiors is open.
+
+  One detail in this entry was **wrong and is corrected**: it used to say the
+  stalls' "collision is off". It is not. Both stall paths ask for it — the bazaar
+  pack's mesh through `SpawnProp(..., bCollision=true)`, and the primitive
+  fallback through `SetActorEnableCollision(true)` on its table — and the
+  components report profile `BlockAll` with a `Block` response to `ECC_Pawn`.
+  Whether a walker nonetheless passes through one is **unverified**: an attempt
+  to pin it with a capsule at the stall coordinates found nothing there, and the
+  diagnostic could not separate "the stall is elsewhere" from "the stall does not
+  block" before the attempt was abandoned. The flag is not the explanation; what
+  is, is still open.
 - **Street furniture blocks now, with a shape this project chose.** Trees and
   lamp posts block the player. What does the blocking is a narrow invisible
   cylinder at the trunk, not the imported mesh's own collision — and that
