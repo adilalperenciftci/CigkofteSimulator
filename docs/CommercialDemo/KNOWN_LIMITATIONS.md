@@ -64,6 +64,18 @@ not fixed yet belong in `PLAN.md`, not here.
 - `CarEngine` is mapped to a metal one-shot and `CatMeow` is unmapped. Both are
   documented in `ASSETS.md` rather than disguised with pitch shifting.
 
+- **The ticket's abbreviations have never been read by a player.** Stage 4.2 put
+  the toppings on the customer's own label, because they are 30 of the 100 points
+  `ScoreWrap` awards — more than the spice or the portions — and the label had
+  never carried them. They appear as three-letter codes, since seven spelled-out
+  toppings is a paragraph over somebody's head. What is tested is that the codes
+  are unique in every language, which matters because the obvious first-letter
+  scheme collides in both (Marul/Maydanoz, Lettuce/Lemon) and collides
+  differently in each. What is **not** tested is whether `MRL+SGN` is something a
+  player learns in a minute or a cipher they resent: nobody has read one. If they
+  do not land, the fallback is fewer codes rather than longer ones — the label
+  has a width budget before it overruns the body it sits above.
+
 - **Nobody has watched a customer get impatient.** Stage 4.1 gives urgency a
   second channel that is a shape rather than a colour — a lean that grows with
   the patience bands, plus a sway — because the label tint it sits beside is
@@ -87,7 +99,7 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 245 automation tests cover pure formulas, tables, data integrity and one
+- The 247 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,

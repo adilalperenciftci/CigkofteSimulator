@@ -755,6 +755,14 @@ msg.placement.duplicate,Bu nesne kimliği zaten kayıtlı.,That object identity 
 msg.placement.deliveryfull,Teslimat alanı dolu; kasa için yer aç.,The delivery area is full; clear a spot for the crate.
 msg.placement.classification,Bu nesne bu yerleştirme işlemi için uygun değil.,This object is not valid for this placement operation.
 msg.placement.consequence,Bu nesnenin kullanım alanı tanımı geçersiz.,This object's use-area definition is invalid.
+ticket.topping.marul,MRL,LET
+ticket.topping.maydanoz,MYD,PAR
+ticket.topping.domates,DOM,TOM
+ticket.topping.tursu,TRS,PCK
+ticket.topping.sogan,SGN,ONI
+ticket.topping.limon,LMN,LEM
+ticket.topping.nareksisi,NAR,POM
+ticket.plain,SADE,PLAIN
 build.category.unknown,Nesne,Object
 build.category.station,Tezgâh,Station
 build.category.seating,Oturma,Seating
