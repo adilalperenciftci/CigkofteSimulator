@@ -4,6 +4,7 @@
 #include "Game/CigkofteGameMode.h"
 #include "Navigation/CigNavSystem.h"
 #include "Orders/CigOrderSystem.h"
+#include "Orders/CigOrderTicket.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/TextRenderComponent.h"
@@ -180,21 +181,10 @@ void ACigkofteCustomer::InitVisuals(int32 Seed)
 
 void ACigkofteCustomer::ApplyOrderVisuals()
 {
-	FString Line = CigSpiceNameAscii(Spec.Spice);
-	Line += Spec.Portion >= 2 ? *CigText::Get(TEXT("customer.tag.portion")) : *CigText::Get(TEXT("customer.tag.wrap"));
-	if (Spec.bWantsAyran)
-	{
-		Line += *CigText::Get(TEXT("customer.tag.ayran"));
-	}
-	if (Spec.bPacked)
-	{
-		Line += *CigText::Get(TEXT("customer.tag.packed"));
-	}
-	if (bVIP)
-	{
-		Line = CigText::Get(TEXT("customer.tag.vip")) + Line;
-	}
-	OrderText->SetText(FText::FromString(Line));
+	// The whole order, including the toppings this label used to leave out - and
+	// they are the largest thing the player is scored on. CigOrderTicket owns the
+	// formatting so the abbreviation scheme has one definition and one test.
+	OrderText->SetText(FText::FromString(CigOrderTicket::Format(Spec, bVIP)));
 	OrderText->SetWorldSize(bVIP ? 26.f : 20.f);
 
 	// Trait label: show at most 2 traits
