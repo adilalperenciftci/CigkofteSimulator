@@ -99,7 +99,7 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 247 automation tests cover pure formulas, tables, data integrity and one
+- The 249 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
@@ -207,14 +207,37 @@ own radius. What that is and is not:
   its centre, and a pedestrian inside it can walk through a market stall whose
   collision is off. Containment and blocked-step recovery apply there; a route
   does not. Modelling district interiors is open.
-- **Street furniture has no collision, so clearance is doing the work.** Trees
-  and lamp posts are spawned with `bCollision = false` — that is the default of
-  `UCigWorldBuilder::SpawnProp` and both call sites take it. Nothing at runtime
-  would stop a pedestrian walking through one, so the lanes are inset from the
-  furniture lines instead, with clearances chosen generously rather than measured
-  off a mesh (the packs are optional and the primitive fallbacks are thinner).
-  Giving the furniture collision would be the better fix and is a separate
-  change: it affects the player too.
+- **Street furniture blocks now, with a shape this project chose.** Trees and
+  lamp posts block the player. What does the blocking is a narrow invisible
+  cylinder at the trunk, not the imported mesh's own collision — and that
+  distinction was learned the hard way. Giving the CityPark tree meshes collision
+  closed the east pedestrian lane, because their hulls are wider than the visible
+  trunk and the lane inset was chosen for a trunk. It failed on roughly one run
+  in three, since the trees carry a random Y jitter. An optional asset's
+  collision also differs between the six trunk meshes and is absent entirely when
+  the pack is not installed, so relying on it means the street blocks differently
+  on different machines.
+
+  The tree *crown* still does not block: it is a sphere centred at 300 with the
+  player's head at about 180, so stopping somebody walking past a tree they are
+  clearly beside would be a worse wrong than walking through one.
+
+  **What is proven is narrower than it looks.** Only the *west* tree line is
+  asserted. Putting the flag back one prop type at a time showed that a blocked
+  sample on the east line comes from the buildings behind `EastPavementMaxX`, and
+  one on the lamp line from the road edge at `RoadMinX` — both assertions passed
+  whether or not the collision was there, so they were removed. The lamp posts'
+  blocker is therefore **unmeasured**: it is the same call as the trees', and the
+  reason to believe it is the code rather than a test.
+
+- **A building's collision reaches into the east pedestrian lane.** Found by the
+  furniture test before it was narrowed: sampling the lane centre at roughly
+  x=-1350 is blocked, on some runs, by an actor whose origin is near x=-578 —
+  some 770 units away, so its hull is very large. Ambient pedestrians walk that
+  lane and sweep against `WorldStatic`, so they would stop there and repath.
+  This predates the furniture work and is not caused by it; it is recorded rather
+  than fixed because the fix is a building-placement change and nobody has
+  watched what the street looks like today.
 - **The grid is the navigation authority by measurement, and Recast is not
   available.** `docs/Architecture/NAVIGATION_AUTHORITY.md` records the experiment.
   No `ARecastNavMesh` is created in this project in any environment measured —

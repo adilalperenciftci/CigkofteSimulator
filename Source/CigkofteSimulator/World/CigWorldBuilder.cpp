@@ -1427,18 +1427,63 @@ void UCigWorldBuilder::BuildCity()
 		}
 	}
 
+	// The thing a player actually walks into at a tree or a lamp post: a narrow
+	// invisible cylinder at the trunk.
+	//
+	// Separate from the visual on purpose. An imported mesh's collision is the
+	// asset author's decision, it differs between the six CityPark trunks, and it
+	// is absent entirely when the optional pack is not installed - so relying on
+	// it means the street blocks differently on different machines, and the
+	// pedestrian lane inset has nothing fixed to be inset *from*.
+	//
+	// TrunkBlockRadius is deliberately smaller than the lane inset. That is the
+	// invariant the pavement test checks.
+	auto SpawnTrunkBlocker = [this](float X, float Y)
+	{
+		constexpr float TrunkBlockRadius = 22.f;
+		constexpr float TrunkBlockHeight = 220.f;
+		if (AStaticMeshActor* Blocker = SpawnBox(
+			FVector(X, Y, TrunkBlockHeight * 0.5f),
+			FVector(TrunkBlockRadius / 50.f, TrunkBlockRadius / 50.f, TrunkBlockHeight / 100.f),
+			FLinearColor::Black, CylinderMesh))
+		{
+			Blocker->SetActorHiddenInGame(true);
+			Blocker->SetActorEnableCollision(true);
+		}
+	};
+
 	// Trees - CityPark trees when available, otherwise a trunk+crown primitive
-	auto SpawnTree = [this](float X, float Y)
+	auto SpawnTree = [this, &SpawnTrunkBlocker](float X, float Y)
 	{
 		static const TCHAR* ParkTrees[] = { TEXT("SM_AmurCork01"), TEXT("SM_AmurCork02"), TEXT("SM_AmurCork03"),
 			TEXT("SM_AmurCork04"), TEXT("SM_AmurCork05"), TEXT("SM_AmurCork06") };
+		// A tree the player walks through is the one piece of scenery they are
+		// guaranteed to touch, so it blocks now. What it does *not* do is block
+		// with the imported mesh's own collision.
+		//
+		// That was the first attempt and it closed the pavement. The CityPark
+		// trunk meshes carry collision wider than the visible trunk - wide enough
+		// to reach from the tree line into the pedestrian lane centre - and the
+		// lane inset was chosen for a trunk, not for whatever hull an optional
+		// asset happens to ship. It only failed on some runs, because the trees
+		// carry a random Y jitter, which is the worst way for a defect to behave.
+		//
+		// So the visual carries no collision and a narrow invisible cylinder does
+		// the blocking: the same shape whether or not the pack is installed, and a
+		// shape this project chose rather than inherited.
 		if (UStaticMesh* T = CigMesh::Park(TEXT("Flora/Trees"), ParkTrees[FMath::RandRange(0, UE_ARRAY_COUNT(ParkTrees) - 1)]))
 		{
 			SpawnProp(T, FVector(X, Y, 0.f), FMath::FRandRange(520.f, 760.f), FMath::FRandRange(0.f, 360.f), FLinearColor(0.15f, 0.4f, 0.12f));
+			SpawnTrunkBlocker(X, Y);
 			return;
 		}
+		// The crown is a sphere centred at 300 with the player's head at about
+		// 180, so it is foliage overhead - blocking it would stop somebody walking
+		// past a tree they are clearly beside, which is a worse wrong than walking
+		// through one.
 		if (AStaticMeshActor* Trunk = SpawnBox(FVector(X, Y, 110.f), FVector(0.25f, 0.25f, 2.2f), FLinearColor(0.30f, 0.20f, 0.10f), CylinderMesh)) { Trunk->SetActorEnableCollision(false); }
 		if (AStaticMeshActor* Crown = SpawnBox(FVector(X, Y, 300.f), FVector(1.8f, 1.8f, 1.8f), FLinearColor(0.12f, 0.35f + FMath::FRandRange(0.f, 0.15f), 0.10f), SphereMesh)) { Crown->SetActorEnableCollision(false); }
+		SpawnTrunkBlocker(X, Y);
 	};
 	for (float Y = -7000.f; Y <= 7000.f; Y += 1500.f)
 	{
@@ -1495,11 +1540,17 @@ void UCigWorldBuilder::BuildCity()
 	{
 		for (float X : { CigStreet::WestLampX, CigStreet::EastLampX })
 		{
+			// Same rule as the trees, and for the same reason: the visual keeps no
+			// collision and the project's own cylinder does the blocking.
 			if (UStaticMesh* Post = CigMesh::Park(TEXT("Props"), TEXT("SM_LampPost01")))
 			{
 				SpawnProp(Post, FVector(X, Y, 0.f), 300.f, 0.f, FLinearColor(0.25f, 0.26f, 0.28f));
 			}
-			else if (AStaticMeshActor* Pole = SpawnBox(FVector(X, Y, 130.f), FVector(0.12f, 0.12f, 2.6f), FLinearColor(0.25f, 0.26f, 0.28f), CylinderMesh)) { Pole->SetActorEnableCollision(false); }
+			else if (AStaticMeshActor* Pole = SpawnBox(FVector(X, Y, 130.f), FVector(0.12f, 0.12f, 2.6f), FLinearColor(0.25f, 0.26f, 0.28f), CylinderMesh))
+			{
+				Pole->SetActorEnableCollision(false);
+			}
+			SpawnTrunkBlocker(X, Y);
 			if (AStaticMeshActor* Lamp = SpawnBox(FVector(X, Y, 275.f), FVector(0.45f, 0.45f, 0.45f), FLinearColor(1.f, 0.92f, 0.55f), SphereMesh))
 			{
 				Lamp->SetActorEnableCollision(false);
