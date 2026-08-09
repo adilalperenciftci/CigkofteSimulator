@@ -117,9 +117,30 @@ not fixed yet belong in `PLAN.md`, not here.
   ones" or as punishing the player for winning is a design decision; the test
   exists so whoever makes it can see the behaviour, not to assert it is right.
 
+## Regulars
+
+- **A serve can please a regular and disappoint them at the same time.** Extracting
+  the loyalty arithmetic into `CigLoyalty` made two decisions visible that were
+  unreachable while they sat in a private method. Satisfaction pivots at 60 and
+  trust turns at 80, so the whole band between them moves the two the opposite
+  way: accuracy 70 raises satisfaction by two and drops trust by six.
+  `Cigkofte.Loyalty.AServeCanPleaseAndDisappointAtOnce` pins it across the entire
+  band rather than at one point, so it cannot be dismissed as rounding. Whether
+  it reads as a regular who enjoyed the food but noticed you are slipping, or as
+  a bug nobody had looked at, is a design decision — the test exists so it can be
+  made, not to assert the current answer is right.
+- **Trust is asymmetric on purpose.** A good serve adds four and a bad one takes
+  six, so three good visits are needed to undo two bad ones. Pinned by
+  `Cigkofte.Loyalty.TrustIsHarderToEarnThanToLose`, which fails if anyone levels
+  the two.
+- **`AvgTip` is not an average over visits.** It is a running half-and-half, so
+  the most recent tip is worth as much as the entire history before it. The name
+  overstates what the field holds; the behaviour is pinned rather than changed,
+  because the balance that depends on it has never been played.
+
 ## Coverage
 
-- The 260 automation tests cover pure formulas, tables, data integrity and one
+- The 264 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
