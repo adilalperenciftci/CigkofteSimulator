@@ -456,6 +456,10 @@ void ACigkofteCustomer::Reactivate(const FVector& SpawnPos)
 	Traits = ECigTrait::None;
 	LoyalId = -1;
 	LoyalName.Reset();
+	// A recycled actor keeping its old party would make one customer walk out and
+	// take three strangers with them.
+	GroupId = -1;
+	GroupSize = 1;
 	Patience = MaxPatience = 45.f;
 	bArrived = false;
 	bArrivalNotified = false;

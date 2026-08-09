@@ -122,6 +122,17 @@ public:
 	FString LoyalName;
 	int32 VisualSeed = 0;
 
+	// Who they came in with. -1 is somebody who arrived alone, which is most
+	// customers and is deliberately not "a group of one": code that asks whether
+	// this customer has company should get a straight answer rather than a size
+	// it has to compare against 1.
+	//
+	// GroupSize is the number of this party still waiting. Serving one member
+	// does not complete their companions' independent orders, so the remaining
+	// members agree on the smaller headcount; a lone remainder becomes ordinary.
+	int32 GroupId = -1;
+	int32 GroupSize = 1;
+
 	float Patience = 45.f;
 	float MaxPatience = 45.f;
 	bool bArrived = false;

@@ -39,8 +39,21 @@ public:
 	// E at the service counter: hand the prepared wrap to the next customer.
 	void ServeFront();
 
-	void SpawnCustomer(bool bForceVIP = false, bool bForceInfluencer = false);
+	// Returns the customer that arrived, or null when the pool or the systems it
+	// needs would not give one. It used to return nothing; a party has to be able
+	// to tag the people it just brought in, and rediscovering them by looking at
+	// the back of the queue would be a guess.
+	ACigkofteCustomer* SpawnCustomer(bool bForceVIP = false, bool bForceInfluencer = false);
 	void RemoveCustomer(ACigkofteCustomer* C, bool bAngry);
+
+	// Brings in a party of Size that arrived together, and returns how many
+	// actually walked in. Public because the cheat manager and the tests both
+	// need to make a party happen on demand rather than wait for the roll.
+	//
+	// Does not check whether they fit: CigCustomerGroup::JudgeIntake decides that,
+	// and it is deliberately not called from in here so the decision stays in one
+	// testable place rather than being made twice with different answers.
+	int32 SpawnGroup(int32 Size);
 
 	int32 MaxQueue() const;
 
@@ -58,6 +71,12 @@ public:
 	TArray<FCigLoyalCustomer> Loyals;
 	int32 NextLoyalId = 1;
 
+	// Parties turned away at the door, split by reason. Counted rather than only
+	// messaged, because "the shop is losing groups" is a balance question and a
+	// message that scrolls past is not evidence of anything.
+	int32 GroupsAdmitted = 0;
+	int32 GroupsTurnedAway = 0;
+
 	// --- Inspector ---
 	UPROPERTY() TObjectPtr<ACigkofteCustomer> Inspector;
 	float InspectorTimer = -1.f;
@@ -66,6 +85,17 @@ public:
 	// Sends the queue, the seated guests and the inspector home. Called when the
 	// shop shuts, which is now a window before the books are closed.
 	void SendEveryoneHome();
+
+#if WITH_DEV_AUTOMATION_TESTS
+	// Makes the next acquisition after this many succeed fail, so a test can ask
+	// what a party does when the pool refuses halfway through. Negative disables
+	// it, which is every build the player ever runs.
+	//
+	// A seam rather than a mock: the failure it simulates is real (SpawnActor can
+	// return null), it has no other trigger a test could reach, and the atomicity
+	// it exists to prove is exactly the kind of thing that silently rots.
+	int32 FailAcquireAfterForTest = -1;
+#endif
 
 	// Customers that stopped because navigation could not reach their target, and
 	// what became of them. Read by tests: a shop that strands customers is a
@@ -88,6 +118,17 @@ private:
 
 	// Takes from the pool, spawning when it is empty. The actor returned is always clean.
 	ACigkofteCustomer* AcquireCustomer(const FVector& SpawnPos);
+	// Hands an acquired but uninitialised body straight back to the pool. Not a
+	// customer leaving: nothing about them ever became visible to the game.
+	void ReturnUnusedCustomer(ACigkofteCustomer* C);
+	// Whether an arrival can be set up at all. Asked before any body is taken, so
+	// a party never acquires actors it cannot then give identities to.
+	bool CanAdmitArrival() const;
+	// Gives an acquired body its traits, order, patience and queue slot. Split from
+	// acquisition because everything in here is externally visible - shared RNG
+	// draws, a regular's visit count, an arrival message - and so must not run for
+	// a customer that might still have to be handed back.
+	void InitializeArrival(ACigkofteCustomer* C, bool bForceVIP, bool bForceInfluencer);
 	// Moves customers that reached the exit (bAwaitingRecycle) into the pool.
 	void RecycleFinished();
 	// Takes ownership back from customers navigation could not move, and gets
@@ -103,6 +144,17 @@ private:
 	ECigTrait PickPooledTrait(int32 Day) const;
 	float NextCustomerInterval() const;
 	FVector QueueSlot(int32 Index) const;
+	// Everybody still queueing who came in with C, C included. A party leaves
+	// together, so the walkout path needs the whole party before it removes any
+	// of it - removing as it iterates would drop half of them.
+	TArray<ACigkofteCustomer*> PartyMembersOf(const ACigkofteCustomer* C) const;
+	// Removes one customer from the waiting party without dismissing their
+	// companions. The remaining members keep one group identity and agree on the
+	// new headcount; a lone remainder becomes an ordinary customer.
+	void DetachFromWaitingParty(ACigkofteCustomer* C);
+	// The next unused party id. Ids only have to be unique among the customers
+	// alive right now, which a counter gives for free.
+	int32 NextGroupId = 1;
 	void UpdateInspector(float DeltaSeconds);
 	void MaybeCreateLoyal(ACigkofteCustomer* C, float Accuracy, float Tip);
 	FCigLoyalCustomer* FindLoyal(int32 Id);

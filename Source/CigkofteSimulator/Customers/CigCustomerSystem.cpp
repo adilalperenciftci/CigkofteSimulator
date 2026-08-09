@@ -2,6 +2,7 @@
 #include "Core/CigText.h"
 #include "Customers/CigkofteCustomer.h"
 #include "Customers/CigLoyalty.h"
+#include "Customers/CigCustomerGroup.h"
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigEventBus.h"
 #include "Game/CigDaySystem.h"
@@ -68,6 +69,17 @@ ACigkofteCustomer* UCigCustomerSystem::AcquireCustomer(const FVector& SpawnPos)
 	{
 		return nullptr;
 	}
+
+#if WITH_DEV_AUTOMATION_TESTS
+	if (FailAcquireAfterForTest >= 0)
+	{
+		if (FailAcquireAfterForTest == 0)
+		{
+			return nullptr;
+		}
+		--FailAcquireAfterForTest;
+	}
+#endif
 
 	// Take the first valid actor from the pool. Invalid ones (the level may have
 	// been reloaded) are dropped quietly.
@@ -299,22 +311,28 @@ float UCigCustomerSystem::NextCustomerInterval() const
 	return FMath::Max(3.5f, Base * RepFactor * DayFactor * Mult);
 }
 
-void UCigCustomerSystem::SpawnCustomer(bool bForceVIP, bool bForceInfluencer)
+bool UCigCustomerSystem::CanAdmitArrival() const
 {
-	UWorld* World = GetWorld();
-	const UCigDaySystem* Days = GM ? GM->Days.Get() : nullptr;
-	const UCigProgressionSystem* Prog = GM ? GM->Progression.Get() : nullptr;
-	UCigOrderSystem* Orders = GM ? GM->Orders.Get() : nullptr;
-	if (!World || !Days || !Orders)
-	{
-		return;
-	}
+	// Everything InitializeArrival will dereference, asked once and up front. It
+	// is separate from the initialisation itself so a party can establish that all
+	// of its members can be set up before the first one is - half a party with an
+	// order and half without is not a state anything downstream knows how to read.
+	return GetWorld() != nullptr
+		&& GM != nullptr
+		&& GM->Days.Get() != nullptr
+		&& GM->Orders.Get() != nullptr;
+}
 
-	ACigkofteCustomer* C = AcquireCustomer(GCustomerSpawn);
-	if (!C)
-	{
-		return;
-	}
+void UCigCustomerSystem::InitializeArrival(ACigkofteCustomer* C, bool bForceVIP, bool bForceInfluencer)
+{
+	// Split out of SpawnCustomer so that acquiring a body and giving it an
+	// identity are two separate steps. Everything in here has consequences
+	// outside the actor - it draws from the shared random stream, marks a regular
+	// as having visited today, and prints a message - so it must not run for a
+	// customer that might yet have to be handed back.
+	const UCigDaySystem* Days = GM->Days.Get();
+	const UCigProgressionSystem* Prog = GM->Progression.Get();
+	UCigOrderSystem* Orders = GM->Orders.Get();
 
 	const int32 Day = Days->Day;
 	const int32 Level = Prog ? Prog->Level : 1;
@@ -394,28 +412,201 @@ void UCigCustomerSystem::SpawnCustomer(bool bForceVIP, bool bForceInfluencer)
 	Queue.Add(C);
 }
 
+ACigkofteCustomer* UCigCustomerSystem::SpawnCustomer(bool bForceVIP, bool bForceInfluencer)
+{
+	if (!CanAdmitArrival())
+	{
+		return nullptr;
+	}
+
+	ACigkofteCustomer* C = AcquireCustomer(GCustomerSpawn);
+	if (!C)
+	{
+		return nullptr;
+	}
+
+	InitializeArrival(C, bForceVIP, bForceInfluencer);
+	return C;
+}
+
+void UCigCustomerSystem::ReturnUnusedCustomer(ACigkofteCustomer* C)
+{
+	// A body that was acquired and then not needed. It never reached the queue and
+	// was never initialised, so this is a straight hand-back rather than a
+	// customer leaving: no reputation, no counters, no message.
+	if (!C)
+	{
+		return;
+	}
+	Live.Remove(C);
+	C->Deactivate();
+	Pool.Add(C);
+}
+
+int32 UCigCustomerSystem::SpawnGroup(int32 Size)
+{
+	if (Size <= 0 || !CanAdmitArrival())
+	{
+		return 0;
+	}
+
+	// Every body first, and only then any identities. A party is all of its
+	// members or none of them, and that has to hold against the pool running out
+	// as much as it holds against the queue being full - the difference between
+	// the two is invisible from where the player is standing.
+	TArray<ACigkofteCustomer*> Arrived;
+	Arrived.Reserve(Size);
+	for (int32 i = 0; i < Size; ++i)
+	{
+		ACigkofteCustomer* C = AcquireCustomer(GCustomerSpawn);
+		if (!C)
+		{
+			// Nothing has happened yet that the rest of the game can see: no order
+			// was rolled, no regular was marked as having visited, no message was
+			// printed. Handing the bodies back is therefore a complete undo, which
+			// is the whole reason acquisition comes before initialisation.
+			for (ACigkofteCustomer* Unused : Arrived)
+			{
+				ReturnUnusedCustomer(Unused);
+			}
+			return 0;
+		}
+		Arrived.Add(C);
+	}
+
+	// Consumed only now that the party is certain to exist, so a failed attempt
+	// does not burn an id and leave a gap in the sequence.
+	const int32 Id = NextGroupId++;
+	for (ACigkofteCustomer* C : Arrived)
+	{
+		InitializeArrival(C, /*bForceVIP=*/false, /*bForceInfluencer=*/false);
+		C->GroupId = Id;
+		C->GroupSize = Arrived.Num();
+	}
+	GroupsAdmitted++;
+	if (GM)
+	{
+		GM->AddMessage(CigText::Format(TEXT("msg.customer.group.arrived"), Arrived.Num()),
+			FLinearColor(0.8f, 0.95f, 1.f));
+	}
+	return Arrived.Num();
+}
+
+TArray<ACigkofteCustomer*> UCigCustomerSystem::PartyMembersOf(const ACigkofteCustomer* C) const
+{
+	TArray<ACigkofteCustomer*> Out;
+	if (!C)
+	{
+		return Out;
+	}
+	if (C->GroupId < 0)
+	{
+		Out.Add(const_cast<ACigkofteCustomer*>(C));
+		return Out;
+	}
+	for (const TObjectPtr<ACigkofteCustomer>& Other : Queue)
+	{
+		if (Other && Other->GroupId == C->GroupId)
+		{
+			Out.Add(Other.Get());
+		}
+	}
+	return Out;
+}
+
+void UCigCustomerSystem::DetachFromWaitingParty(ACigkofteCustomer* C)
+{
+	if (!C || C->GroupId < 0)
+	{
+		return;
+	}
+
+	TArray<ACigkofteCustomer*> Remaining;
+	for (const TObjectPtr<ACigkofteCustomer>& Other : Queue)
+	{
+		if (Other && Other.Get() != C && Other->GroupId == C->GroupId)
+		{
+			Remaining.Add(Other.Get());
+		}
+	}
+
+	C->GroupId = -1;
+	C->GroupSize = 1;
+	const int32 RemainingSize = Remaining.Num();
+	for (ACigkofteCustomer* Member : Remaining)
+	{
+		Member->GroupSize = RemainingSize;
+		if (RemainingSize < CigCustomerGroup::MinSize)
+		{
+			Member->GroupId = -1;
+			Member->GroupSize = 1;
+		}
+	}
+}
+
 void UCigCustomerSystem::RemoveCustomer(ACigkofteCustomer* C, bool bAngry)
 {
+	// A party walks out together. Whoever ran out of patience first speaks for
+	// all of them, so the consequences below are charged once with a multiplier
+	// rather than once per person: four separate angry customers would cost four
+	// separate reputation hits for one afternoon.
+	//
+	// Collected before anybody is removed from the queue, and the group is cleared
+	// on each of them, so the recursive call takes the ordinary single-customer
+	// path and cannot come back round here.
+	int32 PartySize = 1;
+	TArray<ACigkofteCustomer*> Companions;
+	if (bAngry && C && C->GroupId >= 0)
+	{
+		const TArray<ACigkofteCustomer*> Party = PartyMembersOf(C);
+		PartySize = FMath::Max(1, Party.Num());
+		for (ACigkofteCustomer* Member : Party)
+		{
+			Member->GroupId = -1;
+			Member->GroupSize = 1;
+			if (Member != C)
+			{
+				Companions.Add(Member);
+			}
+		}
+	}
+	else
+	{
+		// A served takeaway customer leaves happy on their own. Their companions
+		// still have independent orders, so they remain in the queue rather than
+		// being mistaken for an angry party walkout.
+		DetachFromWaitingParty(C);
+	}
+
 	Queue.Remove(C);
 	if (bAngry && C)
 	{
 		UCigProgressionSystem* Prog = GM ? GM->Progression.Get() : nullptr;
 		const bool bWasVIP = C->bVIP;
 		const bool bInfluencer = EnumHasAnyFlags(C->Traits, ECigTrait::Influencer);
-		float RepLoss = bWasVIP ? 12.f : 6.f;
+		float RepLoss = (bWasVIP ? 12.f : 6.f) * CigCustomerGroup::WalkoutRepMult(PartySize);
 		if (bInfluencer)
 		{
 			RepLoss *= 2.f;
 			GM->AddMessage(CigText::Get(TEXT("msg.customer.influencer.angry")), FLinearColor(1.f, 0.2f, 0.2f));
 		}
+		// Reputation and the review are charged once, with the multiplier: they
+		// describe how badly one afternoon went, and a party is one afternoon.
+		// The counters below are not opinions, they are headcounts - four people
+		// did leave and four orders did go unserved - so those move by the party
+		// size. Conflating the two would either understate the loss or make a
+		// single party read as a catastrophe.
 		if (Prog)
 		{
 			Prog->AddRep(-RepLoss);
-			Prog->TotalAngryCustomers++;
+			Prog->TotalAngryCustomers += PartySize;
 		}
 		if (GM->Days)
 		{
-			GM->Days->RegisterMissed();
+			for (int32 i = 0; i < PartySize; ++i)
+			{
+				GM->Days->RegisterMissed();
+			}
 		}
 		if (GM->Reviews)
 		{
@@ -436,13 +627,29 @@ void UCigCustomerSystem::RemoveCustomer(ACigkofteCustomer* C, bool bAngry)
 		}
 		GM->PlaySound(ECigSound::CustomerAngry);
 		GM->RequestFlash(FLinearColor(1.f, 0.25f, 0.2f), 0.5f);
-		GM->AddMessage(bWasVIP
-			? CigText::Get(TEXT("msg.customer.vip.leftangry"))
-			: CigText::Get(TEXT("msg.customer.leftangry")), FLinearColor(1.f, 0.3f, 0.3f));
+		if (PartySize > 1)
+		{
+			GM->AddMessage(CigText::Format(TEXT("msg.customer.group.leftangry"), PartySize),
+				FLinearColor(1.f, 0.3f, 0.3f));
+		}
+		else
+		{
+			GM->AddMessage(bWasVIP
+				? CigText::Get(TEXT("msg.customer.vip.leftangry"))
+				: CigText::Get(TEXT("msg.customer.leftangry")), FLinearColor(1.f, 0.3f, 0.3f));
+		}
 	}
 	if (C)
 	{
 		C->Leave(bAngry, GCustomerExit);
+	}
+
+	// The rest of the party follows them out. Their group is already cleared, so
+	// each of these is an ordinary removal: no second reputation hit, no second
+	// message, and no chance of recursing back into the party branch.
+	for (ACigkofteCustomer* Member : Companions)
+	{
+		RemoveCustomer(Member, false);
 	}
 }
 
@@ -646,6 +853,11 @@ void UCigCustomerSystem::FinishCustomerVisit(ACigkofteCustomer* C)
 		if (SeatIdx >= 0)
 		{
 			const UCigWorldBuilder::FCigSeat& Seat = GM->WorldBuilder->Seats[SeatIdx];
+			// Sitting down is leaving the queue, so the party they were waiting with
+			// is now one person smaller. Without this the friends still in line would
+			// keep counting the seated customer as one of them, and the next walkout
+			// would be priced for a party that is no longer standing there.
+			DetachFromWaitingParty(C);
 			Queue.Remove(C);
 			C->GoToSeat(Seat.Pos, Seat.Yaw);
 			FSeatedGuest G;
@@ -856,7 +1068,41 @@ void UCigCustomerSystem::UpdateSystem(float DeltaSeconds)
 	CustomerTimer -= DeltaSeconds;
 	if (CustomerTimer <= 0.f && Queue.Num() < MaxQueue())
 	{
-		SpawnCustomer();
+		// Most arrivals are one person. When they are not, whether the party comes
+		// in is CigCustomerGroup's answer rather than one made here - the queue's
+		// capacity has to mean the same thing to a party as it does to the timer
+		// that got us this far.
+		bool bSpawned = false;
+		if (Rng().Chance(CigCustomerGroup::GroupChance))
+		{
+			const int32 Size = CigCustomerGroup::SizeFromRoll(Rng().FRand());
+			const FCigGroupIntake Intake =
+				CigCustomerGroup::JudgeIntake(Size, Queue.Num(), MaxQueue());
+			if (Intake.IsAdmitted())
+			{
+				// Zero back means the pool refused, not that the party was turned
+				// away - the group was handed back whole and nobody arrived. Falling
+				// through to the single-customer path below is the right answer:
+				// the timer fired, somebody should walk in, and one person is what
+				// the shop can manage right now.
+				bSpawned = SpawnGroup(Intake.Admitted) > 0;
+			}
+			else if (Intake.Refusal == ECigGroupRefusal::WouldSplit)
+			{
+				// They will not split up, so they leave - and the player is told
+				// why, because a group visibly walking away from a shop with two
+				// free spaces is otherwise unexplained. No reputation cost: they
+				// never queued, and nothing went wrong that the player did.
+				GroupsTurnedAway++;
+				GM->AddMessage(CigText::Format(TEXT("msg.customer.group.noroom"), Size),
+					FLinearColor(1.f, 0.85f, 0.5f));
+				bSpawned = true;
+			}
+		}
+		if (!bSpawned)
+		{
+			SpawnCustomer();
+		}
 		CustomerTimer = NextCustomerInterval();
 	}
 
