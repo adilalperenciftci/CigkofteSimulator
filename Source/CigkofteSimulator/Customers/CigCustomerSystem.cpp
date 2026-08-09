@@ -1,6 +1,7 @@
 #include "Customers/CigCustomerSystem.h"
 #include "Core/CigText.h"
 #include "Customers/CigkofteCustomer.h"
+#include "Customers/CigLoyalty.h"
 #include "Game/CigkofteGameMode.h"
 #include "Game/CigEventBus.h"
 #include "Game/CigDaySystem.h"
@@ -605,16 +606,22 @@ void UCigCustomerSystem::UpdateLoyaltyAfterServe(ACigkofteCustomer* C, UCigEcono
 	{
 		if (FCigLoyalCustomer* Loyal = FindLoyal(C->LoyalId))
 		{
-			Loyal->Satisfaction = FMath::Clamp(Loyal->Satisfaction + (Accuracy - 60.f) / 5.f, 0.f, 100.f);
-			Loyal->Trust = FMath::Clamp(Loyal->Trust + (Accuracy >= 80.f ? 4.f : -6.f), 0.f, 100.f);
-			Loyal->AvgTip = (Loyal->AvgTip + Tip) * 0.5f;
-			if (Accuracy >= 90.f)
+			// The arithmetic lives in CigLoyalty, where it can be read and argued
+			// with without serving a customer in a running shop.
+			const FCigLoyaltyOutcome Outcome = CigLoyalty::AfterServe(
+				Accuracy, Loyal->Satisfaction, Loyal->Trust, Loyal->AvgTip, Tip);
+
+			Loyal->Satisfaction = Outcome.Satisfaction;
+			Loyal->Trust = Outcome.Trust;
+			Loyal->AvgTip = Outcome.AvgTip;
+
+			if (Outcome.bPerfectBonus)
 			{
 				// Their favourite order was made perfectly: bonus
 				if (Eco) { Eco->Earn(15); }
 				GM->AddMessage(CigText::Format(TEXT("msg.customer.regular.tip"), *C->LoyalName), FLinearColor(0.6f, 1.f, 0.8f));
 			}
-			else if (Accuracy < 50.f)
+			else if (Outcome.bRemembersMistake)
 			{
 				Loyal->RememberedMistakes++;
 				GM->AddMessage(CigText::Format(TEXT("msg.customer.regular.memory"), *C->LoyalName), FLinearColor(1.f, 0.7f, 0.4f));
