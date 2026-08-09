@@ -45,6 +45,13 @@ public:
 	const FCigPedRegion& AmbientRegion() const { return WanderRegion; }
 	int32 AmbientLane() const { return WanderLane; }
 	void SetTarget(const FVector& InTarget);
+
+	// Where the queue is currently sending this customer. Read-only, and only
+	// worth having because queue fairness is a claim about where people are
+	// standing: that slots go out in order, that nobody shares one, and that a
+	// customer who left is no longer being pulled back into the line.
+	const FVector& GetTargetForTest() const { return Target; }
+
 	void Leave(bool bAngry, const FVector& ExitPos);
 	void SetPatienceColor(float Frac01);
 
