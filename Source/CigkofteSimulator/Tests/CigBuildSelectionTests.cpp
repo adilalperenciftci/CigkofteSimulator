@@ -20,7 +20,11 @@
 
 namespace
 {
-	FCigPlacementRecord MakeRecord(const TCHAR* Id, ECigPlacementCategory Category,
+	// Named for this file rather than generically. Two test files each had an
+	// anonymous MakeRecord with a different signature, which was invisible until
+	// a new test file shifted the unity grouping and put them in one translation
+	// unit - at which point the build broke somewhere neither had been touched.
+	FCigPlacementRecord MakeSelectionRecord(const TCHAR* Id, ECigPlacementCategory Category,
 		ECigPlacementLifetime Lifetime)
 	{
 		FCigPlacementRecord R;
@@ -37,7 +41,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigBuildSelectionInstalledTest,
 
 bool FCigBuildSelectionInstalledTest::RunTest(const FString&)
 {
-	const FCigPlacementRecord Table = MakeRecord(TEXT("masa.01"),
+	const FCigPlacementRecord Table = MakeSelectionRecord(TEXT("masa.01"),
 		ECigPlacementCategory::Seating, ECigPlacementLifetime::Installed);
 
 	const FCigBuildSelection S = CigBuildSelection::Resolve(Table.StableId, &Table);
@@ -74,7 +78,7 @@ bool FCigBuildSelectionRefusalsTest::RunTest(const FString&)
 	// A delivery crate: real, present, and not the shop's layout. The save keeps
 	// only Installed records, so letting a player move this would promise to
 	// remember something that will not survive the evening.
-	const FCigPlacementRecord Crate = MakeRecord(TEXT("kasa.01"),
+	const FCigPlacementRecord Crate = MakeSelectionRecord(TEXT("kasa.01"),
 		ECigPlacementCategory::Storage, ECigPlacementLifetime::Transient);
 	const FCigBuildSelection Transient = CigBuildSelection::Resolve(Crate.StableId, &Crate);
 	TestFalse(TEXT("Teslimat kasasi secilememeli"), Transient.IsValid());
@@ -103,7 +107,7 @@ bool FCigBuildSelectionDescribeTest::RunTest(const FString&)
 		CigBuildSelection::Describe(Nothing).IsEmpty());
 
 	// Whereas both real refusals have something to say.
-	const FCigPlacementRecord Crate = MakeRecord(TEXT("kasa.01"),
+	const FCigPlacementRecord Crate = MakeSelectionRecord(TEXT("kasa.01"),
 		ECigPlacementCategory::Storage, ECigPlacementLifetime::Transient);
 	TestFalse(TEXT("Teslimat kasasi kendini aciklamali"),
 		CigBuildSelection::Describe(CigBuildSelection::Resolve(Crate.StableId, &Crate)).IsEmpty());
@@ -111,7 +115,7 @@ bool FCigBuildSelectionDescribeTest::RunTest(const FString&)
 		CigBuildSelection::Describe(CigBuildSelection::Resolve(FName(TEXT("hayalet.01")), nullptr)).IsEmpty());
 
 	// A selectable one names itself, so the player can say which table they mean.
-	const FCigPlacementRecord Table = MakeRecord(TEXT("masa.01"),
+	const FCigPlacementRecord Table = MakeSelectionRecord(TEXT("masa.01"),
 		ECigPlacementCategory::Seating, ECigPlacementLifetime::Installed);
 	const FString Line = CigBuildSelection::Describe(CigBuildSelection::Resolve(Table.StableId, &Table));
 	TestTrue(TEXT("Secili yerlesim kimligini gostermeli"), Line.Contains(TEXT("masa.01")));

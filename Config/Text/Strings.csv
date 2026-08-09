@@ -484,6 +484,9 @@ msg.customer.none,Tezgahta bekleyen müşteri yok.,No customer waiting at the co
 msg.customer.nowrap,Elinde sarılmış dürüm yok! Lavaş + hamur + garnitür + sarma (F).,You have no wrapped dürüm! Flatbread + dough + toppings + wrap (F).
 msg.customer.hygienecomplaint,"Titiz müşteri: 'Bu tezgahın hali ne böyle?!'","Hygiene-sensitive customer: 'What is this counter condition?!'"
 msg.customer.familychain,"Aile memnun kaldı, akrabaları da yolda!","Family is satisfied, relatives are on the way!"
+msg.customer.group.arrived,"{0} kişilik bir grup geldi, hepsi birlikte bekliyor.","A group of {0} arrived and they are waiting together."
+msg.customer.group.noroom,"{0} kişilik grup sığmadı ve ayrılmamak için gitti.","A group of {0} did not fit and left rather than split up."
+msg.customer.group.leftangry,"{0} kişilik grup beklemekten sıkılıp topluca gitti!","A group of {0} got tired of waiting and all walked out!"
 msg.customer.served,+{0} TL | Doğruluk %{1} | Kalite: {2},+{0} TL | Accuracy {1}% | Quality: {2}
 msg.customer.notes,Notlar: {0},Notes: {0}
 msg.customer.influencer.good,Fenomen hikaye paylaştı! Mahalle bunu konuşuyor. (itibar x3),Influencer shared a story! The neighborhood is talking. (rep x3)
