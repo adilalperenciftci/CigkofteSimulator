@@ -192,8 +192,33 @@ Depends on Stage 2 storage actors existing as placeable objects.
 
 Depends on Stage 3 for seating and pathing.
 
-- 4.1 body language, 4.2 order ticket, 4.3 groups, 4.4 seating,
-  4.5 regular arcs, 4.6 queue fairness
+- 4.1 body language, 4.2 order ticket, 4.3 groups — done.
+- 4.4 seating — **done.** The dine-in flow itself already existed; what did not
+  was any test that ran a customer through it. The gap mattered because a chair
+  is claimed in the world builder and only *viewed* by the customer system, so
+  every way of losing one is silent: no error, no message, just a shop that
+  seats fewer people as the day goes on. `Cigkofte.Seating` now drives the whole
+  arc through the real `ServeFront` — serve, walk, sit, eat, leave — and pins the
+  gate in the middle: the eating clock runs only once the guest has actually
+  reached the chair, never while they are still crossing the room. The three
+  takeaway branches (packed order, failed roll, full room) are each proven to
+  leave no reservation behind, and the three ways a seated guest can be taken
+  away from the table — stranded with no route, recycled into the pool, or left
+  as a record whose customer is gone — each give the chair back. No production
+  change was needed: the tests found no defect, which is the result rather than
+  an absence of one. Nobody has watched the flow in a running game; see
+  `KNOWN_LIMITATIONS.md`.
+
+  What it did find was a defect in the *suite*. `Cigkofte.Queue` opened the shop
+  and immediately counted the people in it, and `StartDay` rolls the day's event
+  — one of which ("Okul Çıkışı") puts two customers straight into the queue. The
+  RNG is seeded from the clock, so that roll lands on some runs and not others:
+  `LeavingFromTheMiddleClosesTheGap` asked for four customers and found six,
+  failing once in a full-suite run that had passed minutes earlier. The fix is
+  `CigQueueTestsOpenEmptyShop`, which shows the lottery's arrivals out before the
+  test's own people arrive. The assertions are unchanged — what changed is that
+  they now start from a state the test chose rather than one the clock did.
+- 4.5 regular arcs, 4.6 queue fairness
 
 ## Stage 5 — staff and automation
 
