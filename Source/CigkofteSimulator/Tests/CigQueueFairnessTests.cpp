@@ -54,6 +54,38 @@ namespace
 		}
 		return true;
 	}
+
+	// Opens the shop and hands back an empty queue.
+	//
+	// Not a convenience: BroadcastDayStart rolls the day's event, and one of the
+	// events ("Okul Çıkışı") puts two customers straight into the queue. The RNG
+	// is seeded from the clock, so that roll lands on some runs and not others -
+	// which is exactly the shape of the failure this fixes: FillQueue asking for
+	// four and finding six. Every claim below is about a known set of people, so
+	// whoever the lottery sent in has to be shown out first.
+	bool CigQueueTestsOpenEmptyShop(FAutomationTestBase& Test, UCigCustomerSystem& Cust, UCigDaySystem& Days)
+	{
+		Days.StartDay(false);
+		Days.OpenShop();
+
+		while (Cust.Queue.Num() > 0)
+		{
+			ACigkofteCustomer* C = Cust.Queue[0].Get();
+			if (!C)
+			{
+				Cust.Queue.RemoveAt(0);
+				continue;
+			}
+			Cust.RemoveCustomer(C, /*bAngry=*/false);
+		}
+
+		if (Cust.Queue.Num() != 0)
+		{
+			Test.AddError(TEXT("Acilis kuyrugu bosaltilamadi."));
+			return false;
+		}
+		return true;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigQueueOrderTest,
@@ -119,8 +151,7 @@ bool FCigQueueSlotsTest::RunTest(const FString&)
 
 	// The queue only advances while the shop is serving. UpdateSystem returns
 	// early otherwise, which is correct and is also why this has to open.
-	Days->StartDay(false);
-	Days->OpenShop();
+	if (!CigQueueTestsOpenEmptyShop(*this, *Cust, *Days)) { return false; }
 	if (!FillQueue(*this, *Cust, 4)) { return false; }
 
 	TArray<ACigkofteCustomer*> Arrival;
@@ -233,8 +264,7 @@ bool FCigQueuePatienceTest::RunTest(const FString&)
 	UCigDaySystem* Days = Shop.GM->Days.Get();
 	if (!Cust || !Days) { AddError(TEXT("Sistemler yok.")); return false; }
 
-	Days->StartDay(false);
-	Days->OpenShop();
+	if (!CigQueueTestsOpenEmptyShop(*this, *Cust, *Days)) { return false; }
 
 	Cust->SpawnCustomer();
 	Cust->SpawnCustomer();

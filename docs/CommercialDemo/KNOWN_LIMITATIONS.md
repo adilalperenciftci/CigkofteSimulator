@@ -38,6 +38,14 @@ not fixed yet belong in `PLAN.md`, not here.
 - **Nobody has listened to the ambience beds.** Format, loop-seam arithmetic, the
   looping flag and path resolution are all verified; whether the night bed reads
   as night, and whether the layer sits right against the Kenney one-shots, is not.
+- **Nobody has watched a customer eat.** Stage 4.4 now drives the dine-in arc end
+  to end in automation: served, sent to a chair, seated on arrival, the eating
+  clock, the chair coming back. What automation places is an actor at the seat
+  coordinates, which is not the same as a person walking there — so what remains
+  unseen is whether the walk across the room reads as somebody finding a table,
+  whether four occupied chairs look like a room with people in it, and whether
+  7–12 seconds of eating is long enough to notice or short enough to not block
+  the room. The numbers were chosen by reasoning about pacing, not by watching.
 - Slice 0.7 made footfall respond to the pricing policy for the first time. The
   net price is unchanged, but `GunlukTalepCarpani` now sees a 0.8–1.25 multiplier
   it never saw, and with elasticity around 1.4 the expensive policy now measurably
@@ -140,7 +148,7 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 277 automation tests cover pure formulas, tables, data integrity and one
+- The 282 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
