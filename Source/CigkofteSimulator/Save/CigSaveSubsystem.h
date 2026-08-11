@@ -48,7 +48,13 @@ public:
 	// layout: an empty back room means nothing is stored, a save written before
 	// this field reads back empty, and both of those are the same true statement.
 	// The layout needed a flag because "empty" there could also mean "unknown".
-	static constexpr int32 CurrentVersion = 15;
+	// Version 16: how much of each job the apprentice has worked.
+	//
+	// No flag and no migration step, for the same reason as the two above: an
+	// apprentice from a v15 save has no recorded history, which is exactly what
+	// they had. The field decides the specialism earned at level 3, so the one
+	// thing that must not happen is inventing a history for them.
+	static constexpr int32 CurrentVersion = 16;
 
 	bool HasSave() const;
 	bool SaveNow(ACigkofteGameMode* GM);

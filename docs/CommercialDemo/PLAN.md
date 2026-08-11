@@ -284,7 +284,55 @@ Depends on Stage 3 for seating and pathing.
 ## Stage 5 — staff and automation
 
 Explicitly gated behind 0.1. Expanding to three employees before the sale
-pipeline is unified would triple the divergence.
+pipeline is unified would triple the divergence. 0.1 is done, so the gate is
+open.
+
+The apprentice is not missing. `UCigStaffSystem` already hires from a pool of
+three walk-ins, runs five jobs, levels up, earns a specialism, loses morale,
+demands a raise, is poached by a rival and is paid out of the till every night.
+What it has is four tests, and all four check the same two pure functions —
+`HataOlasiligi` and `IsAraligi`. Everything the player can see is unproven.
+
+That is the shape 4.4 and 4.5 both had, and both times the tests found a real
+defect rather than confirming the code. So Stage 5 starts as a coverage stage,
+not a feature stage: prove what is there through the public boundary, fix only
+what the tests convict, and let what is found decide whether a second employee
+is the next thing or a distraction.
+
+The first defect is already found and fixed. `TaskCounts` decides which
+specialism is earned at level 3, and it was the one apprentice field the save
+never wrote — so an apprentice saved at level 2 came back having forgotten what
+they spent two days doing, and their specialism was then settled by whatever
+they happened to do next. Nothing reported it; the specialism simply arrived
+wrong. `Cigkofte.Staff.EverythingAboutTheApprenticeSurvivesASave` convicted it
+(40 and 6 came back as 0) and holds the fix. Save version is 16; a v15
+apprentice arrives with no history, which is what they had — inventing one would
+be worse than leaving it empty.
+
+- 5.1 apprentice lifecycle coverage — hiring refused below level 3, refused with
+  no money, refused when somebody already has the job; the pool walking away
+  once one of them is hired; wages coming out of the till and an unpaid day
+  costing morale rather than being silently free; quitting at low morale; the
+  rival's offer being answered exactly once, either by matching it or by losing
+  them. Through `Hire`/`HireAday`, `GiveRaise`, `KarsiTeklifVer` and the real
+  day boundary, not by writing to `Apprentice` and reading it back.
+- 5.2 the five jobs do what they claim — each job's success path and its own
+  failure. Chopping consumes stock and produces garnish and its mistake destroys
+  garnish; cleaning lowers dirt; the till serves only the simple orders it is
+  allowed to (one portion, at most two toppings, never a VIP) and prices them
+  through the same sale pipeline the player uses; packing fills the shelf and
+  respects `MaxShelf`; restocking picks the lowest item and leaves a cash floor.
+  A job that silently does nothing is the failure this catches.
+- 5.3 progression and persistence — **started.** Every apprentice field now
+  survives a real `CaptureSave`/`ApplySave` round-trip, and the specialism is
+  still owed to the job actually done most after a load. XP and the level cap at
+  6 are not covered yet.
+
+Acceptance: the stage is done when the lifecycle, all five jobs and the save
+round-trip are covered through public entry points, every defect the tests find
+is either fixed or written down as a limitation, and the full gate passes fresh.
+Assertions are not weakened to get there, and a second employee is not started
+until this one is proven.
 
 ## Stage 6 — business depth
 

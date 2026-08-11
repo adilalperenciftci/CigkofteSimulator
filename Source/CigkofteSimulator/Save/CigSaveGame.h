@@ -189,6 +189,18 @@ public:
 	UPROPERTY() int32 ApprenticeOdenmemisGun = 0;
 	UPROPERTY() int32 StaffTransferTeklifi = 0;
 
+	// How many ticks of each job this apprentice has worked (version 16).
+	//
+	// Not bookkeeping: it is what decides the specialism earned at level 3, so
+	// without it an apprentice saved before that comes back having forgotten what
+	// they spent their days doing, and the reward for how the player used them is
+	// then settled by whatever they happen to do next. It went unnoticed because
+	// nothing reports it - the specialism simply arrives wrong.
+	//
+	// An array rather than five fields because the job list is an enum that has
+	// grown once already, and a save that reads short is the migration below.
+	UPROPERTY() TArray<int32> ApprenticeTaskCounts;
+
 	// --- Bulk order (version 9) ---
 	// An offer only matters until its delivery day, but it has to survive a
 	// save in between: the three days' notice is the whole decision.

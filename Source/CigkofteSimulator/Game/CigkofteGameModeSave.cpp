@@ -221,6 +221,12 @@ void ACigkofteGameMode::CaptureSave(UCigSaveGame& Save) const
 		Save.ApprenticeGulerYuz = A.GulerYuz;
 		Save.ApprenticeOdenmemisGun = A.OdenmemisGun;
 		Save.StaffTransferTeklifi = Staff->TransferTeklifi;
+
+		Save.ApprenticeTaskCounts.SetNum((int32)ECigStaffTask::COUNT);
+		for (int32 i = 0; i < (int32)ECigStaffTask::COUNT; ++i)
+		{
+			Save.ApprenticeTaskCounts[i] = A.TaskCounts[i];
+		}
 	}
 
 	if (Events)
@@ -593,6 +599,17 @@ void ACigkofteGameMode::ApplySave(const UCigSaveGame& Save)
 		Staff->Apprentice.Arketip = Save.ApprenticeArketip;
 		Staff->Apprentice.OdenmemisGun = Save.ApprenticeOdenmemisGun;
 		Staff->TransferTeklifi = Save.StaffTransferTeklifi;
+
+		// Read by index rather than copied wholesale, so a save written when the
+		// job list was shorter - or by a version that never wrote this at all -
+		// leaves the missing jobs at zero instead of reading off the end. A v15
+		// apprentice therefore arrives with no history, which is what they had:
+		// the alternative is inventing one.
+		for (int32 i = 0; i < (int32)ECigStaffTask::COUNT; ++i)
+		{
+			Staff->Apprentice.TaskCounts[i] =
+				Save.ApprenticeTaskCounts.IsValidIndex(i) ? Save.ApprenticeTaskCounts[i] : 0;
+		}
 		// A zero here means a save written before traits existed; a neutral 1
 		// reproduces exactly how that apprentice used to work.
 		Staff->Apprentice.Hiz = Save.ApprenticeHiz > 0.f ? Save.ApprenticeHiz : 1.f;
