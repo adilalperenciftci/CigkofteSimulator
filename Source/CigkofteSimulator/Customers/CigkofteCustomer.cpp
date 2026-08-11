@@ -41,6 +41,23 @@ ACigkofteCustomer::ACigkofteCustomer()
 	Body->SetRelativeLocation(FVector(0.f, 0.f, 80.f));
 	Body->SetRelativeScale3D(FVector(0.55f, 0.55f, 1.6f));
 
+	// A person is something you can look at, and nothing else.
+	//
+	// QueryOnly was already here, and the comment in StepTowards already said
+	// customers must not shove each other about - but QueryOnly only says the
+	// body does not push, not which questions it answers. On the default profile
+	// it answered every one of them with "blocked", including the WorldStatic
+	// sweep StepTowards uses to walk. So a customer walking to the counter
+	// stopped dead behind anybody standing on the pavement, and since eight
+	// ambient pedestrians wander that pavement at a random Y, whether it happened
+	// depended on where they were when somebody walked in. That is why it read as
+	// "customers cannot walk" and why it did not reproduce on demand.
+	//
+	// Visibility stays blocked: the player's interaction trace runs on it, and a
+	// customer you cannot look at is a different bug. Everything else ignores.
+	Body->SetCollisionResponseToAllChannels(ECR_Ignore);
+	Body->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+
 	Head = MakePart(TEXT("Head"));
 	Head->SetRelativeLocation(FVector(0.f, 0.f, 182.f));
 	Head->SetRelativeScale3D(FVector(0.4f));

@@ -127,6 +127,12 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Regulars
 
+- **Nobody has watched a regular return.** Stage 4.5 drives creation, next-day
+  return, identity continuity, patience, angry departure, actor recycling and
+  save/load through the real customer system, but only in automation. Whether a
+  returning name is noticeable, the favourite order feels like recognition, or
+  the regular patience difference reads in a live queue still needs a human
+  playthrough.
 - **A serve can please a regular and disappoint them at the same time.** Extracting
   the loyalty arithmetic into `CigLoyalty` made two decisions visible that were
   unreachable while they sat in a private method. Satisfaction pivots at 60 and
@@ -148,7 +154,7 @@ not fixed yet belong in `PLAN.md`, not here.
 
 ## Coverage
 
-- The 282 automation tests cover pure formulas, tables, data integrity and one
+- The 298 automation tests cover pure formulas, tables, data integrity and one
   end-to-end scenario (`Cigkofte.DayFlow.OneDayFromStockToSave`: stock through
   dough, wrap, customer, sale, day end and save/load). What they do not cover is
   anything that needs a renderer or a real input device — interaction tracing,
@@ -250,6 +256,26 @@ own radius. What that is and is not:
 - **The player is not path-constrained.** They are a real `ACharacter` with a
   capsule and move against engine collision, which is stricter than the grid. The
   grid answers questions *about* the player's width; it does not steer them.
+- **Customers used to stop dead behind each other, and nothing tested it.** A
+  player reported that customers could not walk. Every navigation test in the
+  project asked the grid a question or asked the engine about the *player's*
+  capsule on `ECC_Pawn`; none of them spawned a customer into the built shop and
+  drove `Tick` until they arrived, which is the only way the defect was visible.
+  `Cigkofte.Walking` does that, and its first run reproduced it: 545 of the 1500
+  units to the counter, then stopped.
+
+  The cause was the customer's own body. `QueryOnly` says a body does not push
+  things; it does not say which questions it answers, and on the default profile
+  it answered every channel with "blocked" — including the `ECC_WorldStatic`
+  sweep `StepTowards` uses to walk. So a customer walking in stopped behind
+  anybody standing on the pavement, and since eight ambient pedestrians wander
+  that pavement at a random Y, whether it happened depended on where they were
+  standing. That is why it read as "customers cannot walk" and why it did not
+  reproduce on demand: eleven runs after the first one passed. The body now
+  ignores every channel and blocks only `ECC_Visibility`, which is what the
+  player's interaction trace runs on.
+  `Cigkofte.Walking.APersonStandingInTheWayIsNotAWall` measures the same walk
+  with and without somebody standing in it and fails if the two differ.
 - **Only the main street has pedestrian lanes.** The two pavements outside the
   shop are modelled, because they are two straight strips whose furniture stands
   on known lines. The six districts are not: each still gets one rectangle around
