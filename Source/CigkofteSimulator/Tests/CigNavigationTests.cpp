@@ -506,16 +506,25 @@ bool FCigNavCollisionAgreementTest::RunTest(const FString&)
 	auto EngineBlocker = [World, &Body](const FVector2D& At, FString& OutWho)
 	{
 		TArray<FOverlapResult> Hits;
-		const bool bBlocked = World->OverlapMultiByChannel(Hits,
+		World->OverlapMultiByChannel(Hits,
 			FVector(At.X, At.Y, CapsuleHalfHeight + StandClearance), FQuat::Identity, ECC_Pawn, Body,
 			FCollisionQueryParams::DefaultQueryParam);
+		bool bBlocked = false;
 		TArray<FString> Names;
 		for (const FOverlapResult& Hit : Hits)
 		{
-			if (Hit.GetActor() && Hit.Component.IsValid()
+			AActor* Actor = Hit.GetActor();
+			// The grid describes shop geometry, not an ambient pedestrian who
+			// happens to be crossing this sample when the query runs.
+			if (Actor && Actor->IsA(ACigkofteCustomer::StaticClass()))
+			{
+				continue;
+			}
+			if (Actor && Hit.Component.IsValid()
 				&& Hit.Component->GetCollisionResponseToChannel(ECC_Pawn) == ECR_Block)
 			{
-				Names.AddUnique(Hit.GetActor()->GetName());
+				bBlocked = true;
+				Names.AddUnique(Actor->GetName());
 			}
 		}
 		OutWho = FString::Join(Names, TEXT(", "));

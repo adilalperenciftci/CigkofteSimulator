@@ -1116,12 +1116,33 @@ void UCigCustomerSystem::UpdateSystem(float DeltaSeconds)
 	}
 
 	// Patience
-	for (int32 i = Queue.Num() - 1; i >= 0; --i)
+	//
+	// Walked over a snapshot rather than over the live array, because one
+	// RemoveCustomer can take more than one person out of Queue: an angry party
+	// leaves together, and the companions it drags out stand at lower indices than
+	// whoever ran out of patience. A reverse index loop survives the removal of
+	// its own element and nothing else, so it read past the end of the shrunken
+	// array and the game asserted.
+	//
+	// Anybody already pulled out by somebody else's walkout is skipped rather than
+	// ticked, which is what Contains is doing below. Invalid entries are purged
+	// first so that the snapshot holds only people who are really there.
+	Queue.RemoveAll([](const TObjectPtr<ACigkofteCustomer>& Entry)
 	{
-		ACigkofteCustomer* C = Queue[i].Get();
-		if (!IsValid(C))
+		return !IsValid(Entry.Get());
+	});
+
+	TArray<ACigkofteCustomer*> Waiting;
+	Waiting.Reserve(Queue.Num());
+	for (const TObjectPtr<ACigkofteCustomer>& Entry : Queue)
+	{
+		Waiting.Add(Entry.Get());
+	}
+
+	for (ACigkofteCustomer* C : Waiting)
+	{
+		if (!IsValid(C) || !Queue.Contains(C))
 		{
-			Queue.RemoveAt(i);
 			continue;
 		}
 		if (C->bArrived)

@@ -75,6 +75,29 @@ namespace
 		}
 		return true;
 	}
+
+	// Finds a stream whose next automatic arrival is a pair, then rewinds to the
+	// same point. The candidate search states the outcome instead of baking in a
+	// magic seed whose meaning disappears when FRandomStream changes.
+	bool CigGroupTestsSeedPairArrival(UCigRandomSubsystem& Rng)
+	{
+		for (int32 Candidate = 1; Candidate <= 4096; ++Candidate)
+		{
+			Rng.SeedWith(Candidate);
+			if (!Rng.Chance(CigCustomerGroup::GroupChance))
+			{
+				continue;
+			}
+
+			const int32 Size = CigCustomerGroup::SizeFromRoll(Rng.FRand());
+			if (Size == CigCustomerGroup::MinSize)
+			{
+				Rng.SeedWith(Candidate);
+				return true;
+			}
+		}
+		return false;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigGroupIndivisibleTest,
@@ -324,70 +347,83 @@ bool FCigGroupQueueRespectsCapacityTest::RunTest(const FString&)
 	if (!Shop.Build(*this)) { return false; }
 	UCigCustomerSystem* Cust = Shop.GM->Customers.Get();
 	UCigDaySystem* Days = Shop.GM->Days.Get();
-	if (!Cust || !Days) { AddError(TEXT("Sistemler yok.")); return false; }
+	UCigRandomSubsystem* Rng = Shop.GI ? Shop.GI->GetSubsystem<UCigRandomSubsystem>() : nullptr;
+	if (!Cust || !Days || !Rng) { AddError(TEXT("Sistemler yok.")); return false; }
+
+	if (!CigGroupTestsOpenEmptyShop(*this, *Cust, *Days)) { return false; }
 
 	const int32 Cap = Cust->MaxQueue();
-	Days->StartDay(false);
-	Days->OpenShop();
-
-	// A long open day, with the queue actually moving. Marking arrivals is what
-	// makes this a day rather than a snapshot: nobody in the test harness walks,
-	// so without it the queue fills to the limit in the first few ticks, the
-	// spawn gate closes, and the arrival path is never asked another question -
-	// which is exactly how the first version of this test passed while the group
-	// path never ran once.
-	//
-	// Parties arrive on their own roll here rather than through SpawnGroup, so
-	// what is under test is what the shop actually does.
-	int32 WorstSeen = 0;
-	for (int32 i = 0; i < 400; ++i)
+	const int32 PairSize = CigCustomerGroup::MinSize;
+	if (Cap < PairSize)
 	{
-		for (const TObjectPtr<ACigkofteCustomer>& C : Cust->Queue)
-		{
-			if (C) { C->bArrived = true; }
-		}
-		Cust->UpdateSystem(1.f);
-
-		WorstSeen = FMath::Max(WorstSeen, Cust->Queue.Num());
-		if (Cust->Queue.Num() > Cap)
-		{
-			AddError(FString::Printf(TEXT("Kuyruk sinirini asti: %d > %d (tik %d)."),
-				Cust->Queue.Num(), Cap, i));
-			return false;
-		}
-
-		// Checked every tick rather than at the end, because the queue turns over
-		// dozens of times across this day and a party admitted in halves would be
-		// gone again long before the loop finished. This is the queue-side
-		// statement of indivisibility: everyone here who belongs to a party has
-		// the rest of their party standing with them.
-		TMap<int32, int32> Present;
-		for (const TObjectPtr<ACigkofteCustomer>& C : Cust->Queue)
-		{
-			if (C && C->GroupId >= 0) { Present.FindOrAdd(C->GroupId)++; }
-		}
-		for (const TObjectPtr<ACigkofteCustomer>& C : Cust->Queue)
-		{
-			if (!C || C->GroupId < 0) { continue; }
-			if (Present[C->GroupId] != C->GroupSize)
-			{
-				AddError(FString::Printf(
-					TEXT("%d numarali grup eksik bekliyor: %d/%d (tik %d)."),
-					C->GroupId, Present[C->GroupId], C->GroupSize, i));
-				return false;
-			}
-		}
+		AddError(FString::Printf(TEXT("Kuyruk kapasitesi ikili gruptan kucuk: %d < %d."),
+			Cap, PairSize));
+		return false;
 	}
 
-	// The limit was reached rather than merely never exceeded - a shop nobody
-	// came to would satisfy every check above against any bug at all.
-	TestEqual(TEXT("Kuyruk gun icinde tam siniri kadar dolmali"), WorstSeen, Cap);
+	// Put the queue exactly one pair below its limit through the public spawn path.
+	// These customers have not reached their slots, so the same tick cannot drain
+	// patience and accidentally turn the capacity boundary into another lottery.
+	const int32 BaselineCount = Cap - PairSize;
+	for (int32 i = 0; i < BaselineCount; ++i)
+	{
+		ACigkofteCustomer* C = Cust->SpawnCustomer();
+		if (!C)
+		{
+			AddError(FString::Printf(TEXT("Baslangic musterisi %d spawn olmadi."), i));
+			return false;
+		}
+		C->bArrived = false;
+	}
+	TestEqual(TEXT("Kuyruk ikili grup icin tam yer birakmali"), Cust->Queue.Num(), BaselineCount);
 
-	// And groups actually happened. Without this the whole test passes against a
-	// build where the party roll never fires.
-	TestTrue(FString::Printf(TEXT("Gun boyunca grup gelmeli (%d kabul, %d cevrildi)"),
-		Cust->GroupsAdmitted, Cust->GroupsTurnedAway),
-		Cust->GroupsAdmitted > 0);
+	// Baseline spawns consume the shared stream, so choose and rewind the stream only
+	// after they exist. UpdateSystem then takes the real automatic-arrival branch:
+	// group chance, size roll, capacity judgement and atomic SpawnGroup.
+	if (!CigGroupTestsSeedPairArrival(*Rng))
+	{
+		AddError(TEXT("Otomatik ikili grup uretecek RNG akisi bulunamadi."));
+		return false;
+	}
+
+	const int32 AdmittedBefore = Cust->GroupsAdmitted;
+	const int32 TurnedAwayBefore = Cust->GroupsTurnedAway;
+	int32 WorstSeen = Cust->Queue.Num();
+	Cust->UpdateSystem(3.f);
+	WorstSeen = FMath::Max(WorstSeen, Cust->Queue.Num());
+
+	if (Cust->Queue.Num() > Cap)
+	{
+		AddError(FString::Printf(TEXT("Kuyruk sinirini asti: %d > %d."),
+			Cust->Queue.Num(), Cap));
+		return false;
+	}
+
+	// The limit was reached rather than merely never exceeded - a shop nobody came
+	// to would satisfy the upper-bound check against any bug at all.
+	TestEqual(TEXT("Kuyruk gun icinde tam siniri kadar dolmali"), WorstSeen, Cap);
+	TestEqual(TEXT("Otomatik grup bir kez kabul edilmeli"),
+		Cust->GroupsAdmitted, AdmittedBefore + 1);
+	TestEqual(TEXT("Tam sigan grup geri cevrilmemeli"),
+		Cust->GroupsTurnedAway, TurnedAwayBefore);
+
+	// Everyone carrying a group ID must have the whole pair beside them. This pins
+	// the queue-side indivisibility promise at the exact-capacity boundary.
+	TMap<int32, int32> Present;
+	for (const TObjectPtr<ACigkofteCustomer>& C : Cust->Queue)
+	{
+		if (C && C->GroupId >= 0) { Present.FindOrAdd(C->GroupId)++; }
+	}
+	TestEqual(TEXT("Kuyrukta tek otomatik grup olmali"), Present.Num(), 1);
+	for (const TPair<int32, int32>& Entry : Present)
+	{
+		TestEqual(TEXT("Otomatik grubun iki uyesi de kuyrukta olmali"), Entry.Value, PairSize);
+		const TArray<ACigkofteCustomer*> Party = CigGroupTestsPartyInQueue(*Cust, Entry.Key);
+		for (ACigkofteCustomer* C : Party)
+		{
+			TestEqual(TEXT("Grup uyeleri kendi tam boyutunu bilmeli"), C->GroupSize, PairSize);
+		}
+	}
 	return true;
 }
 
@@ -666,6 +702,86 @@ bool FCigGroupAtomicArrivalTest::RunTest(const FString&)
 	TestTrue(TEXT("Sonraki gruba kimlik atanmali"), Id >= 0);
 	TestEqual(TEXT("Sonraki grubun tamami ayni kimlikte olmali"),
 		CigGroupTestsPartyInQueue(*Cust, Id).Num(), 3);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FCigGroupPatienceWalkoutTest,
+	"Cigkofte.Groups.APartyRunningOutOfPatienceDoesNotCrashTheTick",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FCigGroupPatienceWalkoutTest::RunTest(const FString&)
+{
+	// This is a crash, not a wrong answer, and it was found by a test that was
+	// looking at something else entirely - the capacity sweep failed roughly one
+	// run in three with an out-of-bounds read inside UpdateSystem, because it is
+	// the only test that runs long enough for a whole party to time out at once.
+	//
+	// The patience loop walked the queue backwards, which survives removing the
+	// element it is standing on and nothing more. An angry party leaves together:
+	// one RemoveCustomer takes the member who ran out plus every companion, and
+	// the companions ahead of them sit at lower indices. So the array shrank by
+	// three while the loop counter had only stepped back by one, and the next read
+	// was past the end.
+	//
+	// Set up directly rather than by waiting for the roll, so it fires every run
+	// instead of one in three.
+	FCigTestShop Shop;
+	if (!Shop.Build(*this)) { return false; }
+	UCigCustomerSystem* Cust = Shop.GM->Customers.Get();
+	UCigDaySystem* Days = Shop.GM->Days.Get();
+	if (!Cust || !Days) { AddError(TEXT("Sistemler yok.")); return false; }
+	if (!CigGroupTestsOpenEmptyShop(*this, *Cust, *Days)) { return false; }
+
+	if (Cust->SpawnGroup(3) != 3) { AddError(TEXT("Uc kisilik grup kuyruga girmedi.")); return false; }
+
+	// One more person, on their own, standing behind them. They are the witness:
+	// the party walking out must not take them along, and the tick must still
+	// reach them afterwards.
+	ACigkofteCustomer* Alone = Cust->SpawnCustomer();
+	if (!Alone) { AddError(TEXT("Yalniz musteri gelmedi.")); return false; }
+	if (Alone->GroupId >= 0)
+	{
+		// A lone arrival can roll into a party of its own; detach it so the claim
+		// below is about one person rather than about whoever the roll produced.
+		Alone->GroupId = -1;
+		Alone->GroupSize = 1;
+	}
+
+	const int32 PartyId = Cust->Queue.Num() > 0 && Cust->Queue[0] ? Cust->Queue[0]->GroupId : -1;
+	if (PartyId < 0) { AddError(TEXT("Gruba kimlik atanmadi.")); return false; }
+	if (CigGroupTestsPartyInQueue(*Cust, PartyId).Num() != 3)
+	{
+		AddError(TEXT("Grup kuyrukta uc kisi degil."));
+		return false;
+	}
+
+	// Everybody has arrived, and the *last* member of the party is the one about
+	// to run out. That ordering is the crash: their companions are ahead of them,
+	// so removing the party removes entries the loop has not visited yet.
+	for (const TObjectPtr<ACigkofteCustomer>& C : Cust->Queue)
+	{
+		if (C) { C->bArrived = true; }
+	}
+	const TArray<ACigkofteCustomer*> Party = CigGroupTestsPartyInQueue(*Cust, PartyId);
+	Party.Last()->Patience = 0.5f;
+	Alone->Patience = Alone->MaxPatience;
+
+	// One ordinary tick. Before the fix this asserted rather than failing.
+	Cust->UpdateSystem(1.f);
+
+	TestEqual(TEXT("Sabri biten grup tumuyle cikmali"),
+		CigGroupTestsPartyInQueue(*Cust, PartyId).Num(), 0);
+	TestTrue(TEXT("Yalniz musteri kuyrukta kalmali"), Cust->Queue.Contains(Alone));
+	TestEqual(TEXT("Kuyrukta yalniz musteri kalmali"), Cust->Queue.Num(), 1);
+
+	// The survivor was still ticked on the same pass that removed the party. Skip
+	// them and the shop quietly stops charging patience to whoever stands behind a
+	// group - which is the silent version of the same bug.
+	TestTrue(TEXT("Kalan musterinin sabri ayni tikta islemeli"),
+		Alone->Patience < Alone->MaxPatience);
+
+	// And the shop keeps running afterwards.
+	Cust->UpdateSystem(1.f);
 	return true;
 }
 
