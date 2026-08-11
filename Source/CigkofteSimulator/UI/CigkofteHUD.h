@@ -22,6 +22,23 @@ class ACigkofteHUD : public AHUD
 public:
 	virtual void DrawHUD() override;
 
+	// Is the title screen and its main menu on screen?
+	//
+	// A function rather than the condition written at the draw call, because it
+	// is a rule about two full-screen panels rather than a detail of one of them.
+	// Everything here is drawn on one canvas with no z-order, so "both are open"
+	// is not a layered look - it is the menu's text drawn straight through the
+	// settings panel. Settings is opened *from* this menu, so that state is
+	// reached by pressing Enter on the third entry, which is the ordinary way in
+	// rather than an edge case.
+	//
+	// The same rule already governs the pause menu; this is that rule stated once
+	// and given a name.
+	static bool ShouldDrawTitleScreen(bool bIntroPhase, bool bSettingsOpen)
+	{
+		return bIntroPhase && !bSettingsOpen;
+	}
+
 private:
 	// --- Scale & fonts (set up at the top of DrawHUD each frame) ---
 	float UIScale = 1.f;

@@ -218,7 +218,47 @@ Depends on Stage 3 for seating and pathing.
   `CigQueueTestsOpenEmptyShop`, which shows the lottery's arrivals out before the
   test's own people arrive. The assertions are unchanged — what changed is that
   they now start from a state the test chose rather than one the clock did.
-- 4.5 regular arcs, 4.6 queue fairness
+- 4.5 regular arcs — **done.** Nine `Cigkofte.Regulars` acceptance tests now
+  exercise the public production lifecycle rather than the extracted loyalty
+  arithmetic: a good stranger serve can create one regular; low accuracy,
+  existing identity and the 12-record cap cannot; a regular returns on a later
+  day with the same identity, favourite order, visual seed and traits, but cannot
+  visit twice on one day. The suite also pins the complete patience multiplier,
+  angry-leave penalties and floor, actor-pool identity cleanup, and every regular
+  field through a real `CaptureSave`/`ApplySave` round-trip.
+
+  The regression pass exposed an existing production crash outside the regular
+  arc. A party walkout can remove several companions while `UpdateSystem` is
+  iterating the live queue, invalidating its next array index. The patience pass
+  now walks a snapshot and skips customers already removed from the queue; a
+  deterministic group test reproduces the old out-of-bounds failure and holds the
+  fix. No regular-specific production change was needed. Nobody has watched a
+  regular return in a running game; see `KNOWN_LIMITATIONS.md`.
+- 4.6 queue fairness — **done**, shipped ahead of 4.5 in PR #42. The queue is a
+  plain `TArray` and its entire promise is the array index: `FrontCustomer()` is
+  `Queue[0]`, and every tick sends the customer at index i to `QueueSlot(i)`.
+  Three different mechanisms reorder it — serving takes from the front, patience
+  takes a `Remove(C)` from anywhere, and an unreachable customer is pulled out by
+  `ReleaseCustomerOwnership` — so a hole or a shuffle in any one of them would
+  show up as somebody at the counter watching the person behind them get served,
+  with no error anywhere. Four `Cigkofte.Queue` tests hold it: nobody overtakes
+  anybody when the front or the middle leaves, a customer leaving from the middle
+  makes everyone behind step forward and no two people are ever sent to the same
+  slot, the queue fills to `MaxQueue()` and never past it while still giving
+  everyone their own position, and the patience clock runs only for customers who
+  have actually arrived rather than for whoever is walking in.
+
+  The one production change was a read-only `GetTargetForTest()` on the customer,
+  because physical fairness is a claim about where people are standing and
+  nothing else exposes it. The suite change that mattered is
+  `CigQueueTestsOpenEmptyShop`: `StartDay` rolls the day's event, one of which
+  ("Okul Çıkışı") puts two customers straight into the queue, and the RNG is
+  seeded from the clock — so a test asking for four people found six on some runs
+  and not others. The assertions did not move; what moved is that they now start
+  from a state the test chose rather than one the clock did.
+
+**Stage 4 is complete.** 4.1 through 4.6 are done and covered by
+`Cigkofte.Groups`, `Cigkofte.Seating`, `Cigkofte.Regulars` and `Cigkofte.Queue`.
 
 ## Stage 5 — staff and automation
 

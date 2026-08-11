@@ -433,10 +433,24 @@ function Get-CigProjectPluginInventory {
         try { $descriptor = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8 | ConvertFrom-Json }
         catch { throw "Okunamayan eklenti tanimi: $relative - $($_.Exception.Message)" }
 
-        # --error-unmatch exits non-zero for a path git does not track. Nothing is
-        # written either way.
-        git -C $RepositoryRoot ls-files --error-unmatch -- $relative *> $null
-        $tracked = ($LASTEXITCODE -eq 0)
+        # --error-unmatch exits non-zero for a path git does not track, and says
+        # so on stderr. The exit code is the answer; the message is not wanted.
+        #
+        # Captured rather than redirected because of Windows PowerShell 5.1.
+        # There, under $ErrorActionPreference = 'Stop', anything a native command
+        # writes to stderr is turned into a terminating error - so an untracked
+        # plugin (the Sentry case this function exists for, and the expected
+        # answer) aborted the whole stage instead of returning false. PowerShell 7
+        # does not do that, which is why it only ever failed on 5.1.
+        $tracked = $false
+        try {
+            & git -C $RepositoryRoot ls-files --error-unmatch -- $relative 2>&1 | Out-Null
+            $tracked = ($LASTEXITCODE -eq 0)
+        }
+        catch {
+            # stderr promoted to an exception: git answered "not tracked".
+            $tracked = $false
+        }
 
         $inventory += [pscustomobject]@{
             Name         = [IO.Path]::GetFileNameWithoutExtension($file.Name)

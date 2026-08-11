@@ -1184,7 +1184,12 @@ void ACigkofteHUD::DrawOverlays(ACigkofteGameMode* GM)
 		CenterText(CigText::Get(TEXT("pause.hint")), MY + MH - LineHeight(FontBody, BodyScale) * 1.6f, FontBody, BodyScale, GDim);
 	}
 
-	if (Days->Phase == ECigPhase::Intro)
+	// The title screen steps aside for settings, exactly as the pause menu above
+	// does. Both are drawn on the same canvas with no z-order between them, so
+	// without this the menu entries and the pulsing title carried on drawing
+	// straight through the settings panel, which DrawHUD draws earlier. The rule
+	// lives in ShouldDrawTitleScreen so it can be read without a running game.
+	if (ShouldDrawTitleScreen(Days->Phase == ECigPhase::Intro, GM->bSettingsOpen))
 	{
 		DrawTitleScreen(GM);
 	}

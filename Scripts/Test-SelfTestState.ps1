@@ -201,7 +201,14 @@ try {
 
     # Windows mandatory locks let the unreadable branch be exercised without
     # changing ACLs. Unix locks are advisory, so that platform skips this one.
-    if ($IsWindows) {
+    #
+    # $IsWindows is a PowerShell 6+ automatic variable. Windows PowerShell 5.1
+    # does not define it, and under Set-StrictMode reading an undefined variable
+    # is a terminating error - so this harness failed on 5.1 for a reason that
+    # had nothing to do with what it tests. 5.1 only ever ran on Windows, which
+    # is what the fallback says.
+    $onWindows = if (Test-Path 'variable:IsWindows') { $IsWindows } else { $true }
+    if ($onWindows) {
         $p = New-CigReportFixture -Name 'locked' -Lines $passReport
         $lock = [IO.File]::Open($p, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
         try {
