@@ -186,7 +186,28 @@ Depends on Stage 2 storage actors existing as placeable objects.
   routes it returns. The grid is checked against real engine collision with the
   player's own capsule, so it is measured rather than asserted. It is not a
   navmesh and does not claim to be — see `KNOWN_LIMITATIONS.md`.
-- 3.5 persistence by stable ID, then 3.6 shop identity.
+- 3.5 persistence by stable ID — **done**, in three steps: what a placement looks
+  like in the save file, loading a layout as one transaction that can be refused
+  whole, and applying it to a shop that is already standing. Only authored inputs
+  are written; the derived consequence is recomputed on load, so a save cannot
+  smuggle in a geometry the authority would not have produced. Transient
+  placements (crates) are deliberately not written, and a crate standing in the
+  shop survives a load anyway. A refused layout leaves the authored default
+  standing rather than a half-applied shop, and every refusal names itself — a
+  malformed record, a duplicate stable ID, an overlap, an out-of-bounds record and
+  a seat walled in by individually legal placements are five different answers
+  rather than one. Covered by `Cigkofte.SavePlacement`, `Cigkofte.LayoutLoad`,
+  `Cigkofte.LayoutApply` and `Cigkofte.BuildMode`, including repeated save/load
+  not drifting the shop.
+- 3.6 shop identity — **done.** The sign was a literal in the middle of the world
+  builder, owned by nothing and saved by nothing. The shop now has a name it
+  keeps. The one decision worth stating: a name is not translated, so a Turkish
+  player who names their shop and switches to English still sees what they called
+  it. Validation names its faults rather than lumping them, an unnamed shop is
+  saved as unnamed rather than as its default, and a v13 save arrives unnamed
+  rather than silently named. Covered by `Cigkofte.ShopIdentity`.
+
+**Stage 3 is complete.** 3.1 through 3.6 are done. Save version is 15.
 
 ## Stage 4 — customer life and readability
 
