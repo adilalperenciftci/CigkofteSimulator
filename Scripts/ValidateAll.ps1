@@ -107,9 +107,26 @@ if ($results['tests'] -eq 'PASS') {
     }
 
     $lines = Get-Content $log
-    $loaded = ($lines | Select-String 'Denge dosyası uygulandı').Count
+
+    # The log is Turkish and this file has no BOM, which Windows PowerShell 5.1
+    # reads as ANSI: every non-ASCII letter in a literal here is mangled before
+    # it is ever compared, so 'Denge dosyası uygulandı' matched nothing and the
+    # stage reported 0 of 14 files loaded on a run that had loaded all 14.
+    # PowerShell 7 assumes UTF-8 and was unaffected, which is why this only
+    # failed under 5.1.
+    #
+    # Matching on the ASCII-only part of each message keeps the patterns
+    # readable and makes them mean the same thing under both hosts. Adding a BOM
+    # would fix it too, but would rewrite the whole file to fix one line.
+    $loaded = ($lines | Select-String 'Denge dosyas. uyguland').Count
     $csvCount = (Get-ChildItem (Join-Path $RepoRoot 'Config\Balance\*.csv')).Count
-    $warnings = ($lines | Select-String 'bilinmeyen anahtar|geçersiz Index|okunamadı').Count
+
+    # Anchored to the balance loader's own messages. A bare 'okunamadi' matched
+    # any line in the log that used the word, and one of them is
+    # Cigkofte.LayoutLoad.AMalformedRecordFailsAsItselfNotAsAnOverlap feeding a
+    # NaN transform on purpose and asserting that it is rejected - a passing test
+    # doing exactly its job, counted here as a data warning.
+    $warnings = ($lines | Select-String 'bilinmeyen anahtar|ge.ersiz Index|Denge dosyas. okunamad|Denge dosyas. bo').Count
 
     Write-Host "balance files loaded: $loaded/$csvCount, warnings: $warnings"
     if ($loaded -lt $csvCount) { throw "only $loaded of $csvCount balance files loaded" }
