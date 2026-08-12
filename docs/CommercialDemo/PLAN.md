@@ -309,13 +309,25 @@ wrong. `Cigkofte.Staff.EverythingAboutTheApprenticeSurvivesASave` convicted it
 apprentice arrives with no history, which is what they had — inventing one would
 be worse than leaving it empty.
 
-- 5.1 apprentice lifecycle coverage — hiring refused below level 3, refused with
-  no money, refused when somebody already has the job; the pool walking away
-  once one of them is hired; wages coming out of the till and an unpaid day
-  costing morale rather than being silently free; quitting at low morale; the
-  rival's offer being answered exactly once, either by matching it or by losing
-  them. Through `Hire`/`HireAday`, `GiveRaise`, `KarsiTeklifVer` and the real
-  day boundary, not by writing to `Apprentice` and reading it back.
+- 5.1 apprentice lifecycle coverage — **done.** Twelve tests through
+  `Hire`/`HireAday`, `GiveRaise`, `KarsiTeklifVer` and the day boundary, none of
+  them writing to `Apprentice` to set up what they then read back. Hiring is
+  refused below level 3, refused a lira short of the 400 it costs, and refused
+  while somebody already has the job — and a refusal for money leaves the
+  candidates standing at the door, because not affording somebody today is not
+  them giving up on you. Hiring takes the 400 and the other two walk away. The
+  wage leaves the till each night, an unpaid day costs 18 morale and is counted
+  rather than being silently free, and `TheDayBoundaryIsWhatPaysThem` runs the
+  real `EndDay` to prove the broadcast reaches staff at all. They ask for a
+  raise on the fifth day and the unanswered request costs two points a night;
+  `GiveRaise` does nothing until it is asked for and nothing again once given.
+  The rival's offer is answered exactly once — matching it holds them and a
+  second press is not a second raise; ignoring it loses them, with that day's
+  wage still paid, because they were outbid rather than unpaid.
+
+  No defect. Twelve tests green on the first run, which is worth saying plainly
+  rather than dressing up: 4.4, 4.5 and the save above each convicted something,
+  and this one did not. The lifecycle was already right.
 - 5.2 the five jobs do what they claim — each job's success path and its own
   failure. Chopping consumes stock and produces garnish and its mistake destroys
   garnish; cleaning lowers dirt; the till serves only the simple orders it is
