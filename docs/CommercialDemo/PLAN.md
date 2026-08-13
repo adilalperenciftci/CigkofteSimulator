@@ -328,13 +328,29 @@ be worse than leaving it empty.
   No defect. Twelve tests green on the first run, which is worth saying plainly
   rather than dressing up: 4.4, 4.5 and the save above each convicted something,
   and this one did not. The lifecycle was already right.
-- 5.2 the five jobs do what they claim — each job's success path and its own
-  failure. Chopping consumes stock and produces garnish and its mistake destroys
-  garnish; cleaning lowers dirt; the till serves only the simple orders it is
-  allowed to (one portion, at most two toppings, never a VIP) and prices them
-  through the same sale pipeline the player uses; packing fills the shelf and
-  respects `MaxShelf`; restocking picks the lowest item and leaves a cash floor.
-  A job that silently does nothing is the failure this catches.
+- 5.2 the five jobs do what they claim — **four of five done.** Fourteen tests
+  through `UpdateSystem`, the tick the game actually runs, with the competence
+  roll made deterministic by probing the shared stream for a seed that clears it
+  and rewinding — the same arrangement `CigCustomerGroupTests` uses, so no magic
+  seed. Chopping trades a lettuce for a portion of garnish and twice that for a
+  `DogramaUzmani`; cleaning takes 12 off each surface and half that off cat fur,
+  and stops at clean rather than going negative; packing consumes a lavash and a
+  serving and puts a wrap on the shelf carrying the batch's own spice, and stops
+  at `MaxShelf` without destroying either; restocking picks the item that ran out
+  and keeps a 200 lira floor. Both fumble branches: a fumble at the board costs
+  garnish, a fumble while cleaning adds to the washing up, and neither earns XP.
+  A job with nothing to do costs nothing — no energy, no XP — but is still
+  counted as where the day was spent, because that is what decides the specialism.
+
+  Two things the tests found, neither a defect. Work needs `IsPlaying`, and
+  `StartDay` only reaches `Opening`: the morning is preparation, and only
+  `OpenShop` starts service, so an apprentice does nothing during prep. And
+  `OrderStock` checks room before money, so a full shelf refuses a delivery
+  before it looks at the till — both now held by tests.
+
+  **Kasa is not covered.** It is the one job that needs a customer standing at
+  the counter with a qualifying order, and it prices through the whole sale
+  pipeline. It is the largest of the five and it is the one still owed.
 - 5.3 progression and persistence — **started.** Every apprentice field now
   survives a real `CaptureSave`/`ApplySave` round-trip, and the specialism is
   still owed to the job actually done most after a load. XP and the level cap at
