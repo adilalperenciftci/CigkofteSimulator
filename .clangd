@@ -1,0 +1,15 @@
+# clangd reads compile_commands.json for include paths, which is what makes
+# Unreal's headers resolvable at all. What it does not reliably pick up is the
+# /FI"Definitions.h" force-include buried in UBT's nested response files, and
+# every file under Source/CigkofteSimulator/Tests wraps its whole body in
+# #if WITH_DEV_AUTOMATION_TESTS. Without the define those files preprocess to
+# nothing, so clangd reports no symbols in them and cannot answer a single
+# question about the test suite - which is where most of the work happens.
+#
+# An editor build always defines this as 1. Stating it here says the same thing
+# to the indexer without touching how anything is actually compiled: UBT remains
+# the only authority on the real build.
+CompileFlags:
+  Add:
+    - -DWITH_DEV_AUTOMATION_TESTS=1
+    - -DWITH_AUTOMATION_TESTS=1
