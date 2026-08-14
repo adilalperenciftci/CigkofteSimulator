@@ -31,6 +31,21 @@ output terms have not been read. `docs/CreativePipelines` and the
 | Food Kit, Furniture Kit | Kenney | kenney.nl | CC0 1.0 | pre-existing | `Content/LowPoly/Food`, `Content/LowPoly/Furniture` | not required, credited in `CREDITS.md` |
 | Interface / Impact / RPG / Music Jingles | Kenney | kenney.nl | CC0 1.0 | pre-existing | `Content/Audio/S_*.uasset` | not required, credited in `CREDITS.md` |
 
+## Modelled here
+
+Source three of the three above, and the only one with no licence question to
+answer: nothing came from anywhere else, so nothing is owed to anyone. What the
+repository carries is the script, not the mesh — `AssetWork/` is ignored, and a
+generated file that cannot be regenerated is worse than no file.
+
+| Mesh | Script | Why it was modelled rather than found | Output |
+|---|---|---|---|
+| `SM_Cigkofte_Dough` | `Tools/make_dough_mesh.py` | The ball of bulgur the player kneads all game was `/Engine/BasicShapes/Sphere`. Kenney's food kit has a bowl, a knife and a chopping board, but nothing in it is çiğköfte. | `AssetWork/Blender/SM_Cigkofte_Dough.blend`, `AssetWork/Exports/SM_Cigkofte_Dough.fbx` |
+
+Run it from Blender with the MCP addon connected, or from the text editor:
+
+    exec(compile(open(r"Tools/make_dough_mesh.py").read(), "make_dough_mesh", "exec"))
+
 ## Referenced but deliberately not committed
 
 Listed in `.gitignore`; the game falls back to engine primitives when absent.
